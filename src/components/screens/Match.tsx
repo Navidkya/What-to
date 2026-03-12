@@ -12,16 +12,26 @@ interface MatchProps {
 }
 
 function initMatch(): MatchState {
-  return { step: 'setup', mode: null, cat: null, sub: null, participants: [], pool: [], idx: 0, votes: {}, currentVoter: 0 };
+  return { step: 'intro', mode: null, cat: null, sub: null, participants: [], pool: [], idx: 0, votes: {}, currentVoter: 0 };
 }
+
+const INTRO_CAT_IDS = ['watch', 'eat', 'play', 'read', 'do'];
 
 export default function Match({ profile, isActive, onBack, onToast }: MatchProps) {
   const [mS, setMS] = useState<MatchState>(initMatch);
   const addInputRef = useRef<HTMLInputElement>(null);
 
+  // Intro questionnaire state
+  const [introCat, setIntroCat] = useState<string | null>(null);
+  const [introWho, setIntroWho] = useState<string | null>(null);
+
   const myName = profile.name || 'Eu';
 
-  const reset = () => setMS({ ...initMatch(), participants: [myName] });
+  const reset = () => {
+    setIntroCat(null);
+    setIntroWho(null);
+    setMS(initMatch());
+  };
 
   const selectMode = (mode: 'offline' | 'online') => {
     setMS(s => ({ ...s, mode }));
@@ -102,8 +112,15 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
     }
   };
 
+  const startFromIntro = () => {
+    if (!introCat) { onToast('Escolhe uma categoria!'); return; }
+    if (!introWho) { onToast('Com quem vais jogar?'); return; }
+    setMS(s => ({ ...s, cat: introCat, step: 'setup', participants: [myName] }));
+  };
+
   const handleBack = () => {
-    if (mS.step === 'setup') { onBack(); return; }
+    if (mS.step === 'intro') { onBack(); return; }
+    if (mS.step === 'setup') { setMS(s => ({ ...s, step: 'intro' })); return; }
     if (mS.step === 'pickCat') { setMS(s => ({ ...s, step: 'setup' })); return; }
     if (mS.step === 'wait' || mS.step.startsWith('vote')) { setMS(s => ({ ...s, step: 'pickCat' })); return; }
     if (mS.step === 'results') { setMS(s => ({ ...s, step: 'setup' })); return; }
@@ -115,6 +132,58 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
   const item = mS.pool[mS.idx];
   const limitReached = myVotes.length >= MAX_YES;
   const saved = profile.savedPeople || [];
+
+  const renderIntro = () => (
+    <>
+      <div className="mx-hero fade-in">
+        <div className="mx-hero-em">⚡</div>
+        <div className="mx-hero-t">Modo Match</div>
+        <div className="mx-hero-s">Decide em grupo. Cada um vota em secreto — a app revela o que toda a gente quer.</div>
+      </div>
+
+      <div className="mx-section fade-in">
+        <div className="mx-section-lbl">O que querem decidir?</div>
+        <div className="mx-catgrid">
+          {CATS.filter(c => INTRO_CAT_IDS.includes(c.id)).map(c => (
+            <button
+              key={c.id}
+              className={`mx-cat${introCat === c.id ? ' on' : ''}`}
+              onClick={() => setIntroCat(c.id)}
+            >
+              <span>{c.icon}</span>
+              <span>{c.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mx-section fade-in">
+        <div className="mx-section-lbl">Com quem?</div>
+        <div className="mx-mode-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className={`mx-mode${introWho === 'sozinho' ? ' on' : ''}`} onClick={() => setIntroWho('sozinho')}>
+            <div className="mm-i">🧍</div>
+            <div className="mm-t">Sozinho</div>
+            <div className="mm-s">Só eu</div>
+          </div>
+          <div className={`mx-mode${introWho === 'casal' ? ' on' : ''}`} onClick={() => setIntroWho('casal')}>
+            <div className="mm-i">👫</div>
+            <div className="mm-t">Casal</div>
+            <div className="mm-s">Nós dois</div>
+          </div>
+          <div className={`mx-mode${introWho === 'amigos' ? ' on' : ''}`} onClick={() => setIntroWho('amigos')}>
+            <div className="mm-i">👥</div>
+            <div className="mm-t">Amigos</div>
+            <div className="mm-s">3 ou mais</div>
+          </div>
+        </div>
+      </div>
+
+      <button className="mv-confirm" onClick={startFromIntro} style={{ background: 'var(--ac)', border: 'none' }}>
+        Começar →
+      </button>
+      <div style={{ height: 16 }} />
+    </>
+  );
 
   const renderSetup = () => (
     <>
@@ -394,6 +463,7 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
         <div style={{ width: 36 }} />
       </div>
       <div className="mx-inner sc">
+        {mS.step === 'intro' && renderIntro()}
         {mS.step === 'setup' && renderSetup()}
         {mS.step === 'pickCat' && renderPickCat()}
         {mS.step.startsWith('vote') && renderVote()}
