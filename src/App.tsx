@@ -83,11 +83,11 @@ export default function App() {
     setScreen(s);
   }, [screen]);
 
-  const openCat = useCallback((id: string) => {
+  const openCat = useCallback((id: string, item?: DataItem) => {
     const cat = CATS.find(c => c.id === id);
     if (!cat) return;
     setCurCat(cat);
-    setCurSugg(null);
+    setCurSugg(item || null);
     setPrevScreen('home');
     setScreen('suggest');
     if (id === 'eat' && !store.eatPrefs.done) {

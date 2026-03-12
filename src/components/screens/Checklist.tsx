@@ -30,9 +30,10 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
       if (q) items = items.filter(h => h.title.toLowerCase().includes(q));
       if (!items.length) return (
         <div className="empty-state">
-          <div className="es-em">📋</div>
-          <div className="es-t">Sem histórico ainda</div>
-          <div className="es-s">Começa a usar a app e o histórico aparece aqui</div>
+          <div className="empty-icon">✦</div>
+          <p className="empty-title">Ainda sem histórico</p>
+          <p className="empty-sub">As tuas sugestões aceites aparecem aqui.</p>
+          <p className="empty-quote">"A melhor altura para começar foi ontem.<br/>A segunda melhor é agora."</p>
         </div>
       );
       return items.map((h, i) => (

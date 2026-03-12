@@ -37,7 +37,6 @@ export default function LinkPanel({ title, name, url, color, isOpen, onClose, on
         <div className="panel-title">
           <b>{title}</b>onde ver
         </div>
-        <div className="link-note">Copia o link e abre no browser 👆</div>
         {url && (
           <div className="link-item">
             <span className="link-dot" style={{ background: color }} />
@@ -45,9 +44,14 @@ export default function LinkPanel({ title, name, url, color, isOpen, onClose, on
               <div className="link-name">{name}</div>
               <div className="link-url">{url}</div>
             </div>
-            <button className="link-copy" onClick={copyUrl}>
-              {copied ? '✓ Copiado!' : 'Copiar'}
-            </button>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button className="link-open" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>
+                Abrir →
+              </button>
+              <button className="link-copy" onClick={copyUrl}>
+                {copied ? '✓' : 'Copiar'}
+              </button>
+            </div>
           </div>
         )}
         <button className="btn-x" onClick={onClose}>fechar</button>

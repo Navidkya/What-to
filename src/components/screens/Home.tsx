@@ -9,7 +9,7 @@ interface HomeProps {
   history: HistoryEntry[];
   tracking: TrackingMap;
   schedules: ScheduleEntry[];
-  onOpenCat: (id: string) => void;
+  onOpenCat: (id: string, item?: DataItem) => void;
   onSurprise: () => void;
   onOpenLive: (title: string, emoji: string, catId: string) => void;
   onNav: (screen: Screen) => void;
@@ -265,9 +265,9 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
   // Pending: hoje + watching
   const hojeItems = history.filter(h => h.action === 'hoje').slice(0, 3);
   const watchingItems = Object.entries(tracking).filter(([, v]) => v.state === 'watching').slice(0, 2);
-  const pendingItems: Array<{ emoji: string; title: string; sub: string; badge: string; catId: string }> = [];
+  const pendingItems: Array<{ emoji: string; title: string; sub: string; badge: string; catId: string; ep?: number }> = [];
   hojeItems.forEach(h => pendingItems.push({ emoji: h.emoji, title: h.title, sub: 'Para hoje · ' + fmtDate(h.date), badge: 'hoje', catId: h.catId }));
-  watchingItems.forEach(([, v]) => pendingItems.push({ emoji: v.emoji || '🎬', title: v.title, sub: 'A ver' + (v.s ? ` · T${v.s} Ep${v.e}` : ''), badge: 'watching', catId: v.catId }));
+  watchingItems.forEach(([, v]) => pendingItems.push({ emoji: v.emoji || '🎬', title: v.title, sub: 'A ver' + (v.s ? ` · T${v.s} Ep${v.e}` : ''), badge: 'watching', catId: v.catId, ep: v.e }));
 
   const [pendingImages, setPendingImages] = useState<Record<string, string>>({});
 
@@ -359,7 +359,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           <div className="pending-section">
             <div className="section-lbl" style={{ marginBottom: 8 }}>A acompanhar</div>
             {pendingItems.map((it, i) => (
-              <div key={i} className="pending-card fade-in" data-cat={it.catId} onClick={() => onOpenLive(it.title, it.emoji, it.catId)}>
+              <div key={i} className="pending-card card-base fade-in" data-cat={it.catId} onClick={() => onOpenLive(it.title, it.emoji, it.catId)}>
                 {pendingImages[it.title] ? (
                   <img className="pending-thumb" src={pendingImages[it.title]} alt="" />
                 ) : (
@@ -368,6 +368,11 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
                 <div className="pending-info">
                   <div className="pending-title">{it.title}</div>
                   <div className="pending-sub">{it.sub}</div>
+                  {it.ep !== undefined && it.ep > 0 && (
+                    <div className="progress-bar-track">
+                      <div className="progress-bar-fill" style={{ width: `${Math.min((it.ep / 10) * 100, 100)}%` }} />
+                    </div>
+                  )}
                 </div>
                 <span className={`pending-badge ${it.badge}`}>
                   {it.badge === 'watching' ? '▶ A ver' : '✅ Hoje'}
@@ -382,7 +387,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           <div
             className="home-hero"
             style={!heroImageUrl ? { background: `linear-gradient(${GRAD[heroCat.id] || '135deg,#111,#222'})` } : undefined}
-            onClick={() => onOpenCat(heroCat.id)}
+            onClick={() => onOpenCat(heroCat.id, heroItem)}
           >
             {heroImageUrl && <img className="home-hero-img" src={heroImageUrl} alt="" />}
             <div className="home-hero-overlay" />
@@ -391,7 +396,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
               <div className="home-hero-title">{heroItem.title}</div>
               <div className="home-hero-desc">{heroItem.desc}</div>
               <div className="home-hero-btns" onClick={e => e.stopPropagation()}>
-                <button className="btn-primary" onClick={() => onOpenCat(heroCat.id)}>Ver ideia</button>
+                <button className="btn-primary" onClick={() => onOpenCat(heroCat.id, heroItem)}>Ver ideia</button>
                 <button className="btn-secondary" onClick={e => { e.stopPropagation(); onSurprise(); }}>Trocar ↺</button>
               </div>
             </div>

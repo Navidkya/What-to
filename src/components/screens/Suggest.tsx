@@ -236,14 +236,6 @@ export default function Suggest({
 
   // Background for cinematic poster
   const hasRealImage = !!(tmdbData?.posterUrl || mealData?.photoUrl || coverUrl);
-  const posterBg: React.CSSProperties =
-    cat.id === 'eat' && mealData?.photoUrl
-      ? { backgroundImage: `url(${mealData.photoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-      : cat.id === 'watch' && tmdbData?.posterUrl
-      ? { backgroundImage: `url(${tmdbData.posterUrl})`, backgroundSize: 'cover', backgroundPosition: 'center top' }
-      : (cat.id === 'read' || cat.id === 'play') && coverUrl
-      ? { backgroundImage: `url(${coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center top' }
-      : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` };
 
   return (
     <div className={`screen${isActive ? ' active' : ''}`} id="suggest">
@@ -288,7 +280,19 @@ export default function Suggest({
               {/* Cinematic card */}
               <div className="cin-card" style={cardStyle} onClick={handleCardClick}>
                 {/* Full-bleed poster background */}
-                <div className="cin-poster" style={posterBg}>
+                <div className="cin-poster" style={hasRealImage ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>
+                  {hasRealImage && (
+                    <img
+                      className="cin-poster-img"
+                      src={
+                        (cat.id === 'eat' && mealData?.photoUrl) ? mealData.photoUrl :
+                        (cat.id === 'watch' && tmdbData?.posterUrl) ? tmdbData.posterUrl :
+                        coverUrl || ''
+                      }
+                      alt=""
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
                   {!hasRealImage && (
                     <span className="cin-em">{curSugg.emoji}</span>
                   )}
