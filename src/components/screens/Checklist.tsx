@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactElement } from 'react';
 import type { HistoryEntry, TrackingMap } from '../../types';
 import { CATS, TSTATE, TCOLOR } from '../../data';
 
@@ -10,16 +11,53 @@ interface ChecklistProps {
   onRemoveHistory?: (index: number) => void;
 }
 
+const CAT_COLORS: Record<string, string> = {
+  watch: '#c8974a',
+  eat: '#4a8c5c',
+  play: '#4a6a9a',
+  read: '#9a7ac4',
+  do: '#c85050',
+  listen: '#4a9a8c',
+  learn: '#9a7a50',
+  visit: '#c87a4a',
+};
+
 function fmtDate(iso: string) {
   if (!iso) return '';
   const d = new Date(iso);
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
+function getDateBucket(iso: string): 'hoje' | 'semana' | 'antigo' {
+  if (!iso) return 'antigo';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  if (diffDays < 1) return 'hoje';
+  if (diffDays < 7) return 'semana';
+  return 'antigo';
+}
+
+const BUCKET_LABELS: Record<string, string> = {
+  hoje: 'Hoje',
+  semana: 'Esta semana',
+  antigo: 'Mais antigo',
+};
+
+const HIST_CATS = ['Tudo', 'watch', 'eat', 'play', 'read', 'do'];
+const HIST_CAT_LABELS: Record<string, string> = { watch: '🎬', eat: '🍽', play: '🎮', read: '📚', do: '⚡' };
+
+function getTMDBThumb(title: string): string | null {
+  const cacheKey = `wt_tmdb_ps_${title.toLowerCase().replace(/\s+/g, '_')}`;
+  return localStorage.getItem(cacheKey) || null;
+}
+
 export default function Checklist({ history, tracking, isActive, onBack, onRemoveHistory }: ChecklistProps) {
   const [tab, setTab] = useState('watch');
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<HistoryEntry | null>(null);
+  const [histCat, setHistCat] = useState('Tudo');
 
   const trackCats = CATS.filter(c => c.trackable);
 
@@ -28,6 +66,8 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
     if (tab === 'hist') {
       let items = history.slice(0, 50);
       if (q) items = items.filter(h => h.title.toLowerCase().includes(q));
+      if (histCat !== 'Tudo') items = items.filter(h => h.catId === histCat);
+
       if (!items.length) return (
         <div className="empty-state">
           <div className="empty-icon">✦</div>
@@ -36,21 +76,54 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
           <p className="empty-quote">"A melhor altura para começar foi ontem.<br/>A segunda melhor é agora."</p>
         </div>
       );
-      return items.map((h, i) => (
-        <div key={i} className="cl-item fade-in" style={{ cursor: 'pointer' }} onClick={() => setSelectedItem(h)}>
-          <div className="cl-em">{h.emoji}</div>
-          <div className="cl-info">
-            <div className="cl-title">{h.title}</div>
-            <div className="cl-meta">What to {h.cat} · {fmtDate(h.date)}</div>
+
+      // Group by date bucket
+      const buckets: Record<string, HistoryEntry[]> = { hoje: [], semana: [], antigo: [] };
+      items.forEach(h => {
+        const b = getDateBucket(h.date);
+        buckets[b].push(h);
+      });
+
+      const rendered: ReactElement[] = [];
+      (['hoje', 'semana', 'antigo'] as const).forEach(bucket => {
+        const group = buckets[bucket];
+        if (!group.length) return;
+        rendered.push(
+          <div key={bucket} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--mu)', padding: '8px 0 4px' }}>
+            {BUCKET_LABELS[bucket]}
           </div>
-          <span className="cl-state" style={{
-            background: h.action === 'agora' ? 'var(--gn2)' : 'var(--ac2)',
-            color: h.action === 'agora' ? 'var(--gn)' : 'var(--ac)',
-          }}>
-            {h.action === 'agora' ? '✅' : '♡'}
-          </span>
-        </div>
-      ));
+        );
+        group.forEach((h, i) => {
+          const thumb = h.catId === 'watch' ? getTMDBThumb(h.title) : null;
+          const catColor = CAT_COLORS[h.catId] || 'var(--mu)';
+          rendered.push(
+            <div key={`${bucket}-${i}`} className="cl-item card-base fade-in" style={{ cursor: 'pointer', gap: 10 }} onClick={() => setSelectedItem(h)}>
+              {thumb ? (
+                <img src={thumb} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+              ) : (
+                <div className="cl-em" style={{ background: catColor + '22', borderRadius: 8, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{h.emoji}</div>
+              )}
+              <div className="cl-info">
+                <div className="cl-title">{h.title}</div>
+                <div className="cl-meta" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: catColor, flexShrink: 0 }} />
+                  {h.cat} · {fmtDate(h.date)}
+                </div>
+              </div>
+              <span className="cl-state" style={{
+                background: h.action === 'agora' ? 'var(--gn2)' : 'var(--ac2)',
+                color: h.action === 'agora' ? 'var(--gn)' : 'var(--ac)',
+                borderRadius: 8,
+                fontSize: 10,
+                padding: '3px 8px',
+              }}>
+                {h.action === 'agora' ? '✅' : '♡'}
+              </span>
+            </div>
+          );
+        });
+      });
+      return rendered;
     }
 
     let items = Object.entries(tracking).filter(([k]) => k.startsWith(tab + ':'));
@@ -112,6 +185,33 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
           📋 Histórico
         </button>
       </div>
+
+      {tab === 'hist' && (
+        <div style={{ display: 'flex', gap: 6, padding: '0 20px 10px', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
+          {HIST_CATS.map(c => (
+            <button
+              key={c}
+              onClick={() => setHistCat(c)}
+              style={{
+                flexShrink: 0,
+                background: histCat === c ? 'var(--ac2)' : 'var(--sf)',
+                border: `1px solid ${histCat === c ? 'var(--ac)' : 'var(--bd2)'}`,
+                borderRadius: 100,
+                padding: '4px 13px',
+                fontSize: 11,
+                fontFamily: "'Outfit', sans-serif",
+                fontWeight: 500,
+                color: histCat === c ? 'var(--ac)' : 'var(--mu2)',
+                cursor: 'pointer',
+                transition: 'all .2s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {c === 'Tudo' ? 'Tudo' : (HIST_CAT_LABELS[c] + ' ' + c.charAt(0).toUpperCase() + c.slice(1))}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="cl-search mw">
         <input

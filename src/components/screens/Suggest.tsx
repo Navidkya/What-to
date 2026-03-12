@@ -317,22 +317,15 @@ export default function Suggest({
 
                   {/* Content overlay */}
                   <div className="cin-body">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                      <span className="tag t">{card.type}</span>
-                      <span className="tag g">{card.genre}</span>
-                      {(data?.tmdb?.rating || card.rating) && (
-                        <span className="rating" style={{ marginLeft: 'auto' }}>⭐ {data?.tmdb?.rating || card.rating}</span>
-                      )}
-                    </div>
-
                     <div className="cin-title">{card.title}</div>
 
-                    {card.year && (
-                      <div className="cin-year">
-                        {data?.tmdb?.year ?? card.year}
-                        {data?.tmdb?.runtime ? ` · ${data.tmdb.runtime}` : ''}
-                      </div>
-                    )}
+                    <div className="cin-meta">
+                      <span>{card.type}</span>
+                      {card.genre && <><span className="cin-meta-sep"> · </span><span>{card.genre}</span></>}
+                      {(data?.tmdb?.year || card.year) && <><span className="cin-meta-sep"> · </span><span>{data?.tmdb?.year ?? card.year}</span></>}
+                      {data?.tmdb?.runtime && <><span className="cin-meta-sep"> · </span><span>{data.tmdb.runtime}</span></>}
+                      {(data?.tmdb?.rating || card.rating) && <><span className="cin-meta-sep"> · </span><span>⭐ {data?.tmdb?.rating || card.rating}</span></>}
+                    </div>
 
                     <div className="cin-desc">
                       {data?.tmdb?.overview

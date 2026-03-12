@@ -74,6 +74,7 @@ export interface TrackingEntry {
   catId: string;
   s?: number;
   e?: number;
+  total?: number;
   feel?: string;
   note?: string;
   type?: string;

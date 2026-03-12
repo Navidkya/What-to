@@ -32,13 +32,34 @@ export default function LinkPanel({ title, name, url, color, isOpen, onClose, on
 
   return (
     <div className={`ov${isOpen ? ' on' : ''}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="panel">
+      <div className="panel" style={{ minHeight: 280 }}>
         <div className="panel-drag" />
-        <div className="panel-title">
-          <b>{title}</b>onde ver
+
+        <div style={{ textAlign: 'center', padding: '4px 0 18px' }}>
+          <div style={{
+            fontFamily: "'Cormorant Garamond', serif",
+            fontSize: 24,
+            fontStyle: 'italic',
+            fontWeight: 600,
+            color: '#f5f1eb',
+            lineHeight: 1.2,
+            marginBottom: 6,
+          }}>
+            {title}
+          </div>
+          <div style={{
+            fontSize: 10,
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            color: 'var(--mu)',
+            fontFamily: "'Outfit', sans-serif",
+          }}>
+            Disponível em
+          </div>
         </div>
+
         {url && (
-          <div className="link-item">
+          <div className="link-item" style={{ minHeight: 56, alignItems: 'center' }}>
             <span className="link-dot" style={{ background: color }} />
             <div className="link-info">
               <div className="link-name">{name}</div>
@@ -54,6 +75,8 @@ export default function LinkPanel({ title, name, url, color, isOpen, onClose, on
             </div>
           </div>
         )}
+
+        <div style={{ borderTop: '1px solid var(--bd)', margin: '14px 0 10px' }} />
         <button className="btn-x" onClick={onClose}>fechar</button>
       </div>
     </div>

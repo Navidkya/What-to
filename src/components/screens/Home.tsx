@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Profile, HistoryEntry, TrackingMap, DataItem, Screen, ScheduleEntry } from '../../types';
 import { DATA, CATS, GRAD } from '../../data';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
@@ -261,6 +261,8 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
   const [heroImages, setHeroImages] = useState<Record<number, string>>({});
   const [heroVisible, setHeroVisible] = useState(true);
   const [heroHovered, setHeroHovered] = useState(false);
+  const heroDragStartX = useRef<number | null>(null);
+  const heroDragMoved = useRef(false);
 
   // Fetch images for all 6 hero slides
   useEffect(() => {
@@ -301,6 +303,24 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
     return () => clearInterval(timer);
   }, [heroHovered, heroIdx, heroSlides.length]);
 
+  const handleHeroMouseDown = (e: React.MouseEvent) => {
+    heroDragStartX.current = e.clientX;
+    heroDragMoved.current = false;
+  };
+  const handleHeroMouseMove = (e: React.MouseEvent) => {
+    if (heroDragStartX.current === null) return;
+    if (Math.abs(e.clientX - heroDragStartX.current) > 10) heroDragMoved.current = true;
+  };
+  const handleHeroMouseUp = (e: React.MouseEvent) => {
+    if (heroDragStartX.current === null) return;
+    const dx = e.clientX - heroDragStartX.current;
+    heroDragStartX.current = null;
+    if (Math.abs(dx) >= 80) {
+      if (dx < 0) goToHeroSlide((heroIdx + 1) % heroSlides.length);
+      else goToHeroSlide((heroIdx - 1 + heroSlides.length) % heroSlides.length);
+    }
+  };
+
   const goToHeroSlide = (idx: number) => {
     if (idx === heroIdx) return;
     setHeroVisible(false);
@@ -318,9 +338,9 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
   // Pending: hoje + watching
   const hojeItems = history.filter(h => h.action === 'hoje').slice(0, 3);
   const watchingItems = Object.entries(tracking).filter(([, v]) => v.state === 'watching').slice(0, 2);
-  const pendingItems: Array<{ emoji: string; title: string; sub: string; badge: string; catId: string; ep?: number }> = [];
+  const pendingItems: Array<{ emoji: string; title: string; sub: string; badge: string; catId: string; ep?: number; total?: number }> = [];
   hojeItems.forEach(h => pendingItems.push({ emoji: h.emoji, title: h.title, sub: 'Para hoje · ' + fmtDate(h.date), badge: 'hoje', catId: h.catId }));
-  watchingItems.forEach(([, v]) => pendingItems.push({ emoji: v.emoji || '🎬', title: v.title, sub: 'A ver' + (v.s ? ` · T${v.s} Ep${v.e}` : ''), badge: 'watching', catId: v.catId, ep: v.e }));
+  watchingItems.forEach(([, v]) => pendingItems.push({ emoji: v.emoji || '🎬', title: v.title, sub: 'A ver' + (v.s ? ` · T${v.s} Ep${v.e}` : ''), badge: 'watching', catId: v.catId, ep: v.e, total: v.total }));
 
   const [pendingImages, setPendingImages] = useState<Record<string, string>>({});
 
@@ -422,8 +442,13 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
                   <div className="pending-title">{it.title}</div>
                   <div className="pending-sub">{it.sub}</div>
                   {it.ep !== undefined && it.ep > 0 && (
-                    <div className="progress-bar-track">
-                      <div className="progress-bar-fill" style={{ width: `${Math.min((it.ep / 10) * 100, 100)}%` }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                      <div className="progress-bar-track" style={{ flex: 1 }}>
+                        <div className="progress-bar-fill" style={{ width: `${Math.min((it.ep / (it.total || 10)) * 100, 100)}%` }} />
+                      </div>
+                      <span style={{ fontSize: 10, color: 'var(--mu)', whiteSpace: 'nowrap' }}>
+                        {it.total ? `Ep. ${it.ep}/${it.total}` : `Ep. ${it.ep}`}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -443,10 +468,14 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
               ...(currentHeroImg ? undefined : { background: `linear-gradient(${GRAD[currentSlide.catId] || '135deg,#111,#222'})` }),
               opacity: heroVisible ? 1 : 0,
               transition: heroVisible ? 'opacity 0.4s ease' : 'opacity 0.2s ease',
+              cursor: 'grab',
             }}
-            onClick={() => onOpenCat(currentSlide.catId, currentSlide.item)}
+            onClick={() => { if (!heroDragMoved.current) onOpenCat(currentSlide.catId, currentSlide.item); }}
+            onMouseDown={handleHeroMouseDown}
+            onMouseMove={handleHeroMouseMove}
+            onMouseUp={handleHeroMouseUp}
+            onMouseLeave={(e) => { handleHeroMouseUp(e); setHeroHovered(false); }}
             onMouseEnter={() => setHeroHovered(true)}
-            onMouseLeave={() => setHeroHovered(false)}
           >
             {currentHeroImg && (
               <img className="home-hero-img" src={currentHeroImg} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
