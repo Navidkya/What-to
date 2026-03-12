@@ -87,12 +87,12 @@ export default function Friends({ isActive: _isActive, onNav, onToast }: Friends
 
   return (
     <div className="h-screen-content" id="friends" style={{ paddingBottom: 80 }}>
-      <div className="friends-inner">
+      <div className="friends-inner" style={{ maxWidth: 480, margin: '0 auto', padding: '0 20px' }}>
         <div className="screen-header">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div className="screen-title">Amigos</div>
-              <div className="screen-sub">{MOCK_FRIENDS.length} amigos · Feed ao vivo</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontStyle: 'italic', fontWeight: 600, color: '#f5f1eb', lineHeight: 1.1 }}>Amigos</div>
+              <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 3 }}>{MOCK_FRIENDS.length} amigos · Feed ao vivo</div>
             </div>
             <button className="tbi" onClick={() => onNav('home')} style={{ marginTop: 4 }}>←</button>
           </div>
@@ -111,7 +111,7 @@ export default function Friends({ isActive: _isActive, onNav, onToast }: Friends
         <div className="friend-list">
           {filteredFriends.map((f, i) => (
             <div key={i} className="friend-item card-base">
-              <div className="friend-avatar" style={{ background: f.color + '22', borderColor: f.color, color: f.color }}>
+              <div className="friend-avatar" style={{ background: f.color + '22', borderColor: f.color, color: f.color, width: 48, height: 48, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, flexShrink: 0, border: `1.5px solid ${f.color}` }}>
                 {f.initials}
               </div>
               <div className="friend-info">

@@ -17,6 +17,14 @@ function initMatch(): MatchState {
 
 const INTRO_CAT_IDS = ['watch', 'eat', 'play', 'read', 'do'];
 
+const MATCH_CAT_IMAGES: Record<string, string> = {
+  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=200&q=80',
+  eat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&q=80',
+  read: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&q=80',
+  play: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=200&q=80',
+  do: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&q=80',
+};
+
 const MATCH_CAT_SVGS: Record<string, React.ReactNode> = {
   watch: (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -202,15 +210,22 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
 
       <div className="mx-section fade-in">
         <div className="mx-section-lbl">O que querem decidir?</div>
-        <div className="mx-catgrid">
+        <div className="mx-catgrid-intro">
           {CATS.filter(c => INTRO_CAT_IDS.includes(c.id)).map(c => (
             <button
               key={c.id}
               className={`mx-cat${introCat === c.id ? ' on' : ''}`}
               onClick={() => setIntroCat(c.id)}
+              style={{ height: 80, borderRadius: 14, position: 'relative', overflow: 'hidden', border: introCat === c.id ? '2px solid #c8974a' : '1px solid rgba(255,255,255,0.1)' }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{MATCH_CAT_SVGS[c.id] || c.icon}</span>
-              <span>{c.name}</span>
+              {MATCH_CAT_IMAGES[c.id] && (
+                <>
+                  <div className="mx-cat-bg" style={{ backgroundImage: `url(${MATCH_CAT_IMAGES[c.id]})` }} />
+                  <div className="mx-cat-bg-overlay" />
+                </>
+              )}
+              <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{MATCH_CAT_SVGS[c.id] || c.icon}</span>
+              <span style={{ position: 'relative', zIndex: 1 }}>{c.name}</span>
             </button>
           ))}
         </div>
@@ -330,11 +345,18 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
               key={c.id}
               className={`mx-cat${mS.cat === c.id ? ' on' : ''}`}
               onClick={() => setMS(s => ({ ...s, cat: c.id, sub: c.id !== 'eat' ? null : s.sub }))}
+              style={{ height: 80, borderRadius: 14, position: 'relative', overflow: 'hidden', border: mS.cat === c.id ? '2px solid #c8974a' : '1px solid rgba(255,255,255,0.1)' }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {MATCH_CAT_IMAGES[c.id] && (
+                <>
+                  <div className="mx-cat-bg" style={{ backgroundImage: `url(${MATCH_CAT_IMAGES[c.id]})` }} />
+                  <div className="mx-cat-bg-overlay" />
+                </>
+              )}
+              <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {MATCH_CAT_SVGS[c.id] || c.icon}
               </span>
-              <span>{c.name}</span>
+              <span style={{ position: 'relative', zIndex: 1 }}>{c.name}</span>
             </button>
           ))}
         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { ReactElement } from 'react';
 import type { HistoryEntry, TrackingMap } from '../../types';
 import { CATS, TSTATE, TCOLOR } from '../../data';
@@ -74,7 +74,22 @@ const BUCKET_LABELS: Record<string, string> = {
 };
 
 const HIST_CATS = ['Tudo', 'watch', 'eat', 'play', 'read', 'do'];
-const HIST_CAT_LABELS: Record<string, string> = { watch: '🎬', eat: '🍽', play: '🎮', read: '📚', do: '⚡' };
+
+const HIST_CAT_IMAGES: Record<string, string> = {
+  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=200&q=80',
+  eat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&q=80',
+  play: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=200&q=80',
+  read: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&q=80',
+  do: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&q=80',
+};
+
+const HIST_CAT_SVGS: Record<string, React.ReactNode> = {
+  watch: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 2l-4 5-4-5"/></svg>,
+  eat: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M5 2v20M21 2c0 0-2 2-2 8h4c0-6-2-8-2-8z"/><path d="M19 10v12"/></svg>,
+  play: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/></svg>,
+  read: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+  do: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+};
 
 function getTMDBThumb(title: string): string | null {
   const cacheKey = `wt_tmdb_ps_${title.toLowerCase().replace(/\s+/g, '_')}`;
@@ -92,10 +107,17 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
   const renderList = () => {
     const q = search.toLowerCase();
     if (tab === 'hist') {
-      // Merge real history with mock items (real items first)
+      // Merge real history with mock items (real items first), deduplicate by title+date
       const realTitles = new Set(history.map(h => h.title));
       const mockItems = MOCK_HISTORY.filter(m => !realTitles.has(m.title));
       let items = [...history.slice(0, 44), ...mockItems];
+      const seen = new Set<string>();
+      items = items.filter(h => {
+        const key = h.title + '|' + h.date;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       if (q) items = items.filter(h => h.title.toLowerCase().includes(q));
       if (histCat !== 'Tudo') items = items.filter(h => h.catId === histCat);
 
@@ -218,29 +240,29 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
       </div>
 
       {tab === 'hist' && (
-        <div style={{ display: 'flex', gap: 6, padding: '0 20px 10px', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
-          {HIST_CATS.map(c => (
-            <button
-              key={c}
-              onClick={() => setHistCat(c)}
-              style={{
-                flexShrink: 0,
-                background: histCat === c ? 'var(--ac2)' : 'var(--sf)',
-                border: `1px solid ${histCat === c ? 'var(--ac)' : 'var(--bd2)'}`,
-                borderRadius: 100,
-                padding: '4px 13px',
-                fontSize: 11,
-                fontFamily: "'Outfit', sans-serif",
-                fontWeight: 500,
-                color: histCat === c ? 'var(--ac)' : 'var(--mu2)',
-                cursor: 'pointer',
-                transition: 'all .2s',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {c === 'Tudo' ? 'Tudo' : (HIST_CAT_LABELS[c] + ' ' + (HIST_CAT_PT[c] ?? c))}
-            </button>
-          ))}
+        <div className="hist-filter-row">
+          {HIST_CATS.map(c => {
+            const imgUrl = HIST_CAT_IMAGES[c];
+            const label = c === 'Tudo' ? 'Tudo' : (HIST_CAT_PT[c] ?? c);
+            const isOn = histCat === c;
+            return (
+              <button
+                key={c}
+                className={`hist-filter-card${isOn ? ' on' : ''}`}
+                onClick={() => setHistCat(c)}
+                style={{
+                  backgroundImage: imgUrl ? `url(${imgUrl})` : undefined,
+                  background: imgUrl ? undefined : 'rgba(200,151,74,0.18)',
+                }}
+              >
+                {!imgUrl && <div style={{ position: 'absolute', inset: 0, borderRadius: 12, background: 'rgba(200,151,74,0.15)' }} />}
+                {HIST_CAT_SVGS[c] && (
+                  <div className="hist-filter-card-icon">{HIST_CAT_SVGS[c]}</div>
+                )}
+                <div className="hist-filter-card-lbl">{label}</div>
+              </button>
+            );
+          })}
         </div>
       )}
 

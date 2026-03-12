@@ -145,12 +145,12 @@ body::after {
 
 #home { justify-content: flex-start; padding-bottom: 80px; }
 .home-inner { width: 100%; max-width: 100%; padding: 0; flex: 1; display: flex; flex-direction: column; }
-.home-header { padding: 56px 20px 8px; display: flex; flex-direction: column; position: relative; z-index: 10; background: linear-gradient(to bottom, rgba(5,7,13,0.98) 0%, rgba(5,7,13,0.85) 70%, transparent 100%); }
+.home-header { padding: 60px 20px 8px; display: flex; flex-direction: column; position: relative; z-index: 10; background: linear-gradient(to bottom, rgba(5,7,13,0.98) 0%, rgba(5,7,13,0.85) 70%, transparent 100%); }
 .home-header-top { display: flex; justify-content: space-between; align-items: flex-start; }
-.home-greeting, .home-name { font-family: 'Cormorant Garamond', serif; font-size: 38px; font-style: italic; font-weight: 600; line-height: 1.0; color: #f5f1eb; letter-spacing: -0.5px; text-shadow: 0 2px 16px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5); }
+.home-greeting, .home-name { font-family: 'Cormorant Garamond', serif; font-size: 44px; font-style: italic; font-weight: 600; line-height: 1.0; color: #f5f1eb; letter-spacing: -0.5px; text-shadow: 0 2px 16px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5); }
 .home-greeting small { display: block; font-family: 'Outfit', sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 2px; text-transform: uppercase; color: var(--mu); margin-bottom: 2px; }
-.home-sub { font-size: 12px; color: #5a6880; margin-top: 3px; font-family: 'Outfit'; letter-spacing: 0.01em; }
-.home-mood { font-size: 14px; font-family: 'Cormorant Garamond', serif; font-style: italic; color: #c8974a; margin-top: 5px; }
+.home-sub { font-size: 13px; color: #6a7590; margin-top: 3px; font-family: 'Outfit'; letter-spacing: 0.01em; }
+.home-mood { font-size: 15px; font-family: 'Cormorant Garamond', serif; font-style: italic; color: #c8974a; margin-top: 5px; }
 .avatar-btn, .home-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(200,151,74,0.15); border: 1.5px solid rgba(200,151,74,0.5); display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; transition: all .2s; flex-shrink: 0; font-family: 'Cormorant Garamond', serif; font-weight: 700; color: #c8974a; box-shadow: 0 0 16px rgba(200,151,74,0.15); align-self: flex-start; margin-top: 4px; }
 .avatar-btn:hover, .home-avatar:hover { background: var(--ac3); }
 
@@ -533,10 +533,10 @@ body::after {
 .home-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
 .home-hero:hover { transform: translateY(-2px); box-shadow: 0 0 100px rgba(0,0,0,0.9); }
 .home-hero:active { transform: scale(.99); }
-.home-hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,7,13,0.97) 0%, rgba(5,7,13,0.75) 25%, rgba(5,7,13,0.25) 55%, rgba(5,7,13,0.0) 100%); z-index: 1; pointer-events: none; }
+.home-hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,7,13,0.97) 0%, rgba(5,7,13,0.6) 30%, rgba(5,7,13,0.15) 60%, rgba(5,7,13,0.0) 100%); z-index: 1; pointer-events: none; }
 .home-hero-badge { font-size: 9px; letter-spacing: 0.14em; color: #c8974a; background: rgba(200,151,74,0.15); border: 1px solid rgba(200,151,74,0.35); padding: 4px 12px; border-radius: 50px; width: fit-content; margin-bottom: 10px; font-family: 'Outfit'; display: inline-block; }
 .home-hero-body { position: relative; z-index: 2; padding: 0 20px 28px; min-height: 380px; max-height: 420px; display: flex; flex-direction: column; justify-content: flex-end; }
-.home-hero-title { font-family: 'Cormorant Garamond', serif; font-size: 38px; font-weight: 700; font-style: italic; line-height: 1.0; margin-bottom: 8px; color: #f5f1eb; text-shadow: 0 2px 24px rgba(0,0,0,1), 0 0 48px rgba(0,0,0,0.8); letter-spacing: -0.3px; }
+.home-hero-title { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 700; font-style: italic; line-height: 1.05; margin-bottom: 8px; color: #f5f1eb; text-shadow: 0 2px 24px rgba(0,0,0,1), 0 0 48px rgba(0,0,0,0.8); letter-spacing: -0.3px; white-space: normal; overflow: visible; text-overflow: unset; display: block; word-break: break-word; }
 .home-hero-desc { font-size: 13px; color: rgba(245,241,235,0.7); line-height: 1.5; margin-bottom: 18px; max-width: 230px; text-shadow: 0 1px 8px rgba(0,0,0,0.9); font-family: 'Outfit'; }
 .home-hero-btns { display: flex; gap: 10px; align-items: center; }
 .btn-primary { height: 50px; padding: 0 28px; background: linear-gradient(135deg, #c8974a, #a87535); color: #05070d; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; border: none; border-radius: var(--radius-pill); cursor: pointer; box-shadow: 0 4px 20px rgba(200,151,74,0.35); transition: all 0.18s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
@@ -891,3 +891,51 @@ body::after {
 
 /* ─── Profile: hide platform colored dots ─── */
 .prof-section .pb-dot { display: none; }
+
+/* ─── Checklist: image filter chips (BLOCO 3) ─── */
+.hist-filter-row { display: flex; gap: 8px; padding: 0 20px 10px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
+.hist-filter-row::-webkit-scrollbar { display: none; }
+.hist-filter-card { position: relative; flex-shrink: 0; height: 52px; min-width: 80px; border-radius: 12px; overflow: hidden; cursor: pointer; border: 1.5px solid transparent; transition: all .2s; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 7px; background-size: cover; background-position: center; }
+.hist-filter-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,7,13,0.82) 0%, rgba(5,7,13,0.45) 100%); transition: all .2s; }
+.hist-filter-card.on { border-color: #c8974a; }
+.hist-filter-card.on::before { background: linear-gradient(to top, rgba(5,7,13,0.6) 0%, rgba(5,7,13,0.2) 100%); }
+.hist-filter-card-icon { position: relative; z-index: 1; color: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+.hist-filter-card-lbl { position: relative; z-index: 1; font-size: 10px; font-family: 'Outfit', sans-serif; font-weight: 500; color: rgba(255,255,255,0.9); white-space: nowrap; }
+.hist-filter-card.on .hist-filter-card-lbl { color: #f5f1eb; font-weight: 600; }
+
+/* ─── Match: intro catgrid 3+2 layout (BLOCO 5) ─── */
+.mx-catgrid-intro { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.mx-catgrid-intro > *:nth-child(-n+3) { grid-column: span 2; }
+.mx-catgrid-intro > *:nth-child(4) { grid-column: 2 / span 2; }
+.mx-catgrid-intro > *:nth-child(5) { grid-column: 4 / span 2; }
+.mx-cat-bg { position: absolute; inset: 0; background-size: cover; background-position: center; border-radius: 12px; }
+.mx-cat-bg-overlay { position: absolute; inset: 0; background: rgba(5,7,13,0.62); border-radius: 12px; transition: background .2s; }
+.mx-cat.on .mx-cat-bg-overlay { background: rgba(5,7,13,0.4); }
+.mx-cat { position: relative; overflow: hidden; }
+
+/* ─── Profile: platform sections & logos (BLOCO 6) ─── */
+.plat-section-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--mu); margin: 16px 0 8px; font-family: 'Outfit'; }
+.plat-logo-btn { display: flex; align-items: center; gap: 10px; height: 56px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 0 16px; cursor: pointer; transition: all .2s; font-family: 'Outfit', sans-serif; width: 100%; margin-bottom: 8px; }
+.plat-logo-btn.on { border-color: rgba(200,151,74,0.4); background: rgba(200,151,74,0.08); }
+.plat-logo-img { width: 28px; height: 28px; border-radius: 6px; object-fit: contain; flex-shrink: 0; }
+.plat-logo-name { flex: 1; font-size: 14px; color: var(--mu2); text-align: left; }
+.plat-logo-btn.on .plat-logo-name { color: var(--tx); }
+.plat-logo-check { font-size: 14px; color: var(--ac); opacity: 0; transition: opacity .2s; }
+.plat-logo-btn.on .plat-logo-check { opacity: 1; }
+
+/* ─── Profile: influencer cards (BLOCO 8) ─── */
+.influencer-section { margin: 0 0 16px; }
+.influencer-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; margin-bottom: 8px; }
+.influencer-av { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 700; flex-shrink: 0; }
+.influencer-info { flex: 1; min-width: 0; }
+.influencer-name { font-size: 14px; font-weight: 600; color: var(--tx); }
+.influencer-handle { font-size: 11px; color: #8a94a8; }
+.influencer-badge { font-size: 10px; font-family: 'Outfit'; font-weight: 500; padding: 2px 8px; border-radius: 6px; background: var(--ac2); color: var(--ac); border: 1px solid rgba(200,151,74,0.3); }
+.pro-badge { font-size: 9px; font-weight: 700; letter-spacing: 1px; padding: 2px 7px; border-radius: 6px; background: var(--ac); color: #0b0d12; font-family: 'Outfit'; vertical-align: middle; margin-left: 6px; }
+
+/* ─── Profile: location card (BLOCO 9) ─── */
+.location-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; margin-bottom: 16px; position: relative; }
+.location-slider { width: 100%; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); position: relative; margin: 12px 0; }
+.location-slider-fill { height: 100%; width: 40%; background: linear-gradient(90deg, #c8974a, #a87535); border-radius: 2px; }
+.location-slider-thumb { width: 16px; height: 16px; border-radius: 50%; background: #c8974a; border: 2px solid #05070d; position: absolute; top: -6px; left: calc(40% - 8px); box-shadow: 0 0 8px rgba(200,151,74,0.5); }
+.location-soon-badge { position: absolute; top: 14px; right: 14px; font-size: 9px; font-weight: 600; letter-spacing: 1px; padding: 2px 8px; border-radius: 6px; background: rgba(200,151,74,0.15); color: var(--ac); border: 1px solid rgba(200,151,74,0.3); font-family: 'Outfit'; }

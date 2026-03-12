@@ -65,16 +65,30 @@ export const TCOLOR: Record<string, string> = {
 // PLATFORMS
 // ══════════════════════════════════════
 export const ALL_PLATFORMS = [
-  { id: 'netflix', n: 'Netflix', c: '#E50914' },
-  { id: 'disney', n: 'Disney+', c: '#113CCF' },
-  { id: 'hbo', n: 'HBO Max', c: '#5822b4' },
-  { id: 'apple', n: 'Apple TV+', c: '#555' },
-  { id: 'prime', n: 'Prime Video', c: '#00A8E0' },
-  { id: 'spotify', n: 'Spotify', c: '#1DB954' },
-  { id: 'steam', n: 'Steam', c: '#c6d4df' },
-  { id: 'playstation', n: 'PlayStation', c: '#003087' },
-  { id: 'youtube', n: 'YouTube', c: '#FF0000' },
-  { id: 'crunchyroll', n: 'Crunchyroll', c: '#F47521' },
+  { id: 'netflix', n: 'Netflix', c: '#E50914', icon: 'https://www.google.com/s2/favicons?domain=netflix.com&sz=64' },
+  { id: 'disney', n: 'Disney+', c: '#113CCF', icon: 'https://www.google.com/s2/favicons?domain=disneyplus.com&sz=64' },
+  { id: 'hbo', n: 'HBO Max', c: '#5822b4', icon: 'https://www.google.com/s2/favicons?domain=max.com&sz=64' },
+  { id: 'apple', n: 'Apple TV+', c: '#555', icon: 'https://www.google.com/s2/favicons?domain=tv.apple.com&sz=64' },
+  { id: 'prime', n: 'Prime Video', c: '#00A8E0', icon: 'https://www.google.com/s2/favicons?domain=primevideo.com&sz=64' },
+  { id: 'crunchyroll', n: 'Crunchyroll', c: '#F47521', icon: 'https://www.google.com/s2/favicons?domain=crunchyroll.com&sz=64' },
+  { id: 'spotify', n: 'Spotify', c: '#1DB954', icon: 'https://www.google.com/s2/favicons?domain=spotify.com&sz=64' },
+  { id: 'youtube_music', n: 'YouTube Music', c: '#FF0000', icon: 'https://www.google.com/s2/favicons?domain=music.youtube.com&sz=64' },
+  { id: 'steam', n: 'Steam', c: '#c6d4df', icon: 'https://www.google.com/s2/favicons?domain=store.steampowered.com&sz=64' },
+  { id: 'playstation', n: 'PlayStation', c: '#003087', icon: 'https://www.google.com/s2/favicons?domain=playstation.com&sz=64' },
+  { id: 'xbox', n: 'Xbox', c: '#107C10', icon: 'https://www.google.com/s2/favicons?domain=xbox.com&sz=64' },
+  { id: 'youtube', n: 'YouTube', c: '#FF0000', icon: 'https://www.google.com/s2/favicons?domain=youtube.com&sz=64' },
+  { id: 'cinema', n: 'Cinema', c: '#8a94a8', icon: 'https://www.google.com/s2/favicons?domain=google.com&sz=64' },
+  { id: 'vodafone', n: 'Vodafone TV', c: '#E60000', icon: 'https://www.google.com/s2/favicons?domain=vodafone.pt&sz=64' },
+  { id: 'meo', n: 'MEO', icon: 'https://www.google.com/s2/favicons?domain=meo.pt&sz=64', c: '#0072C6' },
+  { id: 'nos', n: 'NOS', c: '#00A88E', icon: 'https://www.google.com/s2/favicons?domain=nos.pt&sz=64' },
+  { id: 'dazn', n: 'DAZN', c: '#F8FF00', icon: 'https://www.google.com/s2/favicons?domain=dazn.com&sz=64' },
+];
+
+export const PLATFORM_SECTIONS: { label: string; ids: string[] }[] = [
+  { label: 'Streaming Vídeo', ids: ['netflix', 'disney', 'hbo', 'apple', 'prime', 'crunchyroll'] },
+  { label: 'Música', ids: ['spotify', 'youtube_music'] },
+  { label: 'Jogos', ids: ['steam', 'playstation', 'xbox'] },
+  { label: 'TV & Cinema', ids: ['cinema', 'vodafone', 'meo', 'nos', 'dazn', 'youtube'] },
 ];
 
 export function getPlatformId(name: string): string | null {
@@ -87,7 +101,10 @@ export function getPlatformId(name: string): string | null {
   if (n.includes('spotify')) return 'spotify';
   if (n.includes('steam')) return 'steam';
   if (n.includes('playstation') || n.includes('ps')) return 'playstation';
+  if (n.includes('youtube music')) return 'youtube_music';
   if (n.includes('youtube')) return 'youtube';
+  if (n.includes('xbox')) return 'xbox';
+  if (n.includes('crunchyroll')) return 'crunchyroll';
   return null;
 }
 
