@@ -16,8 +16,20 @@ interface HomeProps {
   isActive: boolean;
 }
 
+interface HeroSlide {
+  item: DataItem;
+  catId: string;
+}
+
 const DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY as string;
+
+// Curated lifestyle photos for "do" category items
+const DO_LIFESTYLE_IMAGES = [
+  'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1280&q=80',
+  'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1280&q=80',
+  'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=1280&q=80',
+];
 
 function getDayTime(): string {
   const now = new Date();
@@ -90,6 +102,22 @@ function hasPlatform(item: DataItem, profile: Profile): boolean {
     if (n.includes('youtube') && myPlats.includes('youtube')) return true;
     return false;
   });
+}
+
+function buildHeroSlides(profile: Profile): HeroSlide[] {
+  const pick = (catId: string, count: number): HeroSlide[] => {
+    const pool = (DATA[catId] || []).filter(s => hasPlatform(s, profile));
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count).map(item => ({ item, catId }));
+  };
+  const slides = [
+    ...pick('watch', 2),
+    ...pick('eat', 1),
+    ...pick('play', 1),
+    ...pick('read', 1),
+    ...pick('do', 1),
+  ];
+  return slides.sort(() => Math.random() - 0.5);
 }
 
 async function fetchTMDBBackdrop(title: string): Promise<string | null> {
@@ -227,40 +255,65 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
   const dayTime = getDayTime();
   const contextPhrase = getContextualPhrase(history);
 
-  // Hero card: random item from all available data
-  const allItems = Object.values(DATA).flat().filter(item => hasPlatform(item, profile));
-  const [heroItem] = useState<DataItem | null>(() => {
-    if (!allItems.length) return null;
-    return allItems[Math.floor(Math.random() * allItems.length)];
-  });
-  const heroCat = heroItem ? CATS.find(c => DATA[c.id]?.includes(heroItem)) : null;
+  // Hero carousel state
+  const [heroSlides] = useState<HeroSlide[]>(() => buildHeroSlides(profile));
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [heroImages, setHeroImages] = useState<Record<number, string>>({});
+  const [heroVisible, setHeroVisible] = useState(true);
+  const [heroHovered, setHeroHovered] = useState(false);
 
-  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
-
+  // Fetch images for all 6 hero slides
   useEffect(() => {
-    if (!heroItem || !heroCat) return;
-    const catId = heroCat.id;
-    const title = heroItem.title;
+    if (!heroSlides.length) return;
+    let doImgIdx = 0;
+    heroSlides.forEach(async (slide, i) => {
+      const { item, catId } = slide;
+      let url: string | null = null;
+      try {
+        if (catId === 'watch') {
+          url = await fetchTMDBBackdrop(item.title);
+        } else if (catId === 'eat') {
+          const meal = await fetchMeal(item.title);
+          url = meal?.photoUrl ?? null;
+        } else if (catId === 'play') {
+          url = getSteamImageUrl(item.steamId);
+        } else if (catId === 'read') {
+          url = await fetchBookCover(item.title);
+        } else if (catId === 'do') {
+          url = DO_LIFESTYLE_IMAGES[doImgIdx % DO_LIFESTYLE_IMAGES.length];
+          doImgIdx++;
+        }
+      } catch { /* skip */ }
+      if (url) setHeroImages(prev => ({ ...prev, [i]: url as string }));
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    async function fetchImg() {
-      let img: string | null = null;
+  // Auto-advance every 6 seconds, pause on hover
+  useEffect(() => {
+    if (heroHovered || !heroSlides.length) return;
+    const timer = setInterval(() => {
+      setHeroVisible(false);
+      setTimeout(() => {
+        setHeroIdx(prev => (prev + 1) % heroSlides.length);
+        setHeroVisible(true);
+      }, 220);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [heroHovered, heroIdx, heroSlides.length]);
 
-      if (catId === 'watch') {
-        img = await fetchTMDBBackdrop(title);
-      } else if (catId === 'play') {
-        img = getSteamImageUrl(heroItem!.steamId);
-      } else if (catId === 'eat') {
-        const meal = await fetchMeal(title);
-        img = meal?.photoUrl || null;
-      } else if (catId === 'read') {
-        img = await fetchBookCover(title);
-      }
+  const goToHeroSlide = (idx: number) => {
+    if (idx === heroIdx) return;
+    setHeroVisible(false);
+    setTimeout(() => {
+      setHeroIdx(idx);
+      setHeroVisible(true);
+    }, 220);
+  };
 
-      setHeroImageUrl(img);
-    }
-
-    fetchImg();
-  }, [heroItem?.title, heroCat?.id]);
+  // Current hero slide
+  const currentSlide = heroSlides[heroIdx] ?? null;
+  const currentHeroCat = currentSlide ? CATS.find(c => c.id === currentSlide.catId) : null;
+  const currentHeroImg = heroImages[heroIdx];
 
   // Pending: hoje + watching
   const hojeItems = history.filter(h => h.action === 'hoje').slice(0, 3);
@@ -298,7 +351,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
     }
 
     fetchPendingImages();
-  }, [pendingItems.map(p => p.title).join(',')]);
+  }, [pendingItems.map(p => p.title).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Today's schedules
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -382,22 +435,48 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           </div>
         )}
 
-        {/* Hero card */}
-        {heroItem && heroCat && (
+        {/* Hero carousel */}
+        {currentSlide && (
           <div
             className="home-hero"
-            style={!heroImageUrl ? { background: `linear-gradient(${GRAD[heroCat.id] || '135deg,#111,#222'})` } : undefined}
-            onClick={() => onOpenCat(heroCat.id, heroItem)}
+            style={{
+              ...(currentHeroImg ? undefined : { background: `linear-gradient(${GRAD[currentSlide.catId] || '135deg,#111,#222'})` }),
+              opacity: heroVisible ? 1 : 0,
+              transition: heroVisible ? 'opacity 0.4s ease' : 'opacity 0.2s ease',
+            }}
+            onClick={() => onOpenCat(currentSlide.catId, currentSlide.item)}
+            onMouseEnter={() => setHeroHovered(true)}
+            onMouseLeave={() => setHeroHovered(false)}
           >
-            {heroImageUrl && <img className="home-hero-img" src={heroImageUrl} alt="" />}
+            {currentHeroImg && (
+              <img className="home-hero-img" src={currentHeroImg} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+            )}
             <div className="home-hero-overlay" />
+
+            {/* Category badge top-left */}
+            <div className="home-hero-cat-badge">
+              {currentHeroCat?.icon} {currentHeroCat?.name.toUpperCase()}
+            </div>
+
             <div className="home-hero-body">
-              <div className="home-hero-badge">Sugestão do dia</div>
-              <div className="home-hero-title">{heroItem.title}</div>
-              <div className="home-hero-desc">{heroItem.desc}</div>
+              <div className="home-hero-title">{currentSlide.item.title}</div>
+              <div className="home-hero-desc">{currentSlide.item.desc}</div>
+
+              {/* Position dots */}
+              <div className="hero-dots" onClick={e => e.stopPropagation()}>
+                {heroSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    className={`hero-dot${i === heroIdx ? ' active' : ''}`}
+                    onClick={() => goToHeroSlide(i)}
+                  />
+                ))}
+              </div>
+
               <div className="home-hero-btns" onClick={e => e.stopPropagation()}>
-                <button className="btn-primary" onClick={() => onOpenCat(heroCat.id, heroItem)}>Ver ideia</button>
-                <button className="btn-secondary" onClick={e => { e.stopPropagation(); onSurprise(); }}>Trocar ↺</button>
+                <button className="btn-primary" onClick={() => onOpenCat(currentSlide.catId, currentSlide.item)}>
+                  Ver ideia
+                </button>
               </div>
             </div>
           </div>

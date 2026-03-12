@@ -13,12 +13,14 @@ interface ProfileProps {
   onUpdateProfile: (p: ProfileType) => void;
   onUpdatePrefs: (p: PrefsMap) => void;
   onClearAll: () => void;
+  onResetEatPrefs: () => void;
+  onResetWatchPrefs: () => void;
   onToast: (msg: string) => void;
 }
 
 export default function Profile({
   profile, history, tracking, prefs, wishlist, isActive: _isActive,
-  onBack, onUpdateProfile, onUpdatePrefs, onClearAll, onToast
+  onBack, onUpdateProfile, onUpdatePrefs, onClearAll, onResetEatPrefs, onResetWatchPrefs, onToast
 }: ProfileProps) {
   const [nameVal, setNameVal] = useState(profile.name || '');
   const [selectedPlats, setSelectedPlats] = useState<string[]>(profile.platforms || []);
@@ -194,6 +196,21 @@ export default function Profile({
         >
           🗑 Limpar todos os dados
         </button>
+
+        <div className="prof-section fade-in" style={{ marginTop: 16 }}>
+          <div className="prof-sec-lbl">Preferências de categorias</div>
+          <div style={{ fontSize: 11, color: 'var(--mu)', marginBottom: 12, lineHeight: 1.6 }}>
+            Repõe o assistente de configuração inicial.
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="prof-save" style={{ flex: 1 }} onClick={() => { onResetEatPrefs(); onToast('🍽️ Preferências de comer repostas'); }}>
+              🍽️ Reconfigurar comer
+            </button>
+            <button className="prof-save" style={{ flex: 1 }} onClick={() => { onResetWatchPrefs(); onToast('🎬 Preferências de ver repostas'); }}>
+              🎬 Reconfigurar ver
+            </button>
+          </div>
+        </div>
 
         <div style={{ height: 8 }} />
       </div>
