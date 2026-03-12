@@ -135,9 +135,9 @@ body::after {
 .ob-step { width: 6px; height: 6px; border-radius: 50%; background: var(--bd2); transition: all .3s; }
 .ob-step.on { background: var(--ac); width: 18px; border-radius: 100px; }
 .plat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
-.plat-btn { background: var(--sf); border: 1px solid var(--bd2); border-radius: var(--r3); padding: 13px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: all .2s; font-family: 'Outfit', sans-serif; }
-.plat-btn.on { border-color: var(--ac); background: var(--ac2); }
-.plat-btn:hover { border-color: var(--bd3); }
+.plat-btn { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--r3); padding: 13px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: all .2s; font-family: 'Outfit', sans-serif; }
+.plat-btn.on { border-color: rgba(200,151,74,0.4); background: rgba(200,151,74,0.08); }
+.plat-btn:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.07); }
 .plat-btn .pb-dot { width: 10px; height: 10px; border-radius: 50%; }
 .plat-btn .pb-name { font-size: 11px; font-weight: 500; color: var(--tx); }
 .plat-btn .pb-check { font-size: 14px; opacity: 0; transition: opacity .2s; }
@@ -145,12 +145,12 @@ body::after {
 
 #home { justify-content: flex-start; padding-bottom: 80px; }
 .home-inner { width: 100%; max-width: 100%; padding: 0; flex: 1; display: flex; flex-direction: column; }
-.home-header { padding: 52px 20px 0; display: flex; flex-direction: column; position: relative; z-index: 10; background: linear-gradient(to bottom, rgba(5,7,13,0.98) 0%, rgba(5,7,13,0.85) 70%, transparent 100%); }
+.home-header { padding: 56px 20px 8px; display: flex; flex-direction: column; position: relative; z-index: 10; background: linear-gradient(to bottom, rgba(5,7,13,0.98) 0%, rgba(5,7,13,0.85) 70%, transparent 100%); }
 .home-header-top { display: flex; justify-content: space-between; align-items: flex-start; }
-.home-greeting, .home-name { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-style: italic; font-weight: 600; line-height: 1.0; color: #f5f1eb; letter-spacing: -0.3px; text-shadow: 0 2px 16px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5); }
+.home-greeting, .home-name { font-family: 'Cormorant Garamond', serif; font-size: 38px; font-style: italic; font-weight: 600; line-height: 1.0; color: #f5f1eb; letter-spacing: -0.5px; text-shadow: 0 2px 16px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5); }
 .home-greeting small { display: block; font-family: 'Outfit', sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 2px; text-transform: uppercase; color: var(--mu); margin-bottom: 2px; }
-.home-sub { font-size: 11px; color: #4a5568; margin-top: 3px; font-family: 'Outfit'; letter-spacing: 0.01em; }
-.home-mood { font-size: 13px; font-family: 'Cormorant Garamond', serif; font-style: italic; color: #c8974a; margin-top: 4px; }
+.home-sub { font-size: 12px; color: #5a6880; margin-top: 3px; font-family: 'Outfit'; letter-spacing: 0.01em; }
+.home-mood { font-size: 14px; font-family: 'Cormorant Garamond', serif; font-style: italic; color: #c8974a; margin-top: 5px; }
 .avatar-btn, .home-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(200,151,74,0.15); border: 1.5px solid rgba(200,151,74,0.5); display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; transition: all .2s; flex-shrink: 0; font-family: 'Cormorant Garamond', serif; font-weight: 700; color: #c8974a; box-shadow: 0 0 16px rgba(200,151,74,0.15); align-self: flex-start; margin-top: 4px; }
 .avatar-btn:hover, .home-avatar:hover { background: var(--ac3); }
 
@@ -533,7 +533,7 @@ body::after {
 .home-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
 .home-hero:hover { transform: translateY(-2px); box-shadow: 0 0 100px rgba(0,0,0,0.9); }
 .home-hero:active { transform: scale(.99); }
-.home-hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,7,13,1) 0%, rgba(5,7,13,0.92) 28%, rgba(5,7,13,0.5) 52%, rgba(5,7,13,0.15) 75%, rgba(5,7,13,0.05) 100%); z-index: 1; pointer-events: none; }
+.home-hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,7,13,0.97) 0%, rgba(5,7,13,0.75) 25%, rgba(5,7,13,0.25) 55%, rgba(5,7,13,0.0) 100%); z-index: 1; pointer-events: none; }
 .home-hero-badge { font-size: 9px; letter-spacing: 0.14em; color: #c8974a; background: rgba(200,151,74,0.15); border: 1px solid rgba(200,151,74,0.35); padding: 4px 12px; border-radius: 50px; width: fit-content; margin-bottom: 10px; font-family: 'Outfit'; display: inline-block; }
 .home-hero-body { position: relative; z-index: 2; padding: 0 20px 28px; min-height: 380px; max-height: 420px; display: flex; flex-direction: column; justify-content: flex-end; }
 .home-hero-title { font-family: 'Cormorant Garamond', serif; font-size: 38px; font-weight: 700; font-style: italic; line-height: 1.0; margin-bottom: 8px; color: #f5f1eb; text-shadow: 0 2px 24px rgba(0,0,0,1), 0 0 48px rgba(0,0,0,0.8); letter-spacing: -0.3px; }
