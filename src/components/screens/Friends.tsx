@@ -179,11 +179,6 @@ export default function Friends({ isActive: _isActive, onNav, onToast }: Friends
           ))}
         </div>
 
-        <div className="feed-coming-banner">
-          <span>Em breve</span>
-          <span className="feed-coming-sub">Cria conta para ver tudo</span>
-        </div>
-
         <div style={{ height: 80 }} />
       </div>
     </div>

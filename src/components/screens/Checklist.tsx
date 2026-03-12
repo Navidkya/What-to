@@ -54,19 +54,21 @@ function fmtDate(iso: string) {
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
-function getDateBucket(iso: string): 'hoje' | 'semana' | 'antigo' {
+function getDateBucket(iso: string): 'hoje' | 'ontem' | 'semana' | 'antigo' {
   if (!iso) return 'antigo';
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
   if (diffDays < 1) return 'hoje';
+  if (diffDays < 2) return 'ontem';
   if (diffDays < 7) return 'semana';
   return 'antigo';
 }
 
 const BUCKET_LABELS: Record<string, string> = {
   hoje: 'Hoje',
+  ontem: 'Ontem',
   semana: 'Esta semana',
   antigo: 'Mais antigo',
 };
@@ -80,7 +82,7 @@ function getTMDBThumb(title: string): string | null {
 }
 
 export default function Checklist({ history, tracking, isActive, onBack, onRemoveHistory }: ChecklistProps) {
-  const [tab, setTab] = useState('watch');
+  const [tab, setTab] = useState('hist');
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<HistoryEntry | null>(null);
   const [histCat, setHistCat] = useState('Tudo');
@@ -107,14 +109,14 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
       );
 
       // Group by date bucket
-      const buckets: Record<string, HistoryEntry[]> = { hoje: [], semana: [], antigo: [] };
+      const buckets: Record<string, HistoryEntry[]> = { hoje: [], ontem: [], semana: [], antigo: [] };
       items.forEach(h => {
         const b = getDateBucket(h.date);
         buckets[b].push(h);
       });
 
       const rendered: ReactElement[] = [];
-      (['hoje', 'semana', 'antigo'] as const).forEach(bucket => {
+      (['hoje', 'ontem', 'semana', 'antigo'] as const).forEach(bucket => {
         const group = buckets[bucket];
         if (!group.length) return;
         rendered.push(
