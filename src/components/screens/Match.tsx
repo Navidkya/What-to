@@ -17,6 +17,12 @@ function initMatch(): MatchState {
 
 const INTRO_CAT_IDS = ['watch', 'eat', 'play', 'read', 'do'];
 
+const WHO_IMAGES: Record<string, string> = {
+  sozinho: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&q=80',
+  casal: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=200&q=80',
+  amigos: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&q=80',
+};
+
 const MATCH_CAT_IMAGES: Record<string, string> = {
   watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=200&q=80',
   eat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&q=80',
@@ -234,21 +240,22 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
       <div className="mx-section fade-in">
         <div className="mx-section-lbl">Com quem?</div>
         <div className="mx-mode-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          <div className={`mx-mode${introWho === 'sozinho' ? ' on' : ''}`} onClick={() => setIntroWho('sozinho')}>
-            <div className="mm-i" style={{ display: 'flex', justifyContent: 'center' }}>{WHO_SVGS.sozinho}</div>
-            <div className="mm-t">Sozinho</div>
-            <div className="mm-s">Só eu</div>
-          </div>
-          <div className={`mx-mode${introWho === 'casal' ? ' on' : ''}`} onClick={() => setIntroWho('casal')}>
-            <div className="mm-i" style={{ display: 'flex', justifyContent: 'center' }}>{WHO_SVGS.casal}</div>
-            <div className="mm-t">Casal</div>
-            <div className="mm-s">Nós dois</div>
-          </div>
-          <div className={`mx-mode${introWho === 'amigos' ? ' on' : ''}`} onClick={() => setIntroWho('amigos')}>
-            <div className="mm-i" style={{ display: 'flex', justifyContent: 'center' }}>{WHO_SVGS.amigos}</div>
-            <div className="mm-t">Amigos</div>
-            <div className="mm-s">3 ou mais</div>
-          </div>
+          {(['sozinho', 'casal', 'amigos'] as const).map(who => {
+            const labels = { sozinho: ['Sozinho', 'Só eu'], casal: ['Casal', 'Nós dois'], amigos: ['Amigos', '3 ou mais'] };
+            return (
+              <div
+                key={who}
+                className={`mx-mode${introWho === who ? ' on' : ''}`}
+                onClick={() => setIntroWho(who)}
+                style={{ position: 'relative', overflow: 'hidden', backgroundImage: `url(${WHO_IMAGES[who]})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              >
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7))' }} />
+                <div className="mm-i" style={{ display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1, color: '#fff' }}>{WHO_SVGS[who]}</div>
+                <div className="mm-t" style={{ position: 'relative', zIndex: 1, color: '#fff' }}>{labels[who][0]}</div>
+                <div className="mm-s" style={{ position: 'relative', zIndex: 1, color: 'rgba(255,255,255,0.7)' }}>{labels[who][1]}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

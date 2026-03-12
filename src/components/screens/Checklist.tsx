@@ -13,6 +13,11 @@ interface ChecklistProps {
 
 const HIST_CAT_PT: Record<string, string> = { watch: 'Ver', eat: 'Comer', play: 'Jogar', read: 'Ler', do: 'Fazer' };
 
+const CAT_PT: Record<string, string> = {
+  watch: 'Ver', eat: 'Comer', play: 'Jogar', read: 'Ler',
+  do: 'Fazer', listen: 'Ouvir', visit: 'Visitar', learn: 'Aprender',
+};
+
 const MOCK_THUMBS: Record<string, string> = {
   'Oppenheimer': 'https://image.tmdb.org/t/p/w200/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
   'Pasta Carbonara': 'https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg',
@@ -113,9 +118,8 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
       let items = [...history.slice(0, 44), ...mockItems];
       const seen = new Set<string>();
       items = items.filter(h => {
-        const key = h.title + '|' + h.date;
-        if (seen.has(key)) return false;
-        seen.add(key);
+        if (seen.has(h.title)) return false;
+        seen.add(h.title);
         return true;
       });
       if (q) items = items.filter(h => h.title.toLowerCase().includes(q));
@@ -160,7 +164,7 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
                 <div className="cl-title">{h.title}</div>
                 <div className="cl-meta" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: catColor, flexShrink: 0 }} />
-                  {h.cat} · {fmtDate(h.date)}
+                  {CAT_PT[h.catId] ?? h.cat} · {fmtDate(h.date)}
                 </div>
               </div>
               <span className="cl-state" style={{
