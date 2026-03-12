@@ -31,6 +31,16 @@ const DO_LIFESTYLE_IMAGES = [
   'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=1280&q=80',
 ];
 
+// Fallback images per category (always shown if API fails)
+const HERO_FALLBACKS: Record<string, string> = {
+  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1280&q=80',
+  eat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1280&q=80',
+  play: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=1280&q=80',
+  read: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=1280&q=80',
+  do: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1280&q=80',
+  listen: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1280&q=80',
+};
+
 function getDayTime(): string {
   const now = new Date();
   const day = DAYS[now.getDay()];
@@ -255,10 +265,19 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
   const dayTime = getDayTime();
   const contextPhrase = getContextualPhrase(history);
 
-  // Hero carousel state
-  const [heroSlides] = useState<HeroSlide[]>(() => buildHeroSlides(profile));
+  // Hero carousel state — build once, pre-seed images with fallbacks
+  const [heroInit] = useState(() => {
+    const slides = buildHeroSlides(profile);
+    const images: Record<number, string> = {};
+    slides.forEach((slide, i) => {
+      const fb = HERO_FALLBACKS[slide.catId];
+      if (fb) images[i] = fb;
+    });
+    return { slides, images };
+  });
+  const heroSlides = heroInit.slides;
   const [heroIdx, setHeroIdx] = useState(0);
-  const [heroImages, setHeroImages] = useState<Record<number, string>>({});
+  const [heroImages, setHeroImages] = useState<Record<number, string>>(heroInit.images);
   const [heroVisible, setHeroVisible] = useState(true);
   const [heroHovered, setHeroHovered] = useState(false);
   const heroDragStartX = useRef<number | null>(null);
@@ -286,7 +305,8 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           doImgIdx++;
         }
       } catch { /* skip */ }
-      if (url) setHeroImages(prev => ({ ...prev, [i]: url as string }));
+      const finalUrl = url || HERO_FALLBACKS[catId] || null;
+      if (finalUrl) setHeroImages(prev => ({ ...prev, [i]: finalUrl }));
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -79,6 +79,7 @@ const MOCK_FEED = [
 
 export default function Friends({ isActive: _isActive, onNav, onToast }: FriendsProps) {
   const [search, setSearch] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
 
   const filteredFriends = MOCK_FRIENDS.filter(f =>
     f.name.toLowerCase().includes(search.toLowerCase())
@@ -125,19 +126,39 @@ export default function Friends({ isActive: _isActive, onNav, onToast }: Friends
           ))}
         </div>
 
-        <div className="friends-section-lbl" style={{ marginTop: 20 }}>Importar contactos</div>
-        <div className="import-grid">
-          {IMPORT_BUTTONS.map(btn => (
-            <button
-              key={btn.name}
-              className="import-btn"
-              onClick={() => onToast('Brevemente — precisas de conta')}
-            >
-              <span className="import-btn-icon" style={{ color: 'rgba(255,255,255,0.55)', display: 'flex' }}>{btn.icon}</span>
-              <span className="import-btn-name">{btn.name}</span>
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={() => setImportOpen(o => !o)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 12,
+            padding: '14px 16px',
+            cursor: 'pointer',
+            marginTop: 16,
+            fontFamily: "'Outfit', sans-serif",
+          }}
+        >
+          <span style={{ fontSize: 13, color: '#8a94a8' }}>Importar contactos</span>
+          <span style={{ fontSize: 16, color: '#8a94a8', transition: 'transform 0.2s', transform: importOpen ? 'rotate(90deg)' : 'none' }}>›</span>
+        </button>
+        {importOpen && (
+          <div className="import-grid" style={{ marginTop: 8 }}>
+            {IMPORT_BUTTONS.map(btn => (
+              <button
+                key={btn.name}
+                className="import-btn"
+                onClick={() => onToast('Brevemente — precisas de conta')}
+              >
+                <span className="import-btn-icon" style={{ color: 'rgba(255,255,255,0.55)', display: 'flex' }}>{btn.icon}</span>
+                <span className="import-btn-name">{btn.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="friends-section-lbl" style={{ marginTop: 20 }}>Feed dos Amigos</div>
         <div className="friends-feed">

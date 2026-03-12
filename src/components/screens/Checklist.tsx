@@ -11,6 +11,32 @@ interface ChecklistProps {
   onRemoveHistory?: (index: number) => void;
 }
 
+const HIST_CAT_PT: Record<string, string> = { watch: 'Ver', eat: 'Comer', play: 'Jogar', read: 'Ler', do: 'Fazer' };
+
+const MOCK_THUMBS: Record<string, string> = {
+  'Oppenheimer': 'https://image.tmdb.org/t/p/w200/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
+  'Pasta Carbonara': 'https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg',
+  'Dune: Part Two': 'https://image.tmdb.org/t/p/w200/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
+  'Balatro': 'https://cdn.cloudflare.steamstatic.com/steam/apps/2379780/capsule_616x353.jpg',
+  'The Bear S02': 'https://image.tmdb.org/t/p/w200/sHFlbKS3WLqMnp9t2ghADIJFnuQ.jpg',
+  'Ramen Tonkotsu': 'https://www.themealdb.com/images/media/meals/wruvqy1503564open.jpg',
+};
+
+function mockDate(offset: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - offset);
+  return d.toISOString();
+}
+
+const MOCK_HISTORY: HistoryEntry[] = [
+  { catId: 'watch', title: 'Oppenheimer', emoji: '🎬', cat: 'Ver', date: mockDate(0), type: 'Filme', genre: 'Drama', action: 'agora' },
+  { catId: 'eat', title: 'Pasta Carbonara', emoji: '🍽️', cat: 'Comer', date: mockDate(0), type: 'Receita', genre: 'Italiano', action: 'agora' },
+  { catId: 'watch', title: 'Dune: Part Two', emoji: '🎬', cat: 'Ver', date: mockDate(1), type: 'Filme', genre: 'Sci-Fi', action: 'save' },
+  { catId: 'play', title: 'Balatro', emoji: '🎮', cat: 'Jogar', date: mockDate(1), type: 'Videojogo', genre: 'Roguelite', action: 'agora' },
+  { catId: 'watch', title: 'The Bear S02', emoji: '🎬', cat: 'Ver', date: mockDate(3), type: 'Série', genre: 'Drama', action: 'agora' },
+  { catId: 'eat', title: 'Ramen Tonkotsu', emoji: '🍽️', cat: 'Comer', date: mockDate(4), type: 'Receita', genre: 'Japonês', action: 'save' },
+];
+
 const CAT_COLORS: Record<string, string> = {
   watch: '#c8974a',
   eat: '#4a8c5c',
@@ -64,7 +90,10 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
   const renderList = () => {
     const q = search.toLowerCase();
     if (tab === 'hist') {
-      let items = history.slice(0, 50);
+      // Merge real history with mock items (real items first)
+      const realTitles = new Set(history.map(h => h.title));
+      const mockItems = MOCK_HISTORY.filter(m => !realTitles.has(m.title));
+      let items = [...history.slice(0, 44), ...mockItems];
       if (q) items = items.filter(h => h.title.toLowerCase().includes(q));
       if (histCat !== 'Tudo') items = items.filter(h => h.catId === histCat);
 
@@ -94,7 +123,7 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
           </div>
         );
         group.forEach((h, i) => {
-          const thumb = h.catId === 'watch' ? getTMDBThumb(h.title) : null;
+          const thumb = MOCK_THUMBS[h.title] || (h.catId === 'watch' ? getTMDBThumb(h.title) : null);
           const catColor = CAT_COLORS[h.catId] || 'var(--mu)';
           rendered.push(
             <div key={`${bucket}-${i}`} className="cl-item card-base fade-in" style={{ cursor: 'pointer', gap: 10 }} onClick={() => setSelectedItem(h)}>
@@ -207,7 +236,7 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
                 whiteSpace: 'nowrap',
               }}
             >
-              {c === 'Tudo' ? 'Tudo' : (HIST_CAT_LABELS[c] + ' ' + c.charAt(0).toUpperCase() + c.slice(1))}
+              {c === 'Tudo' ? 'Tudo' : (HIST_CAT_LABELS[c] + ' ' + (HIST_CAT_PT[c] ?? c))}
             </button>
           ))}
         </div>

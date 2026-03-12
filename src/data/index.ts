@@ -4,14 +4,14 @@ import type { Category, DataItem, WhyReason } from '../types';
 // CATEGORIES
 // ══════════════════════════════════════
 export const CATS: Category[] = [
-  { id: 'watch', icon: '🎬', name: 'Watch', color: '#6ab4e0', trackable: true, expensive: false, moods: ['Tudo', 'Série', 'Filme', 'Documentário', 'Drama', 'Suspense', 'Sci-Fi', 'Comédia', 'Crime', 'Romance'] },
-  { id: 'eat', icon: '🍽️', name: 'Eat', color: '#e8a07a', trackable: false, expensive: true, moods: ['Tudo', 'Receita', 'Restaurante', 'Delivery', 'Vegetariano', 'Rápido', 'Especial', 'Italiano', 'Japonês', 'Português'] },
-  { id: 'read', icon: '📚', name: 'Read', color: '#a07ae8', trackable: true, expensive: false, moods: ['Tudo', 'Livro', 'Romance', 'Ensaio', 'Sci-Fi', 'Biografia', 'Artigo'] },
-  { id: 'listen', icon: '🎵', name: 'Listen', color: '#e87ac4', trackable: false, expensive: false, moods: ['Tudo', 'Álbum', 'Podcast', 'Pop', 'Hip-Hop', 'Jazz', 'Electrónica'] },
-  { id: 'play', icon: '🎮', name: 'Play', color: '#5ec97a', trackable: true, expensive: false, moods: ['Tudo', 'Videojogo', 'Tabuleiro', 'RPG', 'Ação', 'Puzzle', 'Estratégia'] },
-  { id: 'learn', icon: '🧠', name: 'Learn', color: '#e8e07a', trackable: false, expensive: false, moods: ['Tudo', 'Tecnologia', 'Arte', 'Negócios', 'Ciência', 'Línguas', 'Design'] },
-  { id: 'visit', icon: '📍', name: 'Visit', color: '#e07070', trackable: false, expensive: true, moods: ['Tudo', 'Restaurante', 'Bar', 'Museu', 'Experiência', 'Natureza', 'Miradouro'] },
-  { id: 'do', icon: '🎯', name: 'Do', color: '#5ec9c4', trackable: false, expensive: false, moods: ['Tudo', 'A dois', 'Em família', 'Solo', 'Interior', 'Exterior', 'Criativo'] },
+  { id: 'watch', icon: '🎬', name: 'Ver', color: '#6ab4e0', trackable: true, expensive: false, moods: ['Tudo', 'Série', 'Filme', 'Documentário', 'Drama', 'Suspense', 'Sci-Fi', 'Comédia', 'Crime', 'Romance'] },
+  { id: 'eat', icon: '🍽️', name: 'Comer', color: '#e8a07a', trackable: false, expensive: true, moods: ['Tudo', 'Receita', 'Restaurante', 'Delivery', 'Vegetariano', 'Rápido', 'Especial', 'Italiano', 'Japonês', 'Português'] },
+  { id: 'read', icon: '📚', name: 'Ler', color: '#a07ae8', trackable: true, expensive: false, moods: ['Tudo', 'Livro', 'Romance', 'Ensaio', 'Sci-Fi', 'Biografia', 'Artigo'] },
+  { id: 'listen', icon: '🎵', name: 'Ouvir', color: '#e87ac4', trackable: false, expensive: false, moods: ['Tudo', 'Álbum', 'Podcast', 'Pop', 'Hip-Hop', 'Jazz', 'Electrónica'] },
+  { id: 'play', icon: '🎮', name: 'Jogar', color: '#5ec97a', trackable: true, expensive: false, moods: ['Tudo', 'Videojogo', 'Tabuleiro', 'RPG', 'Ação', 'Puzzle', 'Estratégia'] },
+  { id: 'learn', icon: '🧠', name: 'Aprender', color: '#e8e07a', trackable: false, expensive: false, moods: ['Tudo', 'Tecnologia', 'Arte', 'Negócios', 'Ciência', 'Línguas', 'Design'] },
+  { id: 'visit', icon: '📍', name: 'Visitar', color: '#e07070', trackable: false, expensive: true, moods: ['Tudo', 'Restaurante', 'Bar', 'Museu', 'Experiência', 'Natureza', 'Miradouro'] },
+  { id: 'do', icon: '🎯', name: 'Fazer', color: '#5ec9c4', trackable: false, expensive: false, moods: ['Tudo', 'A dois', 'Em família', 'Solo', 'Interior', 'Exterior', 'Criativo'] },
 ];
 
 // ══════════════════════════════════════

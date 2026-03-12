@@ -17,6 +17,65 @@ function initMatch(): MatchState {
 
 const INTRO_CAT_IDS = ['watch', 'eat', 'play', 'read', 'do'];
 
+const MATCH_CAT_SVGS: Record<string, React.ReactNode> = {
+  watch: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="13" rx="2"/>
+      <path d="M16 2l-4 5-4-5"/>
+    </svg>
+  ),
+  eat: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/>
+      <path d="M5 2v20M21 2c0 0-2 2-2 8h4c0-6-2-8-2-8z"/>
+      <path d="M19 10v12"/>
+    </svg>
+  ),
+  play: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="3"/>
+      <path d="M6 12h4m-2-2v4"/>
+      <circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/>
+    </svg>
+  ),
+  read: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </svg>
+  ),
+  do: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  ),
+};
+
+const WHO_SVGS = {
+  sozinho: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  casal: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  amigos: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+};
+
 export default function Match({ profile, isActive, onBack, onToast }: MatchProps) {
   const [mS, setMS] = useState<MatchState>(initMatch);
   const addInputRef = useRef<HTMLInputElement>(null);
@@ -150,7 +209,7 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
               className={`mx-cat${introCat === c.id ? ' on' : ''}`}
               onClick={() => setIntroCat(c.id)}
             >
-              <span>{c.icon}</span>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{MATCH_CAT_SVGS[c.id] || c.icon}</span>
               <span>{c.name}</span>
             </button>
           ))}
@@ -161,17 +220,17 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
         <div className="mx-section-lbl">Com quem?</div>
         <div className="mx-mode-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
           <div className={`mx-mode${introWho === 'sozinho' ? ' on' : ''}`} onClick={() => setIntroWho('sozinho')}>
-            <div className="mm-i">🧍</div>
+            <div className="mm-i" style={{ display: 'flex', justifyContent: 'center' }}>{WHO_SVGS.sozinho}</div>
             <div className="mm-t">Sozinho</div>
             <div className="mm-s">Só eu</div>
           </div>
           <div className={`mx-mode${introWho === 'casal' ? ' on' : ''}`} onClick={() => setIntroWho('casal')}>
-            <div className="mm-i">👫</div>
+            <div className="mm-i" style={{ display: 'flex', justifyContent: 'center' }}>{WHO_SVGS.casal}</div>
             <div className="mm-t">Casal</div>
             <div className="mm-s">Nós dois</div>
           </div>
           <div className={`mx-mode${introWho === 'amigos' ? ' on' : ''}`} onClick={() => setIntroWho('amigos')}>
-            <div className="mm-i">👥</div>
+            <div className="mm-i" style={{ display: 'flex', justifyContent: 'center' }}>{WHO_SVGS.amigos}</div>
             <div className="mm-t">Amigos</div>
             <div className="mm-s">3 ou mais</div>
           </div>
@@ -272,7 +331,9 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
               className={`mx-cat${mS.cat === c.id ? ' on' : ''}`}
               onClick={() => setMS(s => ({ ...s, cat: c.id, sub: c.id !== 'eat' ? null : s.sub }))}
             >
-              <span>{c.icon}</span>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {MATCH_CAT_SVGS[c.id] || c.icon}
+              </span>
               <span>{c.name}</span>
             </button>
           ))}
