@@ -48,6 +48,12 @@ function scoreItem(item: DataItem, catId: string, prefs: PrefsMap): number {
   return score;
 }
 
+interface CardData {
+  tmdb: TMDBResult | null;
+  meal: MealResult | null;
+  cover: string | null;
+}
+
 export default function Suggest({
   cat, profile, tracking, prefs, disliked, isActive,
   afterReactTrigger, afterReactGenre,
@@ -58,20 +64,27 @@ export default function Suggest({
   const [curMood, setCurMood] = useState('Tudo');
   const [cbarOn, setCbarOn] = useState(false);
   const [cbarGenre, setCbarGenre] = useState<string | null>(null);
-  const [animClass, setAnimClass] = useState('');
 
-  // Swipe state
+  // Carousel state
+  const [cards, setCards] = useState<DataItem[]>([]);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [cardDataMap, setCardDataMap] = useState<Record<string, CardData>>({});
+
+  // Always-current refs (safe to read in effects and handlers)
+  const cardsRef = useRef<DataItem[]>([]);
+  const activeIdxRef = useRef(0);
+  cardsRef.current = cards;
+  activeIdxRef.current = activeIdx;
+
+  // Drag state
   const touchStartX = useRef<number | null>(null);
-  const mouseDown = useRef(false);
-  const [swipeDelta, setSwipeDelta] = useState(0);
-  const [returning, setReturning] = useState(false);
-  const isSwiping = useRef(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const mouseDownX = useRef<number | null>(null);
+  const isSwipingRef = useRef(false);
+  const [dragDelta, setDragDelta] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // API data
-  const [tmdbData, setTmdbData] = useState<TMDBResult | null>(null);
-  const [mealData, setMealData] = useState<MealResult | null>(null);
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  // Track which titles we've already initiated fetches for
+  const fetchedRef = useRef(new Set<string>());
 
   const getPool = useCallback((gf?: string, moodOverride?: string) => {
     const mood = moodOverride ?? curMood;
@@ -87,155 +100,155 @@ export default function Suggest({
     return pool;
   }, [cat.id, curMood, disliked, prefs, profile]);
 
-  const loadSugg = useCallback((anim: boolean, gf?: string, moodOverride?: string) => {
+  const loadBatch = useCallback((gf?: string, moodOverride?: string, exclude: string[] = []) => {
     const pool = getPool(gf, moodOverride);
     if (!pool.length) return;
-    const top = pool.slice(0, Math.min(3, pool.length));
-    let s: DataItem;
-    if (top.length > 1) {
-      let attempts = 0;
-      do {
-        s = top[Math.floor(Math.random() * top.length)];
-        attempts++;
-      } while (curSugg && s.title === curSugg.title && attempts < 10);
-    } else {
-      s = top[0];
-    }
-    if (anim) {
-      setAnimClass('c-out');
-      setTimeout(() => {
-        setCurSugg(s);
-        setAnimClass('c-in');
-        setTimeout(() => setAnimClass(''), 320);
-      }, 240);
-    } else {
-      setCurSugg(s);
-    }
-  }, [getPool, curSugg, setCurSugg]);
+    const available = pool.filter(s => !exclude.includes(s.title));
+    const source = available.length >= 3 ? available : pool;
+    // Take top half of scored pool and shuffle for variety
+    const topHalf = source.slice(0, Math.max(8, Math.ceil(source.length / 2)));
+    const shuffled = [...topHalf].sort(() => Math.random() - 0.5);
+    const batch = shuffled.slice(0, 8);
+    setCards(batch);
+    setActiveIdx(0);
+    setCardDataMap({});
+    fetchedRef.current = new Set();
+    if (batch.length > 0) setCurSugg(batch[0]);
+  }, [getPool, setCurSugg]);
 
+  const doAdvance = useCallback(() => {
+    const currentCards = cardsRef.current;
+    const currentIdx = activeIdxRef.current;
+    const nextIdx = currentIdx + 1;
+    if (nextIdx >= currentCards.length) {
+      loadBatch(undefined, undefined, currentCards.map(c => c.title));
+    } else {
+      setActiveIdx(nextIdx);
+      setCurSugg(currentCards[nextIdx]);
+    }
+  }, [loadBatch, setCurSugg]);
+
+  // Load when screen activates or category changes
   useEffect(() => {
     if (isActive) {
       setCurMood('Tudo');
       setCbarOn(false);
-      loadSugg(false);
+      if (curSugg) {
+        // Pre-set from hero: start batch with this item
+        const pool = getPool();
+        const rest = pool.filter(s => s.title !== curSugg!.title).slice(0, 7);
+        const batch = [curSugg!, ...rest];
+        setCards(batch);
+        setActiveIdx(0);
+        setCardDataMap({});
+        fetchedRef.current = new Set();
+      } else {
+        loadBatch();
+      }
     }
   }, [cat.id, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // After ReactPanel/WhyPanel action → advance carousel
   useEffect(() => {
     if (afterReactTrigger === 0) return;
-    // Reduced delay so new suggestion loads quickly after WhyPanel/ReactPanel action
     setTimeout(() => {
-      loadSugg(true);
       setCbarGenre(afterReactGenre);
       setCbarOn(true);
+      doAdvance();
     }, 150);
   }, [afterReactTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch API data when suggestion changes
+  // Fetch API data for current card and next card
   useEffect(() => {
-    setTmdbData(null);
-    setMealData(null);
-    setCoverUrl(null);
-    if (!curSugg) return;
-    if (cat.id === 'watch') {
-      const tmdbType = curSugg.type === 'Filme' ? 'movie' : 'tv';
-      fetchTMDB(curSugg.title, tmdbType).then(setTmdbData).catch(() => {});
-    }
-    if (cat.id === 'eat' && curSugg.type === 'Receita') {
-      fetchMeal(curSugg.title).then(setMealData).catch(() => {});
-    }
-    if (cat.id === 'read') {
-      fetchBookCover(curSugg.title).then(url => setCoverUrl(url)).catch(() => {});
-    }
-    if (cat.id === 'play' && curSugg.steamId) {
-      setCoverUrl(getSteamImageUrl(curSugg.steamId));
-    }
-  }, [curSugg?.title, cat.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    const toFetch = [cards[activeIdx], cards[activeIdx + 1]].filter(Boolean) as DataItem[];
+    toFetch.forEach(item => {
+      if (fetchedRef.current.has(item.title)) return;
+      fetchedRef.current.add(item.title);
 
-  const trackInfo = curSugg ? tracking[cat.id + ':' + curSugg.title] : null;
-  const trackState = trackInfo ? TSTATE.find(x => x.id === trackInfo.state) : null;
+      // Initialize entry
+      setCardDataMap(prev => ({ ...prev, [item.title]: prev[item.title] ?? { tmdb: null, meal: null, cover: null } }));
 
-  // Swipe handlers
+      if (cat.id === 'watch') {
+        const tmdbType = item.type === 'Filme' ? 'movie' : 'tv';
+        fetchTMDB(item.title, tmdbType).then(data => {
+          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], tmdb: data } }));
+        }).catch(() => {});
+      }
+      if (cat.id === 'eat' && item.type === 'Receita') {
+        fetchMeal(item.title).then(data => {
+          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], meal: data } }));
+        }).catch(() => {});
+      }
+      if (cat.id === 'read') {
+        fetchBookCover(item.title).then(url => {
+          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: url } }));
+        }).catch(() => {});
+      }
+      if (cat.id === 'play' && item.steamId != null) {
+        const steamCover = getSteamImageUrl(item.steamId);
+        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: steamCover } }));
+      }
+    });
+  }, [activeIdx, cards]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
-    isSwiping.current = false;
-    setSwipeDelta(0);
+    isSwipingRef.current = false;
+    setIsDragging(true);
+    setDragDelta(0);
   };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return;
     const dx = e.touches[0].clientX - touchStartX.current;
     if (Math.abs(dx) > 8) {
-      isSwiping.current = true;
+      isSwipingRef.current = true;
       e.preventDefault();
     }
-    setSwipeDelta(dx);
+    setDragDelta(dx);
   };
   const handleTouchEnd = () => {
-    const dx = swipeDelta;
+    const dx = dragDelta;
     touchStartX.current = null;
-    if (Math.abs(dx) >= 100) {
-      if (dx > 0) onSwipeYes?.();
-      else onSwipeNo?.();
-    } else {
-      setReturning(true);
-      setTimeout(() => setReturning(false), 450);
+    setIsDragging(false);
+    setDragDelta(0);
+    if (Math.abs(dx) >= 80) {
+      if (dx < 0) { onSwipeNo?.(); doAdvance(); }
+      else { onSwipeYes?.(); doAdvance(); }
     }
-    setSwipeDelta(0);
-    isSwiping.current = false;
+    isSwipingRef.current = false;
   };
 
+  // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    mouseDown.current = true;
-    touchStartX.current = e.clientX;
-    isSwiping.current = false;
-    setSwipeDelta(0);
+    mouseDownX.current = e.clientX;
+    setIsDragging(true);
+    isSwipingRef.current = false;
+    setDragDelta(0);
   };
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!mouseDown.current || touchStartX.current === null) return;
-    const dx = e.clientX - touchStartX.current;
-    if (Math.abs(dx) > 8) isSwiping.current = true;
-    setSwipeDelta(dx);
+    if (mouseDownX.current === null) return;
+    const dx = e.clientX - mouseDownX.current;
+    if (Math.abs(dx) > 8) isSwipingRef.current = true;
+    setDragDelta(dx);
   };
   const handleMouseUp = () => {
-    if (!mouseDown.current) return;
-    const dx = swipeDelta;
-    touchStartX.current = null;
-    mouseDown.current = false;
-    if (Math.abs(dx) >= 100) {
-      if (dx > 0) onSwipeYes?.();
-      else onSwipeNo?.();
-    } else {
-      setReturning(true);
-      setTimeout(() => setReturning(false), 450);
+    if (mouseDownX.current === null) return;
+    const dx = dragDelta;
+    mouseDownX.current = null;
+    setIsDragging(false);
+    setDragDelta(0);
+    if (Math.abs(dx) >= 80) {
+      if (dx < 0) { onSwipeNo?.(); doAdvance(); }
+      else { onSwipeYes?.(); doAdvance(); }
     }
-    setSwipeDelta(0);
-    isSwiping.current = false;
+    isSwipingRef.current = false;
   };
+
   const handleCardClick = () => {
-    if (isSwiping.current || Math.abs(swipeDelta) > 10) return;
+    if (isSwipingRef.current || Math.abs(dragDelta) > 10) return;
     onOpenReact();
   };
-
-  const isDragging = mouseDown.current || touchStartX.current !== null;
-  const clampedDelta = Math.max(-60, Math.min(60, swipeDelta));
-  const swipeProgress = Math.min(Math.abs(swipeDelta) / 100, 1);
-
-  let cardStyle: React.CSSProperties = {};
-  if (isDragging && swipeDelta !== 0) {
-    cardStyle = {
-      transform: `translateX(${clampedDelta * 0.8}px)`,
-      transition: 'none',
-      cursor: 'grabbing',
-    };
-  } else if (returning) {
-    cardStyle = {
-      transform: 'translateX(0)',
-      transition: 'transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94)',
-    };
-  }
-
-  // Background for cinematic poster
-  const hasRealImage = !!(tmdbData?.posterUrl || mealData?.photoUrl || coverUrl);
 
   return (
     <div className={`screen${isActive ? ' active' : ''}`} id="suggest">
@@ -251,155 +264,164 @@ export default function Suggest({
       <div className="moods">
         {cat.moods.map(m => (
           <button key={m} className={`mood${m === curMood ? ' on' : ''}`}
-            onClick={() => { setCurMood(m); setCbarOn(false); loadSugg(true, undefined, m); }}>
+            onClick={() => { setCurMood(m); setCbarOn(false); loadBatch(undefined, m); }}>
             {m}
           </button>
         ))}
       </div>
 
-      <div className="card-zone">
-        <div id="cWrap" style={{ width: '100%', userSelect: 'none' }} className={animClass}>
-          {curSugg && (
-            <div className="swipe-card-wrap" ref={cardRef}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-            >
-              {/* Swipe indicators */}
-              <div className="swipe-indicator yes" style={{ opacity: swipeDelta > 20 ? swipeProgress : 0 }}>
-                SIM ✓
-              </div>
-              <div className="swipe-indicator no" style={{ opacity: swipeDelta < -20 ? swipeProgress : 0 }}>
-                NÃO ✗
-              </div>
+      <div className="carousel-viewport">
+        <div
+          className="carousel-track"
+          style={{
+            transform: `translateX(calc(-${activeIdx} * 92vw + ${dragDelta}px))`,
+            transition: isDragging ? 'none' : 'transform 300ms ease',
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          {cards.map((card, i) => {
+            const data = cardDataMap[card.title];
+            const hasImg = !!(data?.tmdb?.posterUrl || data?.meal?.photoUrl || data?.cover);
+            const imgSrc = data?.meal?.photoUrl || data?.tmdb?.posterUrl || data?.cover || '';
+            const cardTrackInfo = tracking[cat.id + ':' + card.title];
+            const cardTrackState = cardTrackInfo ? TSTATE.find(x => x.id === cardTrackInfo.state) : null;
 
-              {/* Cinematic card */}
-              <div className="cin-card" style={cardStyle} onClick={handleCardClick}>
-                {/* Full-bleed poster background */}
-                <div className="cin-poster" style={hasRealImage ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>
-                  {hasRealImage && (
-                    <img
-                      className="cin-poster-img"
-                      src={
-                        (cat.id === 'eat' && mealData?.photoUrl) ? mealData.photoUrl :
-                        (cat.id === 'watch' && tmdbData?.posterUrl) ? tmdbData.posterUrl :
-                        coverUrl || ''
-                      }
-                      alt=""
-                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
-                  {!hasRealImage && (
-                    <span className="cin-em">{curSugg.emoji}</span>
-                  )}
-                  {/* Bottom-to-top gradient overlay */}
-                  <div className="cin-overlay" />
-                </div>
-
-                {/* Content overlaid at bottom */}
-                <div className="cin-body">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                    <span className="tag t">{curSugg.type}</span>
-                    <span className="tag g">{curSugg.genre}</span>
-                    {(tmdbData?.rating || curSugg.rating) && (
-                      <span className="rating" style={{ marginLeft: 'auto' }}>⭐ {tmdbData?.rating || curSugg.rating}</span>
+            return (
+              <div key={card.title + i} className="carousel-slide">
+                <div
+                  className="cin-card"
+                  style={{ cursor: isSwipingRef.current ? 'grabbing' : 'pointer' }}
+                  onClick={i === activeIdx ? handleCardClick : undefined}
+                >
+                  {/* Poster background */}
+                  <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>
+                    {hasImg && (
+                      <img
+                        className="cin-poster-img"
+                        src={imgSrc}
+                        alt=""
+                        onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      />
                     )}
+                    {!hasImg && <span className="cin-em">{card.emoji}</span>}
+                    <div className="cin-overlay" />
+                    {/* Category badge top-left */}
+                    <div className="cin-badge">{cat.icon} {cat.name}</div>
                   </div>
 
-                  <div className="cin-title">{curSugg.title}</div>
-
-                  {curSugg.year && (
-                    <div className="cin-year">
-                      {tmdbData?.year ? `${tmdbData.year}` : curSugg.year}
-                      {tmdbData?.runtime ? ` · ${tmdbData.runtime}` : ''}
+                  {/* Content overlay */}
+                  <div className="cin-body">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                      <span className="tag t">{card.type}</span>
+                      <span className="tag g">{card.genre}</span>
+                      {(data?.tmdb?.rating || card.rating) && (
+                        <span className="rating" style={{ marginLeft: 'auto' }}>⭐ {data?.tmdb?.rating || card.rating}</span>
+                      )}
                     </div>
-                  )}
 
-                  <div className="cin-desc">
-                    {tmdbData?.overview
-                      ? tmdbData.overview.substring(0, 140) + (tmdbData.overview.length > 140 ? '…' : '')
-                      : curSugg.desc}
-                  </div>
+                    <div className="cin-title">{card.title}</div>
 
-                  {tmdbData?.cast && tmdbData.cast.length > 0 && (
-                    <div className="cin-cast">{tmdbData.cast.slice(0, 3).join(' · ')}</div>
-                  )}
+                    {card.year && (
+                      <div className="cin-year">
+                        {data?.tmdb?.year ?? card.year}
+                        {data?.tmdb?.runtime ? ` · ${data.tmdb.runtime}` : ''}
+                      </div>
+                    )}
 
-                  {mealData?.ingredients && mealData.ingredients.length > 0 && (
-                    <div className="cin-ings">
-                      {mealData.ingredients.slice(0, 5).map((ing, i) => (
-                        <span key={i} className="meal-ing-item">{ing}</span>
-                      ))}
+                    <div className="cin-desc">
+                      {data?.tmdb?.overview
+                        ? data.tmdb.overview.substring(0, 140) + (data.tmdb.overview.length > 140 ? '…' : '')
+                        : card.desc}
                     </div>
-                  )}
 
-                  <div className="cin-actions">
-                    {curSugg.platforms && curSugg.platforms.length > 0 && (
-                      <>
-                        {curSugg.platforms.map((p, i) => (
-                          <button key={i} className="pb"
-                            onClick={e => {
-                              e.stopPropagation();
-                              window.open(p.url, '_blank', 'noopener,noreferrer');
-                            }}
-                          >
-                            <span className="dot" style={{ background: p.c }} />
-                            {p.n}
-                          </button>
+                    {data?.tmdb?.cast && data.tmdb.cast.length > 0 && (
+                      <div className="cin-cast">{data.tmdb.cast.slice(0, 3).join(' · ')}</div>
+                    )}
+
+                    {data?.meal?.ingredients && data.meal.ingredients.length > 0 && (
+                      <div className="cin-ings">
+                        {data.meal.ingredients.slice(0, 5).map((ing, j) => (
+                          <span key={j} className="meal-ing-item">{ing}</span>
                         ))}
-                      </>
+                      </div>
                     )}
 
-                    {tmdbData?.trailerKey && (
-                      <button className="trailer-btn"
-                        onClick={e => {
-                          e.stopPropagation();
-                          window.open(`https://www.youtube.com/watch?v=${tmdbData.trailerKey}`, '_blank', 'noopener,noreferrer');
-                        }}
-                      >
-                        ▶ Trailer
-                      </button>
-                    )}
-                  </div>
-
-                  {trackInfo && trackState && (
-                    <div className="track-badge" style={{ marginTop: 8 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: TCOLOR[trackInfo.state] || '#5ec97a', display: 'inline-block', marginRight: 4 }} />
-                      {trackState.l}{trackInfo.s ? ` · T${trackInfo.s} Ep${trackInfo.e}` : ''}
+                    {/* Platform links */}
+                    <div className="cin-actions">
+                      {card.platforms && card.platforms.length > 0 && card.platforms.map((p, j) => (
+                        <button key={j} className="pb"
+                          onClick={e => { e.stopPropagation(); window.open(p.url, '_blank', 'noopener,noreferrer'); }}
+                        >
+                          <span className="dot" style={{ background: p.c }} />
+                          {p.n}
+                        </button>
+                      ))}
+                      {data?.tmdb?.trailerKey && (
+                        <button className="trailer-btn"
+                          onClick={e => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${data.tmdb!.trailerKey}`, '_blank', 'noopener,noreferrer'); }}
+                        >
+                          ▶ Trailer
+                        </button>
+                      )}
                     </div>
-                  )}
+
+                    {cardTrackInfo && cardTrackState && (
+                      <div className="track-badge" style={{ marginTop: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: TCOLOR[cardTrackInfo.state] || '#5ec97a', display: 'inline-block', marginRight: 4 }} />
+                        {cardTrackState.l}{cardTrackInfo.s ? ` · T${cardTrackInfo.s} Ep${cardTrackInfo.e}` : ''}
+                      </div>
+                    )}
+
+                    {/* Não / Sim action buttons */}
+                    <div className="carousel-actions">
+                      <button className="carousel-no"
+                        onClick={e => { e.stopPropagation(); onSwipeNo?.(); doAdvance(); }}
+                      >
+                        ✕ Não
+                      </button>
+                      <button className="carousel-yes"
+                        onClick={e => { e.stopPropagation(); onSwipeYes?.(); doAdvance(); }}
+                      >
+                        ✓ Sim
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              <div className="swipe-dots">
-                <div className="swipe-dot" />
-                <div className="swipe-dot active" />
-                <div className="swipe-dot" />
-              </div>
-              <div className="card-hint">← desliza para não · toca para reagir · desliza para sim →</div>
-            </div>
-          )}
+            );
+          })}
         </div>
+
+        {/* Position dots */}
+        <div className="carousel-dots">
+          {cards.map((_, i) => (
+            <div key={i} className={`carousel-dot${i === activeIdx ? ' active' : ''}`} />
+          ))}
+        </div>
+
+        <div className="card-hint">← desliza para não · toca para reagir · desliza para sim →</div>
       </div>
 
       <div className={`cbar${cbarOn ? ' on' : ''}`}>
         <div className="cbar-lbl">continuar ou mudar?</div>
         <div className="cbar-pills">
           {cbarGenre && (
-            <button className="cpill same" onClick={() => { setCbarOn(false); loadSugg(true, cbarGenre); }}>
+            <button className="cpill same" onClick={() => { setCbarOn(false); loadBatch(cbarGenre); }}>
               ➜ Mais {cbarGenre}
             </button>
           )}
           {(GENRES[cat.id] || []).filter(g => g !== cbarGenre).slice(0, 4).map(g => (
-            <button key={g} className="cpill" onClick={() => { setCbarOn(false); loadSugg(true, g); }}>
+            <button key={g} className="cpill" onClick={() => { setCbarOn(false); loadBatch(g); }}>
               {g}
             </button>
           ))}
-          <button className="cpill" onClick={() => { setCbarOn(false); loadSugg(true); }}>
+          <button className="cpill" onClick={() => { setCbarOn(false); loadBatch(); }}>
             ✦ Surpresa
           </button>
         </div>

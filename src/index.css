@@ -781,6 +781,21 @@ body::after {
 .swipe-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: all .25s; }
 .swipe-dot.active { background: var(--ac); width: 18px; border-radius: 3px; }
 
+/* ── Carousel ── */
+.carousel-viewport { flex: 1; width: 100%; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+.carousel-track { display: flex; align-items: stretch; height: 100%; flex: 1; user-select: none; }
+.carousel-slide { flex: 0 0 92vw; height: 100%; padding-right: 8px; }
+.carousel-slide .cin-card { height: 100%; min-height: 340px; border-radius: 16px; }
+.carousel-dots { display: flex; justify-content: center; gap: 6px; padding: 8px 0 2px; flex-shrink: 0; }
+.carousel-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: all .25s; }
+.carousel-dot.active { background: var(--ac); width: 20px; border-radius: 3px; }
+.carousel-actions { display: flex; gap: 10px; margin-top: 12px; }
+.carousel-no { flex: 1; height: 46px; border-radius: 23px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; font-size: 15px; font-family: 'Outfit', sans-serif; cursor: pointer; transition: background .15s; }
+.carousel-no:active { background: rgba(255,80,80,0.25); }
+.carousel-yes { flex: 1; height: 46px; border-radius: 23px; background: linear-gradient(135deg, #C89B3C, #e8b84b); border: none; color: #0B0D12; font-size: 15px; font-weight: 700; font-family: 'Outfit', sans-serif; cursor: pointer; box-shadow: 0 4px 20px rgba(200,155,60,0.4); transition: transform .15s, box-shadow .15s; }
+.carousel-yes:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(200,155,60,0.3); }
+.cin-badge { position: absolute; top: 14px; left: 14px; z-index: 3; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 10px; font-size: 11px; font-family: 'Outfit', sans-serif; color: rgba(255,255,255,0.85); letter-spacing: 0.3px; }
+
 /* ─── ReactPanel thumbnail ─── */
 .rp-thumb { width: 100%; height: 140px; border-radius: 16px; background-size: cover; background-position: center; position: relative; overflow: hidden; margin-bottom: 14px; flex-shrink: 0; }
 .rp-thumb-grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(15,19,30,0.9) 0%, transparent 60%); }

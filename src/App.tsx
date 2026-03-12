@@ -296,6 +296,8 @@ export default function App() {
                 onUpdateProfile={store.updateProfile}
                 onUpdatePrefs={store.updatePrefs}
                 onClearAll={store.clearAll}
+                onResetEatPrefs={() => store.updateEatPrefs({ done: false, local: [], fome: 'normal', budget: 'medio', restrictions: [], tempo: 'normal' })}
+                onResetWatchPrefs={() => store.updateWatchPrefs({ done: false, genres: [], duration: 'normal', type: 'Ambos', discovery: 'mistura' })}
                 onToast={toast}
               />
             </div>
@@ -323,14 +325,10 @@ export default function App() {
                 };
                 store.updateHistory([{ ...base, action: 'hoje' }, ...store.history]);
                 toast('✅ Marcado para hoje!');
-                setAfterReactGenre(curSugg.genre || null);
-                setAfterReactTrigger(t => t + 1);
               }
             }}
             onSwipeNo={() => {
               toast('⏭ Ok, próxima!');
-              setAfterReactGenre(null);
-              setAfterReactTrigger(t => t + 1);
             }}
             curSugg={curSugg}
             setCurSugg={setCurSugg}
