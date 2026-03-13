@@ -4,9 +4,6 @@ import { CATS, getPlatformId } from './data';
 import { useAppStore } from './store';
 import EatOnboard from './components/panels/EatOnboard';
 import WatchOnboard from './components/panels/WatchOnboard';
-import ListenOnboard from './components/panels/ListenOnboard';
-import ReadOnboard from './components/panels/ReadOnboard';
-import PlayOnboard from './components/panels/PlayOnboard';
 import RecipePanel from './components/panels/RecipePanel';
 
 import Toast, { useToast } from './components/layout/Toast';
@@ -51,9 +48,6 @@ export default function App() {
   // Category onboarding
   const [eatObOpen, setEatObOpen] = useState(false);
   const [watchObOpen, setWatchObOpen] = useState(false);
-  const [listenObOpen, setListenObOpen] = useState(false);
-  const [readObOpen, setReadObOpen] = useState(false);
-  const [playObOpen, setPlayObOpen] = useState(false);
 
   // Recipe panel
   const [recipeOpen, setRecipeOpen] = useState(false);
@@ -102,16 +96,7 @@ export default function App() {
     if (id === 'watch' && !store.watchPrefs.done) {
       setWatchObOpen(true);
     }
-    if (id === 'listen' && !store.listenPrefs.done) {
-      setListenObOpen(true);
-    }
-    if (id === 'read' && !store.readPrefs.done) {
-      setReadObOpen(true);
-    }
-    if (id === 'play' && !store.playPrefs.done) {
-      setPlayObOpen(true);
-    }
-  }, [store.eatPrefs.done, store.watchPrefs.done, store.listenPrefs.done, store.readPrefs.done, store.playPrefs.done]);
+  }, [store.eatPrefs.done, store.watchPrefs.done]);
 
   const surpriseMe = useCallback(() => {
     openCat(CATS[Math.floor(Math.random() * CATS.length)].id);
@@ -482,18 +467,6 @@ export default function App() {
           <WatchOnboard
             isOpen={watchObOpen}
             onClose={(prefs) => { store.updateWatchPrefs(prefs); setWatchObOpen(false); }}
-          />
-          <ListenOnboard
-            isOpen={listenObOpen}
-            onClose={(prefs) => { store.updateListenPrefs(prefs); setListenObOpen(false); }}
-          />
-          <ReadOnboard
-            isOpen={readObOpen}
-            onClose={(prefs) => { store.updateReadPrefs(prefs); setReadObOpen(false); }}
-          />
-          <PlayOnboard
-            isOpen={playObOpen}
-            onClose={(prefs) => { store.updatePlayPrefs(prefs); setPlayObOpen(false); }}
           />
 
           <RecipePanel

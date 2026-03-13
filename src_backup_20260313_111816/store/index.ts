@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Profile, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, ScheduleEntry, EatPrefs, WatchPrefs, ListenPrefs, ReadPrefs, PlayPrefs } from '../types';
+import type { Profile, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, ScheduleEntry, EatPrefs, WatchPrefs } from '../types';
 
 // ══════════════════════════════════════
 // localStorage helpers
@@ -37,15 +37,6 @@ export function useAppStore() {
   );
   const [watchPrefs, setWatchPrefsRaw] = useState<WatchPrefs>(() =>
     load('wt6_watchprefs', { done: false, genres: [], duration: 'normal', type: 'Ambos', discovery: 'mistura' })
-  );
-  const [listenPrefs, setListenPrefsRaw] = useState<ListenPrefs>(() =>
-    load('wt6_listenprefs', { done: false, type: 'Ambos' as const, genres: [], energia: 'mistura' as const })
-  );
-  const [readPrefs, setReadPrefsRaw] = useState<ReadPrefs>(() =>
-    load('wt6_readprefs', { done: false, type: 'Ambos' as const, genres: [], peso: 'mistura' as const })
-  );
-  const [playPrefs, setPlayPrefsRaw] = useState<PlayPrefs>(() =>
-    load('wt6_playprefs', { done: false, type: 'Ambos' as const, genres: [], dificuldade: 'normal' as const })
   );
 
   const updateProfile = useCallback((p: Profile) => {
@@ -93,21 +84,6 @@ export function useAppStore() {
     save('wt6_watchprefs', p);
   }, []);
 
-  const updateListenPrefs = useCallback((p: ListenPrefs) => {
-    setListenPrefsRaw(p);
-    save('wt6_listenprefs', p);
-  }, []);
-
-  const updateReadPrefs = useCallback((p: ReadPrefs) => {
-    setReadPrefsRaw(p);
-    save('wt6_readprefs', p);
-  }, []);
-
-  const updatePlayPrefs = useCallback((p: PlayPrefs) => {
-    setPlayPrefsRaw(p);
-    save('wt6_playprefs', p);
-  }, []);
-
   const clearAll = useCallback(() => {
     const empty: HistoryEntry[] = [];
     const emptyWL: WishlistEntry[] = [];
@@ -129,9 +105,6 @@ export function useAppStore() {
     schedules, updateSchedules,
     eatPrefs, updateEatPrefs,
     watchPrefs, updateWatchPrefs,
-    listenPrefs, updateListenPrefs,
-    readPrefs, updateReadPrefs,
-    playPrefs, updatePlayPrefs,
     clearAll,
   };
 }

@@ -26,11 +26,8 @@ const WHO_IMAGES: Record<string, string> = {
 const MATCH_CAT_IMAGES: Record<string, string> = {
   watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=200&q=80',
   eat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&q=80',
-  read: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=200&q=80',
-  listen: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=200&q=80',
+  read: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&q=80',
   play: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=200&q=80',
-  learn: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=200&q=80',
-  visit: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=200&q=80',
   do: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&q=80',
 };
 

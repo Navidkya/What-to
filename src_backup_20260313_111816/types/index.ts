@@ -122,27 +122,6 @@ export interface WatchPrefs {
   discovery: string; // 'populares', 'mistura', 'surpresa'
 }
 
-export interface ListenPrefs {
-  done: boolean;
-  type: 'Álbum' | 'Podcast' | 'Ambos';
-  genres: string[];
-  energia: 'relaxante' | 'energetico' | 'mistura';
-}
-
-export interface ReadPrefs {
-  done: boolean;
-  type: 'Livro' | 'Artigo' | 'Ambos';
-  genres: string[];
-  peso: 'leve' | 'denso' | 'mistura';
-}
-
-export interface PlayPrefs {
-  done: boolean;
-  type: 'Videojogo' | 'Tabuleiro' | 'Ambos';
-  genres: string[];
-  dificuldade: 'casual' | 'normal' | 'desafiante';
-}
-
 export type Screen =
   | 'onboard'
   | 'home'

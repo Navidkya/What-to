@@ -58,7 +58,7 @@ export default function Suggest({
   cat, profile, tracking, prefs, disliked, isActive,
   afterReactTrigger, afterReactGenre,
   onBack, onOpenReact, onOpenWishlist,
-  onSwipeYes: _onSwipeYes, onSwipeNo: _onSwipeNo,
+  onSwipeYes, onSwipeNo,
   curSugg, setCurSugg,
 }: SuggestProps) {
   const [curMood, setCurMood] = useState('Tudo');
@@ -82,8 +82,6 @@ export default function Suggest({
   const isSwipingRef = useRef(false);
   const [dragDelta, setDragDelta] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [showSkipBar, setShowSkipBar] = useState(false);
-  const skipBarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Track which titles we've already initiated fetches for
   const fetchedRef = useRef(new Set<string>());
@@ -215,14 +213,8 @@ export default function Suggest({
     setIsDragging(false);
     setDragDelta(0);
     if (Math.abs(dx) >= 80) {
-      if (dx < 0) {
-        setShowSkipBar(true);
-        doAdvance();
-        if (skipBarTimerRef.current) clearTimeout(skipBarTimerRef.current);
-        skipBarTimerRef.current = setTimeout(() => setShowSkipBar(false), 3000);
-      } else {
-        onOpenReact();
-      }
+      if (dx < 0) { onSwipeNo?.(); doAdvance(); }
+      else { onSwipeYes?.(); doAdvance(); }
     }
     isSwipingRef.current = false;
   };
@@ -247,14 +239,8 @@ export default function Suggest({
     setIsDragging(false);
     setDragDelta(0);
     if (Math.abs(dx) >= 80) {
-      if (dx < 0) {
-        setShowSkipBar(true);
-        doAdvance();
-        if (skipBarTimerRef.current) clearTimeout(skipBarTimerRef.current);
-        skipBarTimerRef.current = setTimeout(() => setShowSkipBar(false), 3000);
-      } else {
-        onOpenReact();
-      }
+      if (dx < 0) { onSwipeNo?.(); doAdvance(); }
+      else { onSwipeYes?.(); doAdvance(); }
     }
     isSwipingRef.current = false;
   };
@@ -310,21 +296,9 @@ export default function Suggest({
               <div key={card.title + i} className="carousel-slide">
                 <div
                   className="cin-card"
-                  style={{
-                    cursor: isSwipingRef.current ? 'grabbing' : 'pointer',
-                    transform: i === activeIdx && isDragging && dragDelta !== 0
-                      ? `rotate(${dragDelta / window.innerWidth * 20}deg)`
-                      : undefined,
-                    transition: i === activeIdx && !isDragging ? 'transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94)' : undefined,
-                  }}
+                  style={{ cursor: isSwipingRef.current ? 'grabbing' : 'pointer' }}
                   onClick={i === activeIdx ? handleCardClick : undefined}
                 >
-                  {i === activeIdx && (
-                    <>
-                      <div className="swipe-indicator yes" style={{ opacity: dragDelta > 20 ? Math.min(dragDelta / 100, 1) : 0 }}>SIM ✓</div>
-                      <div className="swipe-indicator no" style={{ opacity: dragDelta < -20 ? Math.min(-dragDelta / 100, 1) : 0 }}>NÃO ✕</div>
-                    </>
-                  )}
                   {/* Poster background */}
                   <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>
                     {hasImg && (
@@ -400,30 +374,17 @@ export default function Suggest({
                     {/* Não / Sim action buttons */}
                     <div className="carousel-actions">
                       <button className="carousel-no"
-                        onClick={e => {
-                          e.stopPropagation();
-                          setShowSkipBar(true);
-                          doAdvance();
-                          if (skipBarTimerRef.current) clearTimeout(skipBarTimerRef.current);
-                          skipBarTimerRef.current = setTimeout(() => setShowSkipBar(false), 3000);
-                        }}
+                        onClick={e => { e.stopPropagation(); onSwipeNo?.(); doAdvance(); }}
                       >
                         ✕ Não
                       </button>
                       <button className="carousel-yes"
-                        onClick={e => { e.stopPropagation(); onOpenReact(); }}
+                        onClick={e => { e.stopPropagation(); onSwipeYes?.(); doAdvance(); }}
                       >
                         ✓ Sim
                       </button>
                     </div>
                   </div>
-                  {i === activeIdx && showSkipBar && (
-                    <div className="skip-bar">
-                      <button className="skip-bar-btn" onClick={() => { setShowSkipBar(false); }}>Hoje não</button>
-                      <button className="skip-bar-btn" onClick={() => { setShowSkipBar(false); }}>Guardar</button>
-                      <button className="skip-bar-btn why" onClick={() => { setShowSkipBar(false); }}>Não gosto</button>
-                    </div>
-                  )}
                 </div>
               </div>
             );

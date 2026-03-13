@@ -88,12 +88,6 @@ const HIST_CAT_IMAGES: Record<string, string> = {
   do: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&q=80',
 };
 
-const CL_CAT_IMAGES: Record<string, string> = {
-  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=200&q=80',
-  read: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=200&q=80',
-  play: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=200&q=80',
-};
-
 const HIST_CAT_SVGS: Record<string, React.ReactNode> = {
   watch: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 2l-4 5-4-5"/></svg>,
   eat: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M5 2v20M21 2c0 0-2 2-2 8h4c0-6-2-8-2-8z"/><path d="M19 10v12"/></svg>,
@@ -238,19 +232,14 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
             className={`cl-tab${tab === c.id ? ' on' : ''}`}
             onClick={() => setTab(c.id)}
           >
-            {CL_CAT_IMAGES[c.id] && (
-              <div className="cl-tab-bg" style={{ backgroundImage: `url(${CL_CAT_IMAGES[c.id]})` }} />
-            )}
-            <span style={{ position: 'relative', zIndex: 1 }}>{c.icon}</span>
-            <span className="cl-tab-lbl">{c.name}</span>
+            {c.icon} {c.name}
           </button>
         ))}
         <button
           className={`cl-tab${tab === 'hist' ? ' on' : ''}`}
           onClick={() => setTab('hist')}
         >
-          <span style={{ position: 'relative', zIndex: 1 }}>📋</span>
-          <span className="cl-tab-lbl">Histórico</span>
+          📋 Histórico
         </button>
       </div>
 

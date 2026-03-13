@@ -407,15 +407,13 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         {/* Header */}
         <div className="home-header">
           <div className="home-header-top">
-            <div>
-              <div className="home-sub">{dayTime}</div>
-              <div className="home-name">{greeting}</div>
-              <div className="home-mood">{contextPhrase}</div>
-            </div>
+            <div className="home-name">{greeting}</div>
             <button className="home-avatar" onClick={() => onNav('profile')}>
               {avatarLetter}
             </button>
           </div>
+          <div className="home-sub">{dayTime}</div>
+          <div className="home-mood">{contextPhrase}</div>
         </div>
 
         {/* Planeado para hoje */}
