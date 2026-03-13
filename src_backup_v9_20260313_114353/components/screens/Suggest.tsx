@@ -84,7 +84,6 @@ export default function Suggest({
   const [isDragging, setIsDragging] = useState(false);
   const [showSkipBar, setShowSkipBar] = useState(false);
   const skipBarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [quickYesOpen, setQuickYesOpen] = useState(false);
 
   // Track which titles we've already initiated fetches for
   const fetchedRef = useRef(new Set<string>());
@@ -222,7 +221,7 @@ export default function Suggest({
         if (skipBarTimerRef.current) clearTimeout(skipBarTimerRef.current);
         skipBarTimerRef.current = setTimeout(() => setShowSkipBar(false), 3000);
       } else {
-        setQuickYesOpen(true);
+        onOpenReact();
       }
     }
     isSwipingRef.current = false;
@@ -254,7 +253,7 @@ export default function Suggest({
         if (skipBarTimerRef.current) clearTimeout(skipBarTimerRef.current);
         skipBarTimerRef.current = setTimeout(() => setShowSkipBar(false), 3000);
       } else {
-        setQuickYesOpen(true);
+        onOpenReact();
       }
     }
     isSwipingRef.current = false;
@@ -307,23 +306,16 @@ export default function Suggest({
             const cardTrackInfo = tracking[cat.id + ':' + card.title];
             const cardTrackState = cardTrackInfo ? TSTATE.find(x => x.id === cardTrackInfo.state) : null;
 
-            // PROBLEMA 3: swipe card transform — no flip, just translate+rotate
-            const MAX_ROTATION = 15;
-            const rawRotation = (dragDelta / (window.innerWidth * 0.5)) * MAX_ROTATION;
-            const clampedRotation = Math.max(-MAX_ROTATION, Math.min(MAX_ROTATION, rawRotation));
-            const cardTransform = (i === activeIdx && isDragging && dragDelta !== 0)
-              ? `translateX(${dragDelta}px) rotate(${clampedRotation}deg)`
-              : 'translateX(0) rotate(0deg)';
-            const cardTransition = (i === activeIdx && isDragging) ? 'none' : 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-
             return (
               <div key={card.title + i} className="carousel-slide">
                 <div
-                  className="cin-card swipe-card"
+                  className="cin-card"
                   style={{
                     cursor: isSwipingRef.current ? 'grabbing' : 'pointer',
-                    transform: cardTransform,
-                    transition: cardTransition,
+                    transform: i === activeIdx && isDragging && dragDelta !== 0
+                      ? `rotate(${dragDelta / window.innerWidth * 20}deg)`
+                      : undefined,
+                    transition: i === activeIdx && !isDragging ? 'transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94)' : undefined,
                   }}
                   onClick={i === activeIdx ? handleCardClick : undefined}
                 >
@@ -405,9 +397,9 @@ export default function Suggest({
                       </div>
                     )}
 
-                    {/* Não / Sim action buttons — M3 */}
-                    <div className="suggest-actions">
-                      <button className="action-no"
+                    {/* Não / Sim action buttons */}
+                    <div className="carousel-actions">
+                      <button className="carousel-no"
                         onClick={e => {
                           e.stopPropagation();
                           setShowSkipBar(true);
@@ -418,8 +410,8 @@ export default function Suggest({
                       >
                         ✕ Não
                       </button>
-                      <button className="action-yes"
-                        onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}
+                      <button className="carousel-yes"
+                        onClick={e => { e.stopPropagation(); onOpenReact(); }}
                       >
                         ✓ Sim
                       </button>
@@ -466,40 +458,6 @@ export default function Suggest({
           </button>
         </div>
       </div>
-
-      {/* PROBLEMA 4 — Quick Yes panel */}
-      {quickYesOpen && (
-        <div className="quick-yes-overlay" onClick={() => setQuickYesOpen(false)}>
-          <div className="quick-yes-sheet" onClick={e => e.stopPropagation()}>
-            <div className="qy-drag-bar" />
-            <div className="qy-title">
-              <span className="qy-emoji">{cards[activeIdx]?.emoji}</span>
-              <span>{cards[activeIdx]?.title}</span>
-            </div>
-            <button className="qy-btn qy-now" onClick={() => { onOpenReact(); setQuickYesOpen(false); }}>
-              <span>▶</span>
-              <div>
-                <div className="qy-btn-title">Sim, agora!</div>
-                <div className="qy-btn-sub">Abre e acompanha em tempo real</div>
-              </div>
-            </button>
-            <button className="qy-btn qy-later" onClick={() => { if (_onSwipeYes) _onSwipeYes(); setQuickYesOpen(false); }}>
-              <span>✅</span>
-              <div>
-                <div className="qy-btn-title">Sim, mais tarde</div>
-                <div className="qy-btn-sub">Fica marcado para hoje</div>
-              </div>
-            </button>
-            <button className="qy-btn qy-schedule" onClick={() => { setQuickYesOpen(false); }}>
-              <span>🗓</span>
-              <div>
-                <div className="qy-btn-title">Escolher hora</div>
-                <div className="qy-btn-sub">Agenda para um momento específico</div>
-              </div>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

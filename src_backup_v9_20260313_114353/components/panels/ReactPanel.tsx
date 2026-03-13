@@ -1,4 +1,5 @@
 import type { DataItem, Category } from '../../types';
+import { GRAD } from '../../data';
 
 interface ReactPanelProps {
   item: DataItem | null;
@@ -12,48 +13,27 @@ interface ReactPanelProps {
   onSchedule?: () => void;
 }
 
-const CAT_GRADIENT: Record<string, string> = {
-  watch: '135deg, #0a1628, #1a2a4a',
-  eat: '135deg, #2a0f05, #1a1205',
-  read: '135deg, #0f0a28, #1a1235',
-  listen: '135deg, #28051a, #1a0512',
-  play: '135deg, #052812, #081a0a',
-  learn: '135deg, #28250a, #1a1805',
-  visit: '135deg, #280a0a, #1a0505',
-  do: '135deg, #052828, #051a1a',
-};
-
 export default function ReactPanel({ item, cat, isOpen, onClose, onNow, onReact, onWhy, onTracking, onSchedule }: ReactPanelProps) {
   if (!item) return null;
 
-  const posterUrl = (item as DataItem & { posterUrl?: string }).posterUrl;
-  const catGrad = cat ? (CAT_GRADIENT[cat.id] || '135deg, #111, #222') : '135deg, #111, #222';
+  const grad = cat ? GRAD[cat.id] : '135deg,#111,#222';
+  const bgStyle: React.CSSProperties = { background: `linear-gradient(${grad})` };
 
   return (
     <div className={`ov${isOpen ? ' on' : ''}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="panel">
         <div className="panel-drag" />
 
-        {/* Header with poster image */}
-        <div className="rp-header">
-          {posterUrl ? (
-            <div
-              className="rp-poster"
-              style={{ backgroundImage: `url(${posterUrl})` }}
-            />
-          ) : (
-            <div
-              className="rp-poster rp-poster-fallback"
-              style={{ background: `linear-gradient(${catGrad})` }}
-            >
-              <span style={{ fontSize: 36 }}>{item.emoji}</span>
-            </div>
-          )}
-          <div className="rp-header-info">
-            <div className="rp-title">{item.title}</div>
-            <div className="rp-cat">{cat?.name}</div>
-          </div>
+        {/* Thumbnail section */}
+        <div className="rp-thumb" style={bgStyle}>
+          <div className="rp-thumb-grad" />
+          <div className="rp-thumb-em">{item.emoji}</div>
+          <div className="rp-thumb-title">{item.title}</div>
         </div>
+
+        {cat && (
+          <div className="rp-subtitle">What to {cat.name}</div>
+        )}
 
         {/* 2-column grid for main actions */}
         <div className="rp-grid">

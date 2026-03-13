@@ -11,6 +11,8 @@ interface ChecklistProps {
   onRemoveHistory?: (index: number) => void;
 }
 
+const HIST_CAT_PT: Record<string, string> = { watch: 'Ver', eat: 'Comer', play: 'Jogar', read: 'Ler', do: 'Fazer' };
+
 const CAT_PT: Record<string, string> = {
   watch: 'Ver', eat: 'Comer', play: 'Jogar', read: 'Ler',
   do: 'Fazer', listen: 'Ouvir', visit: 'Visitar', learn: 'Aprender',
@@ -76,14 +78,20 @@ const BUCKET_LABELS: Record<string, string> = {
   antigo: 'Mais antigo',
 };
 
-const CL_IMAGES: Record<string, string> = {
-  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=300&q=75',
-  eat:   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&q=75',
-  play:  'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=300&q=75',
-  read:  'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&q=75',
-  do:    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&q=75',
-  listen:'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300&q=75',
-  hist:  '',
+const HIST_CATS = ['Tudo', 'watch', 'eat', 'play', 'read', 'do'];
+
+const HIST_CAT_IMAGES: Record<string, string> = {
+  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=200&q=80',
+  eat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&q=80',
+  play: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=200&q=80',
+  read: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&q=80',
+  do: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&q=80',
+};
+
+const CL_CAT_IMAGES: Record<string, string> = {
+  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=200&q=80',
+  read: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=200&q=80',
+  play: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=200&q=80',
 };
 
 const HIST_CAT_SVGS: Record<string, React.ReactNode> = {
@@ -99,21 +107,13 @@ function getTMDBThumb(title: string): string | null {
   return localStorage.getItem(cacheKey) || null;
 }
 
-// Unified filter tabs: hist + trackable cats
-const CL_FILTER_TABS = [
-  { id: 'hist', label: 'Histórico' },
-  { id: 'watch', label: 'Ver' },
-  { id: 'eat', label: 'Comer' },
-  { id: 'play', label: 'Jogar' },
-  { id: 'read', label: 'Ler' },
-  { id: 'do', label: 'Fazer' },
-  { id: 'listen', label: 'Ouvir' },
-];
-
 export default function Checklist({ history, tracking, isActive, onBack, onRemoveHistory }: ChecklistProps) {
   const [tab, setTab] = useState('hist');
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<HistoryEntry | null>(null);
+  const [histCat, setHistCat] = useState('Tudo');
+
+  const trackCats = CATS.filter(c => c.trackable);
 
   const renderList = () => {
     const q = search.toLowerCase();
@@ -129,6 +129,7 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
         return true;
       });
       if (q) items = items.filter(h => h.title.toLowerCase().includes(q));
+      if (histCat !== 'Tudo') items = items.filter(h => h.catId === histCat);
 
       if (!items.length) return (
         <div className="empty-state">
@@ -230,31 +231,55 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
         <div style={{ width: 36 }} />
       </div>
 
-      {/* Unified filter row — single image-based row */}
-      <div className="hist-filter-row">
-        {CL_FILTER_TABS.map(t => {
-          const imgUrl = CL_IMAGES[t.id];
-          const isOn = tab === t.id;
-          const isHist = t.id === 'hist';
-          return (
-            <button
-              key={t.id}
-              className={`hist-filter-card cl-filter-card${isHist ? ' hist-tab' : ''}${isOn ? ' on' : ''}`}
-              onClick={() => setTab(t.id)}
-              style={imgUrl ? { backgroundImage: `url(${imgUrl})` } : undefined}
-            >
-              {!imgUrl && isHist && <div style={{ position: 'absolute', inset: 0, borderRadius: 12, background: 'rgba(200,151,74,0.12)' }} />}
-              {HIST_CAT_SVGS[t.id] && (
-                <div className="hist-filter-card-icon">{HIST_CAT_SVGS[t.id]}</div>
-              )}
-              {isHist && !HIST_CAT_SVGS[t.id] && (
-                <div className="hist-filter-card-icon" style={{ position: 'relative', zIndex: 1, fontSize: 14 }}>📋</div>
-              )}
-              <div className="hist-filter-card-lbl">{t.label}</div>
-            </button>
-          );
-        })}
+      <div className="cl-tabs">
+        {trackCats.map(c => (
+          <button
+            key={c.id}
+            className={`cl-tab${tab === c.id ? ' on' : ''}`}
+            onClick={() => setTab(c.id)}
+          >
+            {CL_CAT_IMAGES[c.id] && (
+              <div className="cl-tab-bg" style={{ backgroundImage: `url(${CL_CAT_IMAGES[c.id]})` }} />
+            )}
+            <span style={{ position: 'relative', zIndex: 1 }}>{c.icon}</span>
+            <span className="cl-tab-lbl">{c.name}</span>
+          </button>
+        ))}
+        <button
+          className={`cl-tab${tab === 'hist' ? ' on' : ''}`}
+          onClick={() => setTab('hist')}
+        >
+          <span style={{ position: 'relative', zIndex: 1 }}>📋</span>
+          <span className="cl-tab-lbl">Histórico</span>
+        </button>
       </div>
+
+      {tab === 'hist' && (
+        <div className="hist-filter-row">
+          {HIST_CATS.map(c => {
+            const imgUrl = HIST_CAT_IMAGES[c];
+            const label = c === 'Tudo' ? 'Tudo' : (HIST_CAT_PT[c] ?? c);
+            const isOn = histCat === c;
+            return (
+              <button
+                key={c}
+                className={`hist-filter-card${isOn ? ' on' : ''}`}
+                onClick={() => setHistCat(c)}
+                style={{
+                  backgroundImage: imgUrl ? `url(${imgUrl})` : undefined,
+                  background: imgUrl ? undefined : 'rgba(200,151,74,0.18)',
+                }}
+              >
+                {!imgUrl && <div style={{ position: 'absolute', inset: 0, borderRadius: 12, background: 'rgba(200,151,74,0.15)' }} />}
+                {HIST_CAT_SVGS[c] && (
+                  <div className="hist-filter-card-icon">{HIST_CAT_SVGS[c]}</div>
+                )}
+                <div className="hist-filter-card-lbl">{label}</div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="cl-search mw">
         <input

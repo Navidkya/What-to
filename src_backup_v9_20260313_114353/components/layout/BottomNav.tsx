@@ -50,21 +50,16 @@ const NAV_ITEMS = [
 export default function BottomNav({ activeScreen, onNav }: BottomNavProps) {
   return (
     <nav className="bnav">
-      {NAV_ITEMS.map(item => {
-        const isActive = activeScreen === item.id;
-        return (
-          <button
-            key={item.id}
-            className={`bnav-item${isActive ? ' active bnav-btn on' : ' bnav-btn'}`}
-            onClick={() => onNav(item.id)}
-          >
-            <span className={isActive ? 'bn-l' : ''}>
-              {NAV_ICONS[item.id]}
-            </span>
-            <span>{item.label}</span>
-          </button>
-        );
-      })}
+      {NAV_ITEMS.map(item => (
+        <button
+          key={item.id}
+          className={`bnav-item${activeScreen === item.id ? ' active' : ''}`}
+          onClick={() => onNav(item.id)}
+        >
+          {NAV_ICONS[item.id]}
+          <span>{item.label}</span>
+        </button>
+      ))}
     </nav>
   );
 }

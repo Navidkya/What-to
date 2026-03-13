@@ -23,11 +23,6 @@ const WHO_IMAGES: Record<string, string> = {
   amigos: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&q=80',
 };
 
-const MODE_IMAGES = {
-  offline: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80',
-  online:  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&q=80',
-};
-
 const MATCH_CAT_IMAGES: Record<string, string> = {
   watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=200&q=80',
   eat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&q=80',
@@ -217,10 +212,9 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
   const renderIntro = () => (
     <>
       <div className="mx-hero fade-in">
-        <div className="mx-hero-glow" />
         <div className="mx-hero-em">⚡</div>
-        <div className="mx-hero-title">Modo Match</div>
-        <div className="mx-hero-sub">Decide em grupo. Cada um vota em secreto — a app revela o que toda a gente quer.</div>
+        <div className="mx-hero-t">Modo Match</div>
+        <div className="mx-hero-s">Decide em grupo. Cada um vota em secreto — a app revela o que toda a gente quer.</div>
       </div>
 
       <div className="mx-section fade-in">
@@ -278,38 +272,22 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
   const renderSetup = () => (
     <>
       <div className="mx-hero fade-in">
-        <div className="mx-hero-glow" />
         <div className="mx-hero-em">⚡</div>
-        <div className="mx-hero-title">Modo Match</div>
-        <div className="mx-hero-sub">
-          Cada pessoa vota nas sugestões de forma independente.
-          No final a app revela os matches.
-        </div>
+        <div className="mx-hero-t">Modo Match</div>
+        <div className="mx-hero-s">Cada pessoa vota nas sugestões de forma independente. No final a app revela os matches.</div>
       </div>
       <div className="mx-section fade-in">
         <div className="mx-section-lbl">Modo de jogo</div>
         <div className="mx-mode-row">
-          <div
-            className={`mx-mode${mS.mode === 'offline' ? ' on' : ''}`}
-            onClick={() => selectMode('offline')}
-          >
-            <div className="mx-mode-bg" style={{ backgroundImage: `url(${MODE_IMAGES.offline})` }} />
-            <div className="mx-mode-content">
-              <div className="mm-i">📱</div>
-              <div className="mm-t">Offline</div>
-              <div className="mm-s">Partilham o telemóvel</div>
-            </div>
+          <div className={`mx-mode${mS.mode === 'offline' ? ' on' : ''}`} onClick={() => selectMode('offline')}>
+            <div className="mm-i">📱</div>
+            <div className="mm-t">Offline</div>
+            <div className="mm-s">Partilham o telemóvel</div>
           </div>
-          <div
-            className={`mx-mode${mS.mode === 'online' ? ' on' : ''}`}
-            onClick={() => selectMode('online')}
-          >
-            <div className="mx-mode-bg" style={{ backgroundImage: `url(${MODE_IMAGES.online})` }} />
-            <div className="mx-mode-content">
-              <div className="mm-i">🌐</div>
-              <div className="mm-t">Online</div>
-              <div className="mm-s">Cada um no seu</div>
-            </div>
+          <div className={`mx-mode${mS.mode === 'online' ? ' on' : ''}`} onClick={() => selectMode('online')}>
+            <div className="mm-i">🌐</div>
+            <div className="mm-t">Online</div>
+            <div className="mm-s">Cada um no seu</div>
           </div>
         </div>
       </div>

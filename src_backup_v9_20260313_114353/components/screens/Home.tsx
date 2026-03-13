@@ -402,17 +402,12 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
 
   return (
     <div className="h-screen-content" id="home" style={{ paddingBottom: 80 }}>
-      {/* Swipe left hint — Amigos */}
-      <div className="swipe-hint-left" style={{ opacity: 0.4 }}>
-        <span>←</span>
-        <span style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase' }}>Amigos</span>
-      </div>
       <div className="home-inner">
 
         {/* Header */}
         <div className="home-header">
           <div className="home-header-top">
-            <div className="home-header-left">
+            <div>
               <div className="home-sub">{dayTime}</div>
               <div className="home-name">{greeting}</div>
               <div className="home-mood">{contextPhrase}</div>
@@ -582,11 +577,13 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           </div>
         </div>
 
-        {/* Actions — só Surpreende-me */}
-        <div className="home-actions-solo">
+        {/* Actions */}
+        <div className="home-actions" style={{ marginTop: 14 }}>
           <button className="btn-surprise" onClick={onSurprise}>
-            <span className="surprise-star">✦</span>
-            Surpreende-me
+            <span style={{ fontSize: 16 }}>✦</span> Surpreende-me
+          </button>
+          <button className="ha-btn" onClick={() => onNav('match-screen')}>
+            <span className="ha-i">⚡</span>Match
           </button>
         </div>
 
