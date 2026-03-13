@@ -217,14 +217,10 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
   const renderIntro = () => (
     <>
       <div className="mx-hero fade-in">
-        <div className="mx-hero-bg" />
-        <div className="mx-hero-body">
-          <div className="mx-hero-icon">⚡</div>
-          <div className="mx-hero-title">Modo Match</div>
-          <div className="mx-hero-desc">
-            Cada pessoa vota em segredo — a app revela o que toda a gente quer.
-          </div>
-        </div>
+        <div className="mx-hero-glow" />
+        <div className="mx-hero-em">⚡</div>
+        <div className="mx-hero-title">Modo Match</div>
+        <div className="mx-hero-sub">Decide em grupo. Cada um vota em secreto — a app revela o que toda a gente quer.</div>
       </div>
 
       <div className="mx-section fade-in">
@@ -282,13 +278,12 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
   const renderSetup = () => (
     <>
       <div className="mx-hero fade-in">
-        <div className="mx-hero-bg" />
-        <div className="mx-hero-body">
-          <div className="mx-hero-icon">⚡</div>
-          <div className="mx-hero-title">Modo Match</div>
-          <div className="mx-hero-desc">
-            Cada pessoa vota em segredo — a app revela o que toda a gente quer.
-          </div>
+        <div className="mx-hero-glow" />
+        <div className="mx-hero-em">⚡</div>
+        <div className="mx-hero-title">Modo Match</div>
+        <div className="mx-hero-sub">
+          Cada pessoa vota nas sugestões de forma independente.
+          No final a app revela os matches.
         </div>
       </div>
       <div className="mx-section fade-in">

@@ -215,7 +215,7 @@ export default function Suggest({
     touchStartX.current = null;
     setIsDragging(false);
     setDragDelta(0);
-    if (Math.abs(dx) >= 120) {
+    if (Math.abs(dx) >= 80) {
       if (dx < 0) {
         setShowSkipBar(true);
         doAdvance();
@@ -247,7 +247,7 @@ export default function Suggest({
     mouseDownX.current = null;
     setIsDragging(false);
     setDragDelta(0);
-    if (Math.abs(dx) >= 120) {
+    if (Math.abs(dx) >= 80) {
       if (dx < 0) {
         setShowSkipBar(true);
         doAdvance();
@@ -307,24 +307,17 @@ export default function Suggest({
             const cardTrackInfo = tracking[cat.id + ':' + card.title];
             const cardTrackState = cardTrackInfo ? TSTATE.find(x => x.id === cardTrackInfo.state) : null;
 
-            // Card transform: max 8deg rotation, no flip
-            const MAX_ROTATION = 8;
-            const rawRotation = (dragDelta / (window.innerWidth * 0.6)) * MAX_ROTATION;
+            // PROBLEMA 3: swipe card transform — no flip, just translate+rotate
+            const MAX_ROTATION = 15;
+            const rawRotation = (dragDelta / (window.innerWidth * 0.5)) * MAX_ROTATION;
             const clampedRotation = Math.max(-MAX_ROTATION, Math.min(MAX_ROTATION, rawRotation));
             const cardTransform = (i === activeIdx && isDragging && dragDelta !== 0)
               ? `translateX(${dragDelta}px) rotate(${clampedRotation}deg)`
               : 'translateX(0) rotate(0deg)';
             const cardTransition = (i === activeIdx && isDragging) ? 'none' : 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
 
-            // Only render active card and next (for preloading), but hide non-active visually
-            const isActiveCard = i === activeIdx;
-
             return (
-              <div
-                key={card.title + i}
-                className="carousel-slide"
-                style={!isActiveCard ? { opacity: 0, pointerEvents: 'none', position: 'absolute', width: '92vw' } : undefined}
-              >
+              <div key={card.title + i} className="carousel-slide">
                 <div
                   className="cin-card swipe-card"
                   style={{

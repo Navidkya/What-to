@@ -106,7 +106,7 @@ body::after {
 @media (min-width: 481px) {
   #root { overflow-y: auto; }
   .screen.active { overflow-y: auto; }
-  .card-zone { overflow: hidden !important; min-height: unset; }
+  .card-zone { overflow: visible; min-height: unset; }
 }
 
 .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; opacity: 0; pointer-events: none; transition: opacity .3s ease; }
@@ -145,78 +145,15 @@ body::after {
 
 #home { justify-content: flex-start; padding-bottom: 80px; }
 .home-inner { width: 100%; max-width: 100%; padding: 0; flex: 1; display: flex; flex-direction: column; }
-
-.home-header {
-  padding: 22px 0 10px;
-  position: relative;
-  z-index: 1;
-}
-
-.home-header-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.home-header-left {
-  display: flex;
-  flex-direction: column;
-}
-
-.home-sub {
-  font-family: 'Outfit', sans-serif !important;
-  font-size: 10px !important;
-  font-weight: 500 !important;
-  letter-spacing: 3px !important;
-  text-transform: uppercase !important;
-  color: rgba(242,237,230,0.35) !important;
-  margin-bottom: 4px !important;
-  line-height: 1 !important;
-}
-
-.home-name {
-  font-family: 'Cormorant Garamond', serif !important;
-  font-size: 36px !important;
-  font-weight: 700 !important;
-  line-height: 1.1 !important;
-  color: #f2ede6 !important;
-  letter-spacing: -0.5px !important;
-  margin-bottom: 4px !important;
-}
-
-.home-mood {
-  font-family: 'Outfit', sans-serif !important;
-  font-size: 12px !important;
-  font-weight: 300 !important;
-  color: rgba(242,237,230,0.42) !important;
-  font-style: italic !important;
-  line-height: 1.4 !important;
-}
-
-.home-avatar {
-  width: 44px !important;
-  height: 44px !important;
-  min-width: 44px !important;
-  border-radius: 50% !important;
-  background: rgba(200,155,60,0.12) !important;
-  border: 1.5px solid rgba(200,155,60,0.6) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-family: 'Cormorant Garamond', serif !important;
-  font-size: 20px !important;
-  font-weight: 700 !important;
-  color: #C89B3C !important;
-  cursor: pointer !important;
-  flex-shrink: 0 !important;
-  margin-top: 2px !important;
-}
-
-.avatar-btn { width: 44px; height: 44px; min-width: 44px; border-radius: 50%; background: rgba(200,155,60,0.12); border: 1.5px solid rgba(200,155,60,0.6); display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 700; color: #C89B3C; cursor: pointer; transition: all 0.2s; margin-top: 2px; flex-shrink: 0; }
-.avatar-btn:hover, .home-avatar:hover { background: rgba(200,155,60,0.22) !important; border-color: #C89B3C !important; }
-.home-greeting { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 700; line-height: 1.1; color: #f2ede6; letter-spacing: -0.5px; }
+.home-header { padding: 22px 0 12px; position: relative; z-index: 1; }
+.home-header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.home-header-left { display: flex; flex-direction: column; gap: 2px; }
+.home-greeting, .home-name { font-family: 'Cormorant Garamond', serif; font-size: clamp(28px, 8vw, 38px); font-weight: 700; line-height: 1.1; color: #f2ede6; letter-spacing: -0.5px; }
 .home-greeting small { display: block; font-family: 'Outfit', sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 2px; text-transform: uppercase; color: var(--mu); margin-bottom: 2px; }
+.home-sub { font-family: 'Outfit', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; color: rgba(242,237,230,0.35); margin-bottom: 1px; }
+.home-mood { font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 300; color: rgba(242,237,230,0.42); font-style: italic; margin-top: 3px; line-height: 1.4; }
+.avatar-btn, .home-avatar { width: 44px; height: 44px; min-width: 44px; border-radius: 50%; background: rgba(200,155,60,0.12); border: 1.5px solid rgba(200,155,60,0.6); display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 700; color: #C89B3C; cursor: pointer; transition: all 0.2s; margin-top: 2px; flex-shrink: 0; }
+.avatar-btn:hover, .home-avatar:hover { background: rgba(200,155,60,0.22); border-color: #C89B3C; }
 
 .daily { background: var(--sf); border: 1px solid var(--bd2); border-radius: var(--r); overflow: hidden; margin-bottom: 14px; cursor: pointer; transition: transform .2s, box-shadow .2s; position: relative; }
 .daily:hover { transform: translateY(-2px); box-shadow: 0 16px 48px rgba(0,0,0,.45); }
@@ -438,56 +375,12 @@ body::after {
 
 #match-screen { justify-content: flex-start; padding-bottom: 80px; }
 .mx-inner { width: 100%; max-width: 480px; flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 0 20px 16px; }
-.mx-hero {
-  position: relative;
-  overflow: hidden;
-  border-radius: 22px;
-  border: 1px solid rgba(200,155,60,0.2);
-  background: linear-gradient(135deg, #121722 0%, #0f1420 100%);
-  margin-bottom: 12px;
-}
-.mx-hero-bg {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(200,155,60,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse at 100% 100%, rgba(106,180,224,0.06) 0%, transparent 50%);
-  pointer-events: none;
-}
-.mx-hero-body {
-  position: relative;
-  z-index: 1;
-  padding: 28px 22px 24px;
-  text-align: center;
-}
-.mx-hero-icon {
-  font-size: 38px;
-  margin-bottom: 12px;
-  display: block;
-  filter: drop-shadow(0 0 20px rgba(200,155,60,0.4));
-}
-.mx-hero-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 30px;
-  font-weight: 700;
-  color: #f2ede6;
-  letter-spacing: -0.5px;
-  margin-bottom: 8px;
-  line-height: 1.1;
-}
-.mx-hero-desc {
-  font-family: 'Outfit', sans-serif;
-  font-size: 13px;
-  font-weight: 300;
-  color: rgba(242,237,230,0.5);
-  line-height: 1.65;
-  max-width: 280px;
-  margin: 0 auto;
-}
-/* Legacy class names — keep for backward compat */
+.mx-hero { background: linear-gradient(135deg, rgba(200,155,60,0.1), rgba(200,155,60,0.03)); border: 1px solid rgba(200,155,60,0.2); border-radius: 22px; padding: 28px 22px; text-align: center; position: relative; overflow: hidden; }
 .mx-hero-glow { position: absolute; top: -40px; left: 50%; transform: translateX(-50%); width: 200px; height: 200px; background: radial-gradient(ellipse, rgba(200,155,60,0.15), transparent 70%); pointer-events: none; }
 .mx-hero-em { font-size: 42px; margin-bottom: 12px; position: relative; z-index: 1; }
+.mx-hero-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 700; color: #f2ede6; margin-bottom: 8px; position: relative; z-index: 1; }
 .mx-hero-sub { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 300; color: rgba(242,237,230,0.55); line-height: 1.6; position: relative; z-index: 1; }
+/* Legacy class names — keep for backward compat */
 .mx-hero-t { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 700; margin-bottom: 5px; position: relative; z-index: 1; }
 .mx-hero-s { font-size: 12px; color: var(--mu2); line-height: 1.65; position: relative; z-index: 1; }
 .mx-section { background: var(--sf); border: 1px solid var(--bd); border-radius: var(--r); padding: 16px; }
@@ -943,11 +836,7 @@ body::after {
 .rp-btn-full:active { transform: scale(.98); }
 
 /* ─── Cinematic card fullscreen ─── */
-.card-zone {
-  overflow: hidden !important;
-  position: relative !important;
-  flex: 1; width: 100%; display: flex; flex-direction: column; align-items: stretch; min-height: 0; padding: 0;
-}
+.card-zone { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: stretch; overflow: hidden; min-height: 0; padding: 0; }
 .cin-card { position: relative; width: 100%; height: calc(100vh - 160px); min-height: 340px; border-radius: 16px 16px 0 0; overflow: hidden; cursor: grab; transition: transform .2s ease, box-shadow .2s ease; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
 .cin-card:active { cursor: grabbing; }
 
@@ -1110,61 +999,12 @@ body::after {
 .qy-later .qy-btn-title { color: #C89B3C; }
 .qy-schedule .qy-btn-title { color: #6ab4e0; }
 
-/* ─── V10: ReactPanel header with poster ─── */
-.rp-header {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-}
-.rp-poster {
-  width: 72px;
-  height: 100px;
-  border-radius: 12px;
-  background-size: cover;
-  background-position: center top;
-  flex-shrink: 0;
-  border: 1px solid rgba(255,255,255,0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.rp-poster-fallback { background: #18181b; }
-.rp-header-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 4px;
-}
-.rp-cat-badge {
-  font-family: 'Outfit', sans-serif;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #C89B3C;
-  margin-bottom: 2px;
-}
-.rp-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: #f2ede6;
-  line-height: 1.15;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.rp-year {
-  font-family: 'Outfit', sans-serif;
-  font-size: 11px;
-  color: rgba(242,237,230,0.4);
-}
+/* ─── V9: ReactPanel header with poster (P5) ─── */
+.rp-header { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.rp-poster { width: 64px; height: 90px; border-radius: 10px; background-size: cover; background-position: center; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.1); }
+.rp-poster-fallback { background: #18181b; display: flex; align-items: center; justify-content: center; }
+.rp-header-info { flex: 1; min-width: 0; }
+.rp-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 700; color: #f2ede6; line-height: 1.2; margin-bottom: 4px; }
 .rp-cat { font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: rgba(242,237,230,0.4); }
 
 /* ─── V9: Checklist hist-tab golden gradient (P6) ─── */

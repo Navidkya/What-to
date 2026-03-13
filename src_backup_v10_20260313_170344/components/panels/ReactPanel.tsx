@@ -12,28 +12,22 @@ interface ReactPanelProps {
   onSchedule?: () => void;
 }
 
-const CAT_GRADIENTS: Record<string, string> = {
-  watch:  '135deg, #0a1628 0%, #1a2a4a 100%',
-  eat:    '135deg, #2a0f05 0%, #1a1205 100%',
-  read:   '135deg, #0f0a28 0%, #1a1235 100%',
-  listen: '135deg, #28051a 0%, #1a0512 100%',
-  play:   '135deg, #052812 0%, #081a0a 100%',
-  learn:  '135deg, #28250a 0%, #1a1805 100%',
-  visit:  '135deg, #280a0a 0%, #1a0505 100%',
-  do:     '135deg, #052828 0%, #051a1a 100%',
+const CAT_GRADIENT: Record<string, string> = {
+  watch: '135deg, #0a1628, #1a2a4a',
+  eat: '135deg, #2a0f05, #1a1205',
+  read: '135deg, #0f0a28, #1a1235',
+  listen: '135deg, #28051a, #1a0512',
+  play: '135deg, #052812, #081a0a',
+  learn: '135deg, #28250a, #1a1805',
+  visit: '135deg, #280a0a, #1a0505',
+  do: '135deg, #052828, #051a1a',
 };
 
 export default function ReactPanel({ item, cat, isOpen, onClose, onNow, onReact, onWhy, onTracking, onSchedule }: ReactPanelProps) {
   if (!item) return null;
 
-  const imgUrl = (item as DataItem & { posterUrl?: string; poster?: string; backdrop?: string; image?: string; imgUrl?: string }).posterUrl
-    || (item as DataItem & { poster?: string }).poster
-    || (item as DataItem & { backdrop?: string }).backdrop
-    || (item as DataItem & { image?: string }).image
-    || (item as DataItem & { imgUrl?: string }).imgUrl
-    || null;
-
-  const gradient = CAT_GRADIENTS[cat?.id || 'watch'] || '135deg, #111 0%, #222 100%';
+  const posterUrl = (item as DataItem & { posterUrl?: string }).posterUrl;
+  const catGrad = cat ? (CAT_GRADIENT[cat.id] || '135deg, #111, #222') : '135deg, #111, #222';
 
   return (
     <div className={`ov${isOpen ? ' on' : ''}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -41,28 +35,25 @@ export default function ReactPanel({ item, cat, isOpen, onClose, onNow, onReact,
         <div className="panel-drag" />
 
         {/* Header with poster image */}
-        {(() => {
-          return (
-            <div className="rp-header">
-              <div
-                className="rp-poster"
-                style={{
-                  backgroundImage: imgUrl ? `url(${imgUrl})` : undefined,
-                  background: !imgUrl ? `linear-gradient(${gradient})` : undefined,
-                }}
-              >
-                {!imgUrl && (
-                  <span style={{ fontSize: 40 }}>{item.emoji}</span>
-                )}
-              </div>
-              <div className="rp-header-info">
-                <div className="rp-cat-badge">{cat?.icon} {cat?.name}</div>
-                <div className="rp-title">{item.title}</div>
-                {item.year && <div className="rp-year">{item.year}</div>}
-              </div>
+        <div className="rp-header">
+          {posterUrl ? (
+            <div
+              className="rp-poster"
+              style={{ backgroundImage: `url(${posterUrl})` }}
+            />
+          ) : (
+            <div
+              className="rp-poster rp-poster-fallback"
+              style={{ background: `linear-gradient(${catGrad})` }}
+            >
+              <span style={{ fontSize: 36 }}>{item.emoji}</span>
             </div>
-          );
-        })()}
+          )}
+          <div className="rp-header-info">
+            <div className="rp-title">{item.title}</div>
+            <div className="rp-cat">{cat?.name}</div>
+          </div>
+        </div>
 
         {/* 2-column grid for main actions */}
         <div className="rp-grid">
