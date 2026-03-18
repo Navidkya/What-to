@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Profile, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, ScheduleEntry, EatPrefs, WatchPrefs, ListenPrefs, ReadPrefs, PlayPrefs } from '../types';
+import type { Profile, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, ScheduleEntry, EatPrefs, WatchPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs } from '../types';
 
 // ══════════════════════════════════════
 // localStorage helpers
@@ -46,6 +46,15 @@ export function useAppStore() {
   );
   const [playPrefs, setPlayPrefsRaw] = useState<PlayPrefs>(() =>
     load('wt6_playprefs', { done: false, type: 'Ambos' as const, genres: [], dificuldade: 'normal' as const })
+  );
+  const [learnPrefs, setLearnPrefsRaw] = useState<LearnPrefs>(() =>
+    load('wt6_learnprefs', { done: false, formato: 'Ambos' as const, genres: [], duracao: 'normal' as const })
+  );
+  const [visitPrefs, setVisitPrefsRaw] = useState<VisitPrefs>(() =>
+    load('wt6_visitprefs', { done: false, tipo: [], custo: 'qualquer' as const, distancia: 'qualquer' as const })
+  );
+  const [doPrefs, setDoPrefsRaw] = useState<DoPrefs>(() =>
+    load('wt6_doprefs', { done: false, contexto: 'qualquer' as const, local: 'qualquer' as const, custo: 'qualquer' as const })
   );
 
   const updateProfile = useCallback((p: Profile) => {
@@ -108,6 +117,21 @@ export function useAppStore() {
     save('wt6_playprefs', p);
   }, []);
 
+  const updateLearnPrefs = useCallback((p: LearnPrefs) => {
+    setLearnPrefsRaw(p);
+    save('wt6_learnprefs', p);
+  }, []);
+
+  const updateVisitPrefs = useCallback((p: VisitPrefs) => {
+    setVisitPrefsRaw(p);
+    save('wt6_visitprefs', p);
+  }, []);
+
+  const updateDoPrefs = useCallback((p: DoPrefs) => {
+    setDoPrefsRaw(p);
+    save('wt6_doprefs', p);
+  }, []);
+
   const clearAll = useCallback(() => {
     const empty: HistoryEntry[] = [];
     const emptyWL: WishlistEntry[] = [];
@@ -132,6 +156,9 @@ export function useAppStore() {
     listenPrefs, updateListenPrefs,
     readPrefs, updateReadPrefs,
     playPrefs, updatePlayPrefs,
+    learnPrefs, updateLearnPrefs,
+    visitPrefs, updateVisitPrefs,
+    doPrefs, updateDoPrefs,
     clearAll,
   };
 }

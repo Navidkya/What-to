@@ -7,6 +7,9 @@ import WatchOnboard from './components/panels/WatchOnboard';
 import ListenOnboard from './components/panels/ListenOnboard';
 import ReadOnboard from './components/panels/ReadOnboard';
 import PlayOnboard from './components/panels/PlayOnboard';
+import LearnOnboard from './components/panels/LearnOnboard';
+import VisitOnboard from './components/panels/VisitOnboard';
+import DoOnboard from './components/panels/DoOnboard';
 import RecipePanel from './components/panels/RecipePanel';
 
 import Toast, { useToast } from './components/layout/Toast';
@@ -54,6 +57,9 @@ export default function App() {
   const [listenObOpen, setListenObOpen] = useState(false);
   const [readObOpen, setReadObOpen] = useState(false);
   const [playObOpen, setPlayObOpen] = useState(false);
+  const [learnObOpen, setLearnObOpen] = useState(false);
+  const [visitObOpen, setVisitObOpen] = useState(false);
+  const [doObOpen, setDoObOpen] = useState(false);
 
   // Recipe panel
   const [recipeOpen, setRecipeOpen] = useState(false);
@@ -111,7 +117,16 @@ export default function App() {
     if (id === 'play' && !store.playPrefs.done) {
       setPlayObOpen(true);
     }
-  }, [store.eatPrefs.done, store.watchPrefs.done, store.listenPrefs.done, store.readPrefs.done, store.playPrefs.done]);
+    if (id === 'learn' && !store.learnPrefs.done) {
+      setLearnObOpen(true);
+    }
+    if (id === 'visit' && !store.visitPrefs.done) {
+      setVisitObOpen(true);
+    }
+    if (id === 'do' && !store.doPrefs.done) {
+      setDoObOpen(true);
+    }
+  }, [store.eatPrefs.done, store.watchPrefs.done, store.listenPrefs.done, store.readPrefs.done, store.playPrefs.done, store.learnPrefs.done, store.visitPrefs.done, store.doPrefs.done]);
 
   const surpriseMe = useCallback(() => {
     openCat(CATS[Math.floor(Math.random() * CATS.length)].id);
@@ -129,10 +144,7 @@ export default function App() {
     setLiveOpen(true);
   }, []);
 
-  const openSchedule = useCallback(() => {
-    setReactOpen(false);
-    setScheduleOpen(true);
-  }, []);
+
 
   // React actions
   const reactNow = useCallback(() => {
@@ -410,9 +422,6 @@ export default function App() {
             onClose={() => setReactOpen(false)}
             onNow={reactNow}
             onReact={reactAction}
-            onWhy={() => { setReactOpen(false); setWhyOpen(true); }}
-            onTracking={() => { setReactOpen(false); setTrackOpen(true); }}
-            onSchedule={openSchedule}
           />
 
           <WhyPanel
@@ -494,6 +503,18 @@ export default function App() {
           <PlayOnboard
             isOpen={playObOpen}
             onClose={(prefs) => { store.updatePlayPrefs(prefs); setPlayObOpen(false); }}
+          />
+          <LearnOnboard
+            isOpen={learnObOpen}
+            onClose={(prefs) => { store.updateLearnPrefs(prefs); setLearnObOpen(false); }}
+          />
+          <VisitOnboard
+            isOpen={visitObOpen}
+            onClose={(prefs) => { store.updateVisitPrefs(prefs); setVisitObOpen(false); }}
+          />
+          <DoOnboard
+            isOpen={doObOpen}
+            onClose={(prefs) => { store.updateDoPrefs(prefs); setDoObOpen(false); }}
           />
 
           <RecipePanel

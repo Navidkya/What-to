@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { Profile, HistoryEntry, TrackingMap, DataItem, Screen, ScheduleEntry } from '../../types';
 import { DATA, CATS, GRAD } from '../../data';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
@@ -177,7 +177,7 @@ async function fetchTMDBPoster(title: string): Promise<string | null> {
     if (tvRes.ok) {
       const tvData = await tvRes.json() as { results?: Array<{ poster_path?: string }> };
       const hit = tvData.results?.[0];
-      if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w92${hit.poster_path}`;
+      if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w342${hit.poster_path}`;
     }
 
     if (!img) {
@@ -185,7 +185,7 @@ async function fetchTMDBPoster(title: string): Promise<string | null> {
       if (mvRes.ok) {
         const mvData = await mvRes.json() as { results?: Array<{ poster_path?: string }> };
         const hit = mvData.results?.[0];
-        if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w92${hit.poster_path}`;
+        if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w342${hit.poster_path}`;
       }
     }
 
@@ -196,9 +196,19 @@ async function fetchTMDBPoster(title: string): Promise<string | null> {
   }
 }
 
-// Which cats are "big" (top row) vs "small" (secondary)
-const BIG_CAT_IDS = ['watch', 'eat', 'do'];
-const SMALL_CAT_IDS = ['play', 'read', 'listen', 'learn', 'visit'];
+// Categories to show in the new 3D Explorer
+const EXPLORE_CAT_IDS = ['watch', 'eat', 'play', 'read', 'listen', 'learn', 'visit', 'do'];
+
+const CAT_IMAGES: Record<string, string> = {
+  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&q=80',
+  eat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80',
+  play: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&q=80',
+  read: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80',
+  listen: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&q=80',
+  learn: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&q=80',
+  visit: 'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=400&q=80',
+  do: 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=400&q=80',
+};
 
 const CAT_ICONS: Record<string, React.ReactNode> = {
   watch: (
@@ -265,95 +275,35 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
   const dayTime = getDayTime();
   const contextPhrase = getContextualPhrase(history);
 
-  // Hero carousel state — build once, pre-seed images with fallbacks
+  // Hero único (sem carrossel) — apenas primeiro slide
   const [heroInit] = useState(() => {
     const slides = buildHeroSlides(profile);
-    const images: Record<number, string> = {};
-    slides.forEach((slide, i) => {
-      const fb = HERO_FALLBACKS[slide.catId];
-      if (fb) images[i] = fb;
-    });
-    return { slides, images };
+    const first = slides[0] ?? null;
+    const fb = first ? HERO_FALLBACKS[first.catId] : null;
+    return { slide: first, fallbackImg: fb ?? null };
   });
-  const heroSlides = heroInit.slides;
-  const [heroIdx, setHeroIdx] = useState(0);
-  const [heroImages, setHeroImages] = useState<Record<number, string>>(heroInit.images);
-  const [heroVisible, setHeroVisible] = useState(true);
-  const [heroHovered, setHeroHovered] = useState(false);
-  const heroDragStartX = useRef<number | null>(null);
-  const heroDragMoved = useRef(false);
+  const currentSlide = heroInit.slide;
+  const [heroImage, setHeroImage] = useState<string | null>(heroInit.fallbackImg);
 
-  // Fetch images for all 6 hero slides
   useEffect(() => {
-    if (!heroSlides.length) return;
-    let doImgIdx = 0;
-    heroSlides.forEach(async (slide, i) => {
-      const { item, catId } = slide;
+    if (!currentSlide) return;
+    const { item, catId } = currentSlide;
+    (async () => {
       let url: string | null = null;
       try {
-        if (catId === 'watch') {
-          url = await fetchTMDBBackdrop(item.title);
-        } else if (catId === 'eat') {
-          const meal = await fetchMeal(item.title);
-          url = meal?.photoUrl ?? null;
-        } else if (catId === 'play') {
-          url = getSteamImageUrl(item.steamId);
-        } else if (catId === 'read') {
-          url = await fetchBookCover(item.title);
-        } else if (catId === 'do') {
-          url = DO_LIFESTYLE_IMAGES[doImgIdx % DO_LIFESTYLE_IMAGES.length];
-          doImgIdx++;
-        }
+        if (catId === 'watch') url = await fetchTMDBBackdrop(item.title);
+        else if (catId === 'eat') { const meal = await fetchMeal(item.title); url = meal?.photoUrl ?? null; }
+        else if (catId === 'play') url = getSteamImageUrl(item.steamId);
+        else if (catId === 'read') url = await fetchBookCover(item.title);
+        else if (catId === 'do') url = DO_LIFESTYLE_IMAGES[0];
+        else url = HERO_FALLBACKS[catId] ?? null;
       } catch { /* skip */ }
-      const finalUrl = url || HERO_FALLBACKS[catId] || null;
-      if (finalUrl) setHeroImages(prev => ({ ...prev, [i]: finalUrl }));
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+      setHeroImage(url || HERO_FALLBACKS[catId] || null);
+    })();
+  }, [currentSlide?.catId, currentSlide?.item?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-advance every 6 seconds, pause on hover
-  useEffect(() => {
-    if (heroHovered || !heroSlides.length) return;
-    const timer = setInterval(() => {
-      setHeroVisible(false);
-      setTimeout(() => {
-        setHeroIdx(prev => (prev + 1) % heroSlides.length);
-        setHeroVisible(true);
-      }, 220);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [heroHovered, heroIdx, heroSlides.length]);
-
-  const handleHeroMouseDown = (e: React.MouseEvent) => {
-    heroDragStartX.current = e.clientX;
-    heroDragMoved.current = false;
-  };
-  const handleHeroMouseMove = (e: React.MouseEvent) => {
-    if (heroDragStartX.current === null) return;
-    if (Math.abs(e.clientX - heroDragStartX.current) > 10) heroDragMoved.current = true;
-  };
-  const handleHeroMouseUp = (e: React.MouseEvent) => {
-    if (heroDragStartX.current === null) return;
-    const dx = e.clientX - heroDragStartX.current;
-    heroDragStartX.current = null;
-    if (Math.abs(dx) >= 80) {
-      if (dx < 0) goToHeroSlide((heroIdx + 1) % heroSlides.length);
-      else goToHeroSlide((heroIdx - 1 + heroSlides.length) % heroSlides.length);
-    }
-  };
-
-  const goToHeroSlide = (idx: number) => {
-    if (idx === heroIdx) return;
-    setHeroVisible(false);
-    setTimeout(() => {
-      setHeroIdx(idx);
-      setHeroVisible(true);
-    }, 220);
-  };
-
-  // Current hero slide
-  const currentSlide = heroSlides[heroIdx] ?? null;
   const currentHeroCat = currentSlide ? CATS.find(c => c.id === currentSlide.catId) : null;
-  const currentHeroImg = heroImages[heroIdx];
+  const currentHeroImg = heroImage;
 
   // Pending: hoje + watching
   const hojeItems = history.filter(h => h.action === 'hoje').slice(0, 3);
@@ -397,8 +347,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
   const todayStr = new Date().toISOString().slice(0, 10);
   const todaySchedules = schedules.filter(s => s.date.startsWith(todayStr));
 
-  const bigCats = CATS.filter(c => BIG_CAT_IDS.includes(c.id));
-  const smallCats = CATS.filter(c => SMALL_CAT_IDS.includes(c.id));
+  const exploreCats = CATS.filter(c => EXPLORE_CAT_IDS.includes(c.id));
 
   return (
     <div className="h-screen-content" id="home" style={{ paddingBottom: 80 }}>
@@ -487,29 +436,18 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           </div>
         )}
 
-        {/* Hero carousel */}
+        {/* Hero único (sem carrossel) */}
         {currentSlide && (
           <div
             className="home-hero"
-            style={{
-              ...(currentHeroImg ? undefined : { background: `linear-gradient(${GRAD[currentSlide.catId] || '135deg,#111,#222'})` }),
-              opacity: heroVisible ? 1 : 0,
-              transition: heroVisible ? 'opacity 0.4s ease' : 'opacity 0.2s ease',
-              cursor: 'grab',
-            }}
-            onClick={() => { if (!heroDragMoved.current) onOpenCat(currentSlide.catId, currentSlide.item); }}
-            onMouseDown={handleHeroMouseDown}
-            onMouseMove={handleHeroMouseMove}
-            onMouseUp={handleHeroMouseUp}
-            onMouseLeave={(e) => { handleHeroMouseUp(e); setHeroHovered(false); }}
-            onMouseEnter={() => setHeroHovered(true)}
+            style={currentHeroImg ? undefined : { background: `linear-gradient(${GRAD[currentSlide.catId] || '135deg,#111,#222'})` }}
+            onClick={() => onOpenCat(currentSlide.catId, currentSlide.item)}
           >
             {currentHeroImg && (
               <img className="home-hero-img" src={currentHeroImg} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
             )}
             <div className="home-hero-overlay" />
 
-            {/* Category badge top-left */}
             <div className="home-hero-cat-badge">
               {currentHeroCat?.icon} {currentHeroCat?.name.toUpperCase()}
             </div>
@@ -517,17 +455,6 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
             <div className="home-hero-body">
               <div className="home-hero-title">{currentSlide.item.title}</div>
               <div className="home-hero-desc">{currentSlide.item.desc}</div>
-
-              {/* Position dots */}
-              <div className="hero-dots" onClick={e => e.stopPropagation()}>
-                {heroSlides.map((_, i) => (
-                  <button
-                    key={i}
-                    className={`hero-dot${i === heroIdx ? ' active' : ''}`}
-                    onClick={() => goToHeroSlide(i)}
-                  />
-                ))}
-              </div>
 
               <div className="home-hero-btns" onClick={e => e.stopPropagation()}>
                 <button className="btn-primary" onClick={() => onOpenCat(currentSlide.catId, currentSlide.item)}>
@@ -539,47 +466,30 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         )}
 
         {/* Categories */}
-        <div className="section-lbl">Explorar</div>
+        <div className="section-lbl" style={{ textTransform: 'lowercase', marginTop: 12 }}>explorar categorias</div>
 
-        <div className="cats-grid">
-          <div className="cats-row-main">
-            {bigCats.map(c => (
-              <button
-                key={c.id}
-                className="cat-big"
-                data-cat={c.id}
-                style={{ '--c': c.color } as React.CSSProperties}
-                onClick={() => onOpenCat(c.id)}
-              >
-                <span className="cat-big-i">{CAT_ICONS[c.id]}</span>
-                <span className="cat-big-n">{c.name}</span>
-              </button>
-            ))}
+        <div className="cats-3d-scroll">
+          {exploreCats.map(c => (
             <button
-              className="cat-big"
-              data-cat="match"
-              style={{ '--c': '#e07070' } as React.CSSProperties}
-              onClick={() => onNav('match-screen')}
+              key={c.id}
+              className="cat-3d-card fade-in"
+              data-cat={c.id}
+              style={{ '--c': c.color } as React.CSSProperties}
+              onClick={() => onOpenCat(c.id)}
             >
-              <span className="cat-big-i">{CAT_ICONS['match']}</span>
-              <span className="cat-big-n">Match</span>
+              {CAT_IMAGES[c.id] && (
+                <>
+                  <div className="cat-3d-bg" style={{ backgroundImage: `url(${CAT_IMAGES[c.id]})` }} />
+                  <div className="cat-3d-overlay" />
+                </>
+              )}
+              <div className="cat-3d-content">
+                <span className="cat-3d-i">{CAT_ICONS[c.id] || c.icon}</span>
+                <span className="cat-3d-n">{c.name}</span>
+                <span className="cat-3d-count">{(DATA[c.id] || []).length} ideias</span>
+              </div>
             </button>
-          </div>
-
-          <div className="cats-small">
-            {smallCats.map(c => (
-              <button
-                key={c.id}
-                className="cat-small"
-                data-cat={c.id}
-                style={{ '--c': c.color } as React.CSSProperties}
-                onClick={() => onOpenCat(c.id)}
-              >
-                <span className="cat-small-i">{CAT_ICONS[c.id] || c.icon}</span>
-                <span className="cat-small-n">{c.name}</span>
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
 
         {/* Actions — só Surpreende-me */}

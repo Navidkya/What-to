@@ -111,7 +111,7 @@ export default function LivePanel({ title, emoji, catId, tracking, isOpen, onClo
             value={note}
             onChange={e => setNote(e.target.value)}
           />
-          <button className="btn-green" onClick={saveLiveNote}>✓ Guardar nota</button>
+          <button className="btn-primary" style={{ width: '100%', marginTop: 4 }} onClick={saveLiveNote}>✓ Guardar nota</button>
         </div>
         <button className="btn-x" onClick={onClose}>fechar</button>
       </div>

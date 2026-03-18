@@ -143,6 +143,27 @@ export interface PlayPrefs {
   dificuldade: 'casual' | 'normal' | 'desafiante';
 }
 
+export interface LearnPrefs {
+  done: boolean;
+  formato: 'video' | 'texto' | 'Ambos';
+  genres: string[];
+  duracao: 'curta' | 'normal' | 'longa';
+}
+
+export interface VisitPrefs {
+  done: boolean;
+  tipo: string[];
+  custo: 'gratuito' | 'baixo' | 'qualquer';
+  distancia: 'perto' | 'qualquer';
+}
+
+export interface DoPrefs {
+  done: boolean;
+  contexto: 'solo' | 'a_dois' | 'grupo' | 'qualquer';
+  local: 'interior' | 'exterior' | 'qualquer';
+  custo: 'gratuito' | 'qualquer';
+}
+
 export type Screen =
   | 'onboard'
   | 'home'

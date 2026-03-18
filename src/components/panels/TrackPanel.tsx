@@ -64,7 +64,7 @@ export default function TrackPanel({ item, catId, tracking, isOpen, onClose, onS
             <input className="ep-input" type="number" min={1} max={30} value={episode} onChange={e => setEpisode(Number(e.target.value))} style={{ maxWidth: 55 }} />
           </div>
         )}
-        <button className="btn-green" onClick={save}>✓ Guardar progresso</button>
+        <button className="btn-primary" style={{ width: '100%', marginTop: 4 }} onClick={save}>✓ Guardar progresso</button>
         <button className="btn-x" onClick={onClose}>fechar</button>
       </div>
     </div>
