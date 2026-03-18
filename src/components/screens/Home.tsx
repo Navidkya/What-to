@@ -210,64 +210,6 @@ const CAT_IMAGES: Record<string, string> = {
   do: 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=400&q=80',
 };
 
-const CAT_ICONS: Record<string, React.ReactNode> = {
-  watch: (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="20" height="13" rx="2"/>
-      <path d="M16 2l-4 5-4-5"/>
-    </svg>
-  ),
-  eat: (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/>
-      <path d="M5 2v20"/>
-      <path d="M21 2c0 0-2 2-2 8h4c0-6-2-8-2-8z"/>
-      <path d="M19 10v12"/>
-    </svg>
-  ),
-  do: (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-    </svg>
-  ),
-  match: (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-    </svg>
-  ),
-  play: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="6" width="20" height="12" rx="3"/>
-      <path d="M6 12h4m-2-2v4"/>
-      <circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/>
-      <circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/>
-    </svg>
-  ),
-  read: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-    </svg>
-  ),
-  listen: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 18V5l12-2v13"/>
-      <circle cx="6" cy="18" r="3"/>
-      <circle cx="18" cy="16" r="3"/>
-    </svg>
-  ),
-  learn: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17H8v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/>
-    </svg>
-  ),
-  visit: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-      <circle cx="12" cy="10" r="3"/>
-    </svg>
-  ),
-};
 
 export default function Home({ profile, history, tracking, schedules, onOpenCat, onSurprise, onOpenLive, onNav, isActive: _isActive }: HomeProps) {
   const greeting = getGreeting(profile.name);
@@ -468,25 +410,21 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         {/* Categories */}
         <div className="section-lbl" style={{ marginTop: 12 }}>What to...</div>
 
-        <div className="cats-3d-scroll">
+        <div className="cats-grid">
           {exploreCats.map(c => (
             <button
               key={c.id}
-              className="cat-3d-card fade-in"
+              className="cat-grid-card fade-in"
               data-cat={c.id}
-              style={{ '--c': c.color } as React.CSSProperties}
               onClick={() => onOpenCat(c.id)}
             >
               {CAT_IMAGES[c.id] && (
-                <>
-                  <div className="cat-3d-bg" style={{ backgroundImage: `url(${CAT_IMAGES[c.id]})` }} />
-                  <div className="cat-3d-overlay" />
-                </>
+                <div className="cat-grid-bg" style={{ backgroundImage: `url(${CAT_IMAGES[c.id]})` }} />
               )}
-              <div className="cat-3d-content">
-                <span className="cat-3d-i">{CAT_ICONS[c.id] || c.icon}</span>
-                <span className="cat-3d-n">{c.name}</span>
-                <span className="cat-3d-count">{(DATA[c.id] || []).length} ideias</span>
+              <div className="cat-grid-overlay" />
+              <div className="cat-grid-content">
+                <span className="cat-grid-name">{c.name}</span>
+                <span className="cat-grid-count">{(DATA[c.id] || []).length} ideias</span>
               </div>
             </button>
           ))}

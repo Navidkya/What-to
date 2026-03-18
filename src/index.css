@@ -345,12 +345,21 @@ body::after {
 .btn-x { width: 100%; background: none; border: 1px solid var(--bd); border-radius: 10px; padding: 10px; color: var(--mu); font-family: 'Outfit', sans-serif; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: all .2s; margin-top: 2px; }
 .btn-x:hover { color: var(--tx); border-color: var(--bd2); }
 
-.why-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 9px; }
-.why-btn { background: var(--sf2); border: 1px solid var(--bd); border-radius: var(--r3); padding: 10px 13px; cursor: pointer; display: flex; align-items: center; gap: 9px; transition: all .15s; font-family: 'Outfit', sans-serif; color: var(--tx); text-align: left; width: 100%; }
-.why-btn:hover { border-color: var(--rd); background: var(--rd2); }
-.why-em { font-size: 17px; flex-shrink: 0; }
-.why-lbl { font-size: 12px; font-weight: 500; }
-.why-sub { font-size: 10px; font-weight: 300; color: var(--mu); margin-top: 1px; }
+/* ── WhyPanel redesign ── */
+.why-panel { max-height: 85vh; overflow-y: auto; }
+.why-header { padding: 4px 0 20px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px; }
+.why-item-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 700; font-style: italic; color: #fff; line-height: 1.2; }
+.why-subtitle { font-family: 'Outfit', sans-serif; font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 3px; letter-spacing: 0.5px; }
+.why-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.why-btn { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; cursor: pointer; transition: background 0.15s, border-color 0.15s; text-align: left; width: 100%; }
+.why-btn:active { background: rgba(200,155,60,0.12); border-color: rgba(200,155,60,0.3); }
+.why-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+.why-text { flex: 1; }
+.why-lbl { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; color: #fff; line-height: 1.3; }
+.why-sub { font-family: 'Outfit', sans-serif; font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+.why-arrow { font-size: 20px; color: rgba(255,255,255,0.2); flex-shrink: 0; }
+.why-back-btn { width: 100%; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; color: rgba(255,255,255,0.5); font-family: 'Outfit', sans-serif; font-size: 14px; cursor: pointer; transition: border-color 0.2s; }
+.why-back-btn:active { border-color: rgba(255,255,255,0.3); }
 
 .link-item { background: var(--sf2); border: 1px solid var(--bd); border-radius: var(--r3); padding: 12px 13px; display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
 .link-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -1185,6 +1194,14 @@ body::after {
 .action-yes:hover { background: rgba(200,155,60,0.2); box-shadow: 0 0 16px rgba(200,155,60,0.2); }
 .action-no:hover { background: rgba(224,112,112,0.15); }
 
+/* ── Suggest buttons com alma ── */
+.suggest-btns { display: flex; gap: 10px; width: 100%; margin-top: 20px; }
+.suggest-btn-no { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 17px 20px; border-radius: 50px; background: rgba(224,112,112,0.08); border: 1px solid rgba(224,112,112,0.25); color: #e07070; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; letter-spacing: 0.3px; transition: background 0.2s, border-color 0.2s, transform 0.1s; }
+.suggest-btn-no:active { background: rgba(224,112,112,0.18); border-color: rgba(224,112,112,0.5); transform: scale(0.97); }
+.suggest-btn-yes { flex: 1.5; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 17px 20px; border-radius: 50px; background: linear-gradient(135deg, #C89B3C 0%, #a87535 100%); border: none; color: #0B0D12; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; letter-spacing: 0.3px; box-shadow: 0 4px 20px rgba(200,155,60,0.35); transition: box-shadow 0.2s, transform 0.1s, opacity 0.2s; }
+.suggest-btn-yes:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(200,155,60,0.2); opacity: 0.92; }
+.suggest-btn-arrow { font-size: 18px; line-height: 1; }
+
 /* ─── V9: Swipe hint left for Friends (M5) ─── */
 .swipe-hint-left { position: fixed; left: 8px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; color: rgba(242,237,230,0.3); font-size: 14px; pointer-events: none; z-index: 5; font-family: 'Outfit', sans-serif; }
 
@@ -1218,3 +1235,13 @@ body::after {
 
 /* Glow nos cards do explorer ao tocar */
 .cat-3d-card:active { transform: scale(0.96); filter: brightness(1.15); transition: filter 0.15s, transform 0.15s; }
+
+/* ── Explorer grid 4×2 ── */
+.cats-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 8px; width: 100%; margin-top: 10px; }
+.cat-grid-card { position: relative; aspect-ratio: 1 / 1; border-radius: 14px; overflow: hidden; border: none; cursor: pointer; background: #1a1f2e; padding: 0; transition: transform 0.15s, filter 0.15s; }
+.cat-grid-card:active { transform: scale(0.96); filter: brightness(1.15); }
+.cat-grid-bg { position: absolute; inset: 0; background-size: cover; background-position: center; transition: transform 0.3s; }
+.cat-grid-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.05) 100%); border-radius: inherit; }
+.cat-grid-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; }
+.cat-grid-name { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
+.cat-grid-count { font-family: 'Outfit', sans-serif; font-size: 10px; color: rgba(255,255,255,0.55); }

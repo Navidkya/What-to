@@ -404,21 +404,14 @@ export default function Suggest({
                 )}
 
                 {/* Simplified Actions */}
-                <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 16 }}>
-                  <button className="action-no"
-                    style={{ flex: 1, padding: 16, borderRadius: '50px', background: 'rgba(224,112,112,0.1)', border: '1px solid rgba(224,112,112,0.3)', color: '#e07070', fontSize: 16, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                    onClick={e => {
-                      e.stopPropagation();
-                      onOpenWhy();
-                    }}
-                  >
-                    <span>←</span> Não
+                <div className="suggest-btns">
+                  <button className="suggest-btn-no" onClick={e => { e.stopPropagation(); onOpenWhy(); }}>
+                    <span className="suggest-btn-arrow">←</span>
+                    <span>Não</span>
                   </button>
-                  <button className="action-yes"
-                    style={{ flex: 1.5, padding: 16, borderRadius: '50px', background: 'linear-gradient(135deg, #c8974a, #a87535)', border: 'none', color: '#000', fontSize: 16, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                    onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}
-                  >
-                    Sim <span>→</span>
+                  <button className="suggest-btn-yes" onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}>
+                    <span>Sim</span>
+                    <span className="suggest-btn-arrow">→</span>
                   </button>
                 </div>
               </div>
