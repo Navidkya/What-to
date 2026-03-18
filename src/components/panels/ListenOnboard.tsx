@@ -1,17 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ListenPrefs } from '../../types';
 
 interface Props {
   isOpen: boolean;
+  currentPrefs: ListenPrefs;
   onClose: (prefs: ListenPrefs) => void;
 }
 
 const LISTEN_GENRES = ['Pop', 'Hip-Hop', 'Jazz', 'Electrónica', 'Rock', 'Clássica', 'R&B', 'Indie', 'Ciência', 'Tecnologia', 'True Crime', 'Cultura'];
 
-export default function ListenOnboard({ isOpen, onClose }: Props) {
-  const [type, setType] = useState<'Álbum' | 'Podcast' | 'Ambos'>('Ambos');
-  const [genres, setGenres] = useState<string[]>([]);
-  const [energia, setEnergia] = useState<'relaxante' | 'energetico' | 'mistura'>('mistura');
+export default function ListenOnboard({ isOpen, currentPrefs, onClose }: Props) {
+  const [type, setType] = useState<'Álbum' | 'Podcast' | 'Ambos'>(currentPrefs.type || 'Ambos');
+  const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
+  const [energia, setEnergia] = useState<'relaxante' | 'energetico' | 'mistura'>(currentPrefs.energia || 'mistura');
+
+  useEffect(() => {
+    if (isOpen) {
+      setType(currentPrefs.type || 'Ambos');
+      setGenres(currentPrefs.genres || []);
+      setEnergia(currentPrefs.energia || 'mistura');
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (g: string) => setGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
   const handleSave = (skip = false) => onClose(skip
@@ -28,8 +37,8 @@ export default function ListenOnboard({ isOpen, onClose }: Props) {
         <div className="eat-ob-title">
           <span>🎵</span>
           <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700 }}>O que ouvir?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Personaliza as sugestões de Ouvir</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que ouvir?</div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para este momento</div>
           </div>
         </div>
         <div className="eat-ob-section">

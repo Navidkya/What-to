@@ -1,17 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { LearnPrefs } from '../../types';
 
 interface Props {
   isOpen: boolean;
+  currentPrefs: LearnPrefs;
   onClose: (prefs: LearnPrefs) => void;
 }
 
 const LEARN_GENRES = ['IA', 'Design', 'Programação', 'Negócios', 'Psicologia', 'Ciência', 'Arte', 'Línguas', 'Meditação', 'Filosofia', 'História', 'Marketing'];
 
-export default function LearnOnboard({ isOpen, onClose }: Props) {
-  const [formato, setFormato] = useState<'video' | 'texto' | 'Ambos'>('Ambos');
-  const [genres, setGenres] = useState<string[]>([]);
-  const [duracao, setDuracao] = useState<'curta' | 'normal' | 'longa'>('normal');
+export default function LearnOnboard({ isOpen, currentPrefs, onClose }: Props) {
+  const [formato, setFormato] = useState<'video' | 'texto' | 'Ambos'>(currentPrefs.formato || 'Ambos');
+  const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
+  const [duracao, setDuracao] = useState<'curta' | 'normal' | 'longa'>(currentPrefs.duracao || 'normal');
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormato(currentPrefs.formato || 'Ambos');
+      setGenres(currentPrefs.genres || []);
+      setDuracao(currentPrefs.duracao || 'normal');
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (g: string) => setGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
   const handleSave = (skip = false) => onClose(skip
@@ -28,8 +37,8 @@ export default function LearnOnboard({ isOpen, onClose }: Props) {
         <div className="eat-ob-title">
           <span>🧠</span>
           <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700 }}>O que aprender?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Personaliza as sugestões de Aprender</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que aprender?</div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para hoje</div>
           </div>
         </div>
         <div className="eat-ob-section">

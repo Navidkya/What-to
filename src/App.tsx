@@ -103,31 +103,15 @@ export default function App() {
     setCurSugg(item || null);
     setPrevScreen('home');
     setScreen('suggest');
-    if (id === 'eat' && !store.eatPrefs.done) {
-      setEatObOpen(true);
-    }
-    if (id === 'watch' && !store.watchPrefs.done) {
-      setWatchObOpen(true);
-    }
-    if (id === 'listen' && !store.listenPrefs.done) {
-      setListenObOpen(true);
-    }
-    if (id === 'read' && !store.readPrefs.done) {
-      setReadObOpen(true);
-    }
-    if (id === 'play' && !store.playPrefs.done) {
-      setPlayObOpen(true);
-    }
-    if (id === 'learn' && !store.learnPrefs.done) {
-      setLearnObOpen(true);
-    }
-    if (id === 'visit' && !store.visitPrefs.done) {
-      setVisitObOpen(true);
-    }
-    if (id === 'do' && !store.doPrefs.done) {
-      setDoObOpen(true);
-    }
-  }, [store.eatPrefs.done, store.watchPrefs.done, store.listenPrefs.done, store.readPrefs.done, store.playPrefs.done, store.learnPrefs.done, store.visitPrefs.done, store.doPrefs.done]);
+    if (id === 'eat')    setEatObOpen(true);
+    if (id === 'watch')  setWatchObOpen(true);
+    if (id === 'listen') setListenObOpen(true);
+    if (id === 'read')   setReadObOpen(true);
+    if (id === 'play')   setPlayObOpen(true);
+    if (id === 'learn')  setLearnObOpen(true);
+    if (id === 'visit')  setVisitObOpen(true);
+    if (id === 'do')     setDoObOpen(true);
+  }, []);
 
   const surpriseMe = useCallback(() => {
     openCat(CATS[Math.floor(Math.random() * CATS.length)].id);
@@ -489,35 +473,43 @@ export default function App() {
 
           <EatOnboard
             isOpen={eatObOpen}
+            currentPrefs={store.eatPrefs}
             onClose={(prefs) => { store.updateEatPrefs(prefs); setEatObOpen(false); }}
           />
 
           <WatchOnboard
             isOpen={watchObOpen}
+            currentPrefs={store.watchPrefs}
             onClose={(prefs) => { store.updateWatchPrefs(prefs); setWatchObOpen(false); }}
           />
           <ListenOnboard
             isOpen={listenObOpen}
+            currentPrefs={store.listenPrefs}
             onClose={(prefs) => { store.updateListenPrefs(prefs); setListenObOpen(false); }}
           />
           <ReadOnboard
             isOpen={readObOpen}
+            currentPrefs={store.readPrefs}
             onClose={(prefs) => { store.updateReadPrefs(prefs); setReadObOpen(false); }}
           />
           <PlayOnboard
             isOpen={playObOpen}
+            currentPrefs={store.playPrefs}
             onClose={(prefs) => { store.updatePlayPrefs(prefs); setPlayObOpen(false); }}
           />
           <LearnOnboard
             isOpen={learnObOpen}
+            currentPrefs={store.learnPrefs}
             onClose={(prefs) => { store.updateLearnPrefs(prefs); setLearnObOpen(false); }}
           />
           <VisitOnboard
             isOpen={visitObOpen}
+            currentPrefs={store.visitPrefs}
             onClose={(prefs) => { store.updateVisitPrefs(prefs); setVisitObOpen(false); }}
           />
           <DoOnboard
             isOpen={doObOpen}
+            currentPrefs={store.doPrefs}
             onClose={(prefs) => { store.updateDoPrefs(prefs); setDoObOpen(false); }}
           />
 

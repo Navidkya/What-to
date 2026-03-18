@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { WatchPrefs } from '../../types';
 
 interface WatchOnboardProps {
   isOpen: boolean;
+  currentPrefs: WatchPrefs;
   onClose: (prefs: WatchPrefs) => void;
 }
 
@@ -16,11 +17,20 @@ function Toggle({ label, active, onClick }: { label: string; active: boolean; on
 
 const GENRES = ['Ação', 'Comédia', 'Drama', 'Terror', 'Sci-Fi', 'Romance', 'Documentário', 'Anime'];
 
-export default function WatchOnboard({ isOpen, onClose }: WatchOnboardProps) {
-  const [genres, setGenres] = useState<string[]>([]);
-  const [duration, setDuration] = useState('normal');
-  const [type, setType] = useState('Ambos');
-  const [discovery, setDiscovery] = useState('mistura');
+export default function WatchOnboard({ isOpen, currentPrefs, onClose }: WatchOnboardProps) {
+  const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
+  const [duration, setDuration] = useState(currentPrefs.duration || 'normal');
+  const [type, setType] = useState(currentPrefs.type || 'Ambos');
+  const [discovery, setDiscovery] = useState(currentPrefs.discovery || 'mistura');
+
+  useEffect(() => {
+    if (isOpen) {
+      setGenres(currentPrefs.genres || []);
+      setDuration(currentPrefs.duration || 'normal');
+      setType(currentPrefs.type || 'Ambos');
+      setDiscovery(currentPrefs.discovery || 'mistura');
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleGenre = (g: string) => {
     if (genres.includes(g)) setGenres(genres.filter(x => x !== g));
@@ -51,8 +61,8 @@ export default function WatchOnboard({ isOpen, onClose }: WatchOnboardProps) {
         <div className="eat-ob-title">
           <span>🎬</span>
           <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700 }}>O que ver?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Personaliza as sugestões de Watch</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que ver?</div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para esta sessão</div>
           </div>
         </div>
 

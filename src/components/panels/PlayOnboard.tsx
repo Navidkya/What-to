@@ -1,17 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { PlayPrefs } from '../../types';
 
 interface Props {
   isOpen: boolean;
+  currentPrefs: PlayPrefs;
   onClose: (prefs: PlayPrefs) => void;
 }
 
 const PLAY_GENRES = ['RPG', 'Estratégia', 'Puzzle', 'Ação', 'Plataforma', 'Roguelite', 'Cooperativo', 'Competitivo', 'Sandbox', 'Aventura', 'Simulação', 'Indie'];
 
-export default function PlayOnboard({ isOpen, onClose }: Props) {
-  const [type, setType] = useState<'Videojogo' | 'Tabuleiro' | 'Ambos'>('Ambos');
-  const [genres, setGenres] = useState<string[]>([]);
-  const [dificuldade, setDificuldade] = useState<'casual' | 'normal' | 'desafiante'>('normal');
+export default function PlayOnboard({ isOpen, currentPrefs, onClose }: Props) {
+  const [type, setType] = useState<'Videojogo' | 'Tabuleiro' | 'Ambos'>(currentPrefs.type || 'Ambos');
+  const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
+  const [dificuldade, setDificuldade] = useState<'casual' | 'normal' | 'desafiante'>(currentPrefs.dificuldade || 'normal');
+
+  useEffect(() => {
+    if (isOpen) {
+      setType(currentPrefs.type || 'Ambos');
+      setGenres(currentPrefs.genres || []);
+      setDificuldade(currentPrefs.dificuldade || 'normal');
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (g: string) => setGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
   const handleSave = (skip = false) => onClose(skip
@@ -28,8 +37,8 @@ export default function PlayOnboard({ isOpen, onClose }: Props) {
         <div className="eat-ob-title">
           <span>🎮</span>
           <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700 }}>O que jogar?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Personaliza as sugestões de Jogar</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que jogar?</div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para esta sessão</div>
           </div>
         </div>
         <div className="eat-ob-section">

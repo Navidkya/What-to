@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { DoPrefs } from '../../types';
 
 interface Props {
   isOpen: boolean;
+  currentPrefs: DoPrefs;
   onClose: (prefs: DoPrefs) => void;
 }
 
-export default function DoOnboard({ isOpen, onClose }: Props) {
-  const [contexto, setContexto] = useState<'solo' | 'a_dois' | 'grupo' | 'qualquer'>('qualquer');
-  const [local, setLocal] = useState<'interior' | 'exterior' | 'qualquer'>('qualquer');
-  const [custo, setCusto] = useState<'gratuito' | 'qualquer'>('qualquer');
+export default function DoOnboard({ isOpen, currentPrefs, onClose }: Props) {
+  const [contexto, setContexto] = useState<'solo' | 'a_dois' | 'grupo' | 'qualquer'>(currentPrefs.contexto || 'qualquer');
+  const [local, setLocal] = useState<'interior' | 'exterior' | 'qualquer'>(currentPrefs.local || 'qualquer');
+  const [custo, setCusto] = useState<'gratuito' | 'qualquer'>(currentPrefs.custo || 'qualquer');
+
+  useEffect(() => {
+    if (isOpen) {
+      setContexto(currentPrefs.contexto || 'qualquer');
+      setLocal(currentPrefs.local || 'qualquer');
+      setCusto(currentPrefs.custo || 'qualquer');
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = (skip = false) => onClose(skip
     ? { done: true, contexto: 'qualquer', local: 'qualquer', custo: 'qualquer' }
@@ -25,8 +34,8 @@ export default function DoOnboard({ isOpen, onClose }: Props) {
         <div className="eat-ob-title">
           <span>🎯</span>
           <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700 }}>O que fazer?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Personaliza as sugestões de Fazer</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que fazer?</div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para hoje</div>
           </div>
         </div>
         <div className="eat-ob-section">

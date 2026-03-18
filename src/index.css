@@ -342,8 +342,8 @@ body::after {
 .react-now-btn .rn-t { font-size: 13px; font-weight: 600; text-align: left; }
 .react-now-btn .rn-s { font-size: 10px; font-weight: 300; color: var(--mu); margin-top: 1px; }
 .react-now-btn:hover .rn-s { color: rgba(255,255,255,.7); }
-.btn-x { width: 100%; background: none; border: 1px solid var(--bd); border-radius: 10px; padding: 10px; color: var(--mu); font-family: 'Outfit', sans-serif; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: all .2s; margin-top: 2px; }
-.btn-x:hover { color: var(--tx); border-color: var(--bd2); }
+.btn-x { background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 50px; padding: 9px 18px; color: rgba(245,241,235,0.45); font-family: 'Outfit', sans-serif; font-size: 12px; cursor: pointer; transition: border-color 0.2s, color 0.2s; letter-spacing: 0.3px; align-self: flex-end; }
+.btn-x:active { border-color: rgba(255,255,255,0.25); color: rgba(245,241,235,0.7); }
 
 /* ── WhyPanel redesign ── */
 .why-panel { max-height: 85vh; overflow-y: auto; }
@@ -848,16 +848,18 @@ body::after {
 .meal-ing-list { display: flex; flex-wrap: wrap; gap: 4px; }
 .meal-ing-item { background: var(--sf3); border: 1px solid var(--bd2); border-radius: 100px; padding: 3px 9px; font-size: 10px; color: var(--mu2); }
 
-/* ─── Eat onboarding ─── */
-.eat-ob-title { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; font-size: 28px; }
-.eat-ob-section { margin-bottom: 16px; }
-.eat-ob-lbl { font-size: 9px; font-weight: 500; letter-spacing: 2.5px; text-transform: uppercase; color: var(--mu); margin-bottom: 8px; }
-.eat-ob-row { display: flex; gap: 7px; flex-wrap: wrap; }
-.eat-ob-toggle { background: var(--sf2); border: 1px solid var(--bd2); border-radius: 100px; padding: 7px 14px; font-size: 12px; font-weight: 500; color: var(--mu2); cursor: pointer; transition: all .2s; font-family: 'Outfit', sans-serif; white-space: nowrap; }
-.eat-ob-toggle:hover { border-color: var(--ac); color: var(--ac); }
-.eat-ob-toggle.on { background: var(--ac2); border-color: var(--ac); color: var(--ac); }
-.eat-ob-save { width: 100%; background: var(--ac); border: none; border-radius: 10px; padding: 13px; color: var(--bg); font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .2s; margin-bottom: 6px; margin-top: 4px; }
-.eat-ob-save:hover { opacity: .88; }
+/* ─── Onboardings (mood check) ─── */
+.eat-ob-panel { display: flex; flex-direction: column; gap: 0; padding: 20px 20px 28px; max-height: 88vh; overflow-y: auto; }
+.eat-ob-title { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.eat-ob-title span { font-size: 32px; }
+.eat-ob-section { margin-bottom: 20px; }
+.eat-ob-lbl { font-family: 'Outfit', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: rgba(156,165,185,0.7); margin-bottom: 10px; }
+.eat-ob-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.eat-ob-toggle { padding: 10px 16px; border-radius: 50px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: rgba(245,241,235,0.7); font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.18s ease; letter-spacing: 0.2px; white-space: nowrap; }
+.eat-ob-toggle:active { transform: scale(0.96); }
+.eat-ob-toggle.on { background: rgba(200,155,60,0.15); border-color: rgba(200,155,60,0.55); color: #C89B3C; font-weight: 600; box-shadow: 0 0 12px rgba(200,155,60,0.15); }
+.eat-ob-save { width: 100%; padding: 16px; border-radius: 50px; background: linear-gradient(135deg, #C89B3C 0%, #a87535 100%); border: none; color: #0B0D12; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: 0.3px; box-shadow: 0 4px 20px rgba(200,155,60,0.3); transition: opacity 0.2s, transform 0.1s; margin-top: 8px; }
+.eat-ob-save:active { opacity: 0.9; transform: scale(0.98); }
 
 /* ─── Home redesign tweaks ─── */
 .home-time { font-size: 12px; color: #5a6478; margin-top: 4px; letter-spacing: 0.02em; font-family: 'Outfit', sans-serif; }

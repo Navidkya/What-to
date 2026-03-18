@@ -1,17 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { VisitPrefs } from '../../types';
 
 interface Props {
   isOpen: boolean;
+  currentPrefs: VisitPrefs;
   onClose: (prefs: VisitPrefs) => void;
 }
 
 const VISIT_TIPOS = ['Restaurante', 'Bar', 'Museu', 'Miradouro', 'Natureza', 'Mercado', 'Galeria', 'Experiência', 'Histórico', 'Cultural'];
 
-export default function VisitOnboard({ isOpen, onClose }: Props) {
-  const [tipo, setTipo] = useState<string[]>([]);
-  const [custo, setCusto] = useState<'gratuito' | 'baixo' | 'qualquer'>('qualquer');
-  const [distancia, setDistancia] = useState<'perto' | 'qualquer'>('qualquer');
+export default function VisitOnboard({ isOpen, currentPrefs, onClose }: Props) {
+  const [tipo, setTipo] = useState<string[]>(currentPrefs.tipo || []);
+  const [custo, setCusto] = useState<'gratuito' | 'baixo' | 'qualquer'>(currentPrefs.custo || 'qualquer');
+  const [distancia, setDistancia] = useState<'perto' | 'qualquer'>(currentPrefs.distancia || 'qualquer');
+
+  useEffect(() => {
+    if (isOpen) {
+      setTipo(currentPrefs.tipo || []);
+      setCusto(currentPrefs.custo || 'qualquer');
+      setDistancia(currentPrefs.distancia || 'qualquer');
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (t: string) => setTipo(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   const handleSave = (skip = false) => onClose(skip
@@ -28,8 +37,8 @@ export default function VisitOnboard({ isOpen, onClose }: Props) {
         <div className="eat-ob-title">
           <span>📍</span>
           <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700 }}>O que visitar?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Personaliza as sugestões de Visitar</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que visitar?</div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para esta saída</div>
           </div>
         </div>
         <div className="eat-ob-section">

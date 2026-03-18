@@ -1,17 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReadPrefs } from '../../types';
 
 interface Props {
   isOpen: boolean;
+  currentPrefs: ReadPrefs;
   onClose: (prefs: ReadPrefs) => void;
 }
 
 const READ_GENRES = ['Psicologia', 'Sci-Fi', 'Romance', 'História', 'Filosofia', 'Negócios', 'Biografia', 'Auto-ajuda', 'Ficção', 'Thriller', 'Fantasia', 'Ciência'];
 
-export default function ReadOnboard({ isOpen, onClose }: Props) {
-  const [type, setType] = useState<'Livro' | 'Artigo' | 'Ambos'>('Ambos');
-  const [genres, setGenres] = useState<string[]>([]);
-  const [peso, setPeso] = useState<'leve' | 'denso' | 'mistura'>('mistura');
+export default function ReadOnboard({ isOpen, currentPrefs, onClose }: Props) {
+  const [type, setType] = useState<'Livro' | 'Artigo' | 'Ambos'>(currentPrefs.type || 'Ambos');
+  const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
+  const [peso, setPeso] = useState<'leve' | 'denso' | 'mistura'>(currentPrefs.peso || 'mistura');
+
+  useEffect(() => {
+    if (isOpen) {
+      setType(currentPrefs.type || 'Ambos');
+      setGenres(currentPrefs.genres || []);
+      setPeso(currentPrefs.peso || 'mistura');
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (g: string) => setGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
   const handleSave = (skip = false) => onClose(skip
@@ -28,8 +37,8 @@ export default function ReadOnboard({ isOpen, onClose }: Props) {
         <div className="eat-ob-title">
           <span>📚</span>
           <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700 }}>O que ler?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Personaliza as sugestões de Ler</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que ler?</div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para esta sessão</div>
           </div>
         </div>
         <div className="eat-ob-section">

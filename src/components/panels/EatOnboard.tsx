@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { EatPrefs } from '../../types';
 
 interface EatOnboardProps {
   isOpen: boolean;
+  currentPrefs: EatPrefs;
   onClose: (prefs: EatPrefs) => void;
 }
 
@@ -14,12 +15,22 @@ function Toggle({ label, active, onClick }: { label: string; active: boolean; on
   );
 }
 
-export default function EatOnboard({ isOpen, onClose }: EatOnboardProps) {
-  const [local, setLocal] = useState<string[]>([]);
-  const [fome, setFome] = useState('normal');
-  const [budget, setBudget] = useState('medio');
-  const [restrictions, setRestrictions] = useState<string[]>(['nenhuma']);
-  const [tempo, setTempo] = useState('normal');
+export default function EatOnboard({ isOpen, currentPrefs, onClose }: EatOnboardProps) {
+  const [local, setLocal] = useState<string[]>(currentPrefs.local || []);
+  const [fome, setFome] = useState(currentPrefs.fome || 'normal');
+  const [budget, setBudget] = useState(currentPrefs.budget || 'medio');
+  const [restrictions, setRestrictions] = useState<string[]>(currentPrefs.restrictions?.length ? currentPrefs.restrictions : ['nenhuma']);
+  const [tempo, setTempo] = useState(currentPrefs.tempo || 'normal');
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocal(currentPrefs.local || []);
+      setFome(currentPrefs.fome || 'normal');
+      setBudget(currentPrefs.budget || 'medio');
+      setRestrictions(currentPrefs.restrictions?.length ? currentPrefs.restrictions : ['nenhuma']);
+      setTempo(currentPrefs.tempo || 'normal');
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleArr = (arr: string[], val: string, set: (v: string[]) => void) => {
     if (arr.includes(val)) set(arr.filter(x => x !== val));
@@ -51,8 +62,8 @@ export default function EatOnboard({ isOpen, onClose }: EatOnboardProps) {
         <div className="eat-ob-title">
           <span>🍽️</span>
           <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700 }}>O que apetece?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Personaliza as sugestões de comida</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que comer?</div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para esta refeição</div>
           </div>
         </div>
 
