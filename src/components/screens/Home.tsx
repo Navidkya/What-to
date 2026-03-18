@@ -466,7 +466,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         )}
 
         {/* Categories */}
-        <div className="section-lbl" style={{ textTransform: 'lowercase', marginTop: 12 }}>explorar categorias</div>
+        <div className="section-lbl" style={{ marginTop: 12 }}>What to...</div>
 
         <div className="cats-3d-scroll">
           {exploreCats.map(c => (

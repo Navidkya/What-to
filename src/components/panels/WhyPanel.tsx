@@ -6,7 +6,7 @@ interface WhyPanelProps {
   cat: Category | null;
   isOpen: boolean;
   onClose: () => void;
-  onPick: (reason: WhyReason, index: number) => void;
+  onPick: (reason: WhyReason) => void;
 }
 
 export default function WhyPanel({ item, cat, isOpen, onClose, onPick }: WhyPanelProps) {
@@ -22,7 +22,7 @@ export default function WhyPanel({ item, cat, isOpen, onClose, onPick }: WhyPane
         </div>
         <div className="why-list">
           {reasons.map((r, i) => (
-            <button key={i} className="why-btn" onClick={() => onPick(r, i)}>
+            <button key={i} className="why-btn" onClick={() => onPick(r)}>
               <span className="why-em">{r.icon}</span>
               <div>
                 <div className="why-lbl">{r.l}</div>

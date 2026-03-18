@@ -5,6 +5,35 @@ import { fetchTMDB, type TMDBResult } from '../../services/tmdb';
 import { fetchMeal, type MealResult } from '../../services/mealdb';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
 
+const SUGGEST_FALLBACKS: Record<string, string> = {
+  watch:  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=80',
+  eat:    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
+  read:   'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=80',
+  listen: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80',
+  play:   'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=80',
+  learn:  'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=80',
+  visit:  'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=800&q=80',
+  do:     'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=80',
+};
+
+const EAT_TYPE_IMAGES: Record<string, string> = {
+  'Restaurante': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
+  'Delivery':    'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80',
+  'Receita':     'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=800&q=80',
+};
+
+const LISTEN_TYPE_IMAGES: Record<string, string> = {
+  'Álbum':   'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80',
+  'Podcast': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=80',
+};
+
+const VISIT_TYPE_IMAGES: Record<string, string> = {
+  'Museu':       'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+  'Bar':         'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=800&q=80',
+  'Restaurante': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
+  'Experiência': 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=80',
+};
+
 interface SuggestProps {
   cat: Category;
   profile: Profile;
@@ -18,6 +47,8 @@ interface SuggestProps {
   onOpenReact: () => void;
   onOpenLink: (url: string, name: string, color: string) => void;
   onOpenWishlist: () => void;
+  onOpenWhy: () => void;
+  onImgResolved?: (img: string | null) => void;
   onSwipeYes?: () => void;
   onSwipeNo?: () => void;
   curSugg: DataItem | null;
@@ -88,7 +119,7 @@ interface CardData {
 export default function Suggest({
   cat, profile, tracking, prefs, disliked, isActive,
   afterReactTrigger, afterReactGenre,
-  onBack, onOpenReact, onOpenWishlist,
+  onBack, onOpenReact, onOpenWishlist, onOpenWhy, onImgResolved,
   onSwipeYes: _onSwipeYes, onSwipeNo: _onSwipeNo,
   curSugg, setCurSugg,
 }: SuggestProps) {
@@ -195,7 +226,6 @@ export default function Suggest({
       if (fetchedRef.current.has(item.title)) return;
       fetchedRef.current.add(item.title);
 
-      // Initialize entry
       setCardDataMap(prev => ({ ...prev, [item.title]: prev[item.title] ?? { tmdb: null, meal: null, cover: null } }));
 
       if (cat.id === 'watch') {
@@ -204,22 +234,63 @@ export default function Suggest({
           setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], tmdb: data } }));
         }).catch(() => {});
       }
-      if (cat.id === 'eat' && item.type === 'Receita') {
-        fetchMeal(item.title).then(data => {
-          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], meal: data } }));
-        }).catch(() => {});
+
+      if (cat.id === 'eat') {
+        if (item.type === 'Receita') {
+          fetchMeal(item.title).then(data => {
+            const fallback = EAT_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.eat;
+            setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: data?.photoUrl || fallback } }));
+          }).catch(() => {
+            setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: EAT_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.eat } }));
+          });
+        } else {
+          const img = EAT_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.eat;
+          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
+        }
       }
+
       if (cat.id === 'read') {
         fetchBookCover(item.title).then(url => {
-          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: url } }));
-        }).catch(() => {});
+          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: url || SUGGEST_FALLBACKS.read } }));
+        }).catch(() => {
+          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: SUGGEST_FALLBACKS.read } }));
+        });
       }
-      if (cat.id === 'play' && item.steamId != null) {
-        const steamCover = getSteamImageUrl(item.steamId);
-        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: steamCover } }));
+
+      if (cat.id === 'play') {
+        const steamCover = item.steamId != null ? getSteamImageUrl(item.steamId) : null;
+        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: steamCover || SUGGEST_FALLBACKS.play } }));
+      }
+
+      if (cat.id === 'listen') {
+        const img = LISTEN_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.listen;
+        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
+      }
+
+      if (cat.id === 'learn') {
+        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: SUGGEST_FALLBACKS.learn } }));
+      }
+
+      if (cat.id === 'visit') {
+        const img = VISIT_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.visit;
+        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
+      }
+
+      if (cat.id === 'do') {
+        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: SUGGEST_FALLBACKS.do } }));
       }
     });
   }, [activeIdx, cards]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Notify parent when active card image changes (for ReactPanel)
+  useEffect(() => {
+    if (!onImgResolved) return;
+    const card = cards[activeIdx];
+    if (!card) { onImgResolved(null); return; }
+    const data = cardDataMap[card.title];
+    const img = data?.tmdb?.posterUrl || data?.cover || null;
+    onImgResolved(img);
+  }, [activeIdx, cardDataMap, cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCardClick = () => {
     onOpenReact();
@@ -249,8 +320,8 @@ export default function Suggest({
         {cards[activeIdx] && (() => {
           const card = cards[activeIdx];
           const data = cardDataMap[card.title];
-          const hasImg = !!(data?.tmdb?.posterUrl || data?.meal?.photoUrl || data?.cover);
-          const imgSrc = data?.meal?.photoUrl || data?.tmdb?.posterUrl || data?.cover || '';
+          const hasImg = !!(data?.tmdb?.posterUrl || data?.cover);
+          const imgSrc = data?.tmdb?.posterUrl || data?.cover || '';
           const cardTrackInfo = tracking[cat.id + ':' + card.title];
           const cardTrackState = cardTrackInfo ? TSTATE.find(x => x.id === cardTrackInfo.state) : null;
 
@@ -338,19 +409,13 @@ export default function Suggest({
                     style={{ flex: 1, padding: 16, borderRadius: '50px', background: 'rgba(224,112,112,0.1)', border: '1px solid rgba(224,112,112,0.3)', color: '#e07070', fontSize: 16, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                     onClick={e => {
                       e.stopPropagation();
-                      doAdvance();
+                      onOpenWhy();
                     }}
                   >
                     <span>←</span> Não
                   </button>
-                  <button
-                    style={{ flex: 1, padding: 16, borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 16, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                    onClick={e => { e.stopPropagation(); onOpenWishlist?.(); doAdvance(); }}
-                  >
-                    <span>↑</span> Guardar
-                  </button>
                   <button className="action-yes"
-                    style={{ flex: 1, padding: 16, borderRadius: '50px', background: 'linear-gradient(135deg, #c8974a, #a87535)', border: 'none', color: '#000', fontSize: 16, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                    style={{ flex: 1.5, padding: 16, borderRadius: '50px', background: 'linear-gradient(135deg, #c8974a, #a87535)', border: 'none', color: '#000', fontSize: 16, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                     onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}
                   >
                     Sim <span>→</span>

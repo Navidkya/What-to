@@ -7,9 +7,7 @@ interface ReactPanelProps {
   onClose: () => void;
   onNow: () => void;
   onReact: (type: 'hoje' | 'save' | 'skip' | 'next') => void;
-  onWhy: () => void;
-  onTracking: () => void;
-  onSchedule?: () => void;
+  resolvedImg?: string | null;
 }
 
 const CAT_GRADIENTS: Record<string, string> = {
@@ -23,15 +21,10 @@ const CAT_GRADIENTS: Record<string, string> = {
   do:     '135deg, #052828 0%, #051a1a 100%',
 };
 
-export default function ReactPanel({ item, cat, isOpen, onClose, onNow, onReact, onWhy, onTracking, onSchedule }: ReactPanelProps) {
+export default function ReactPanel({ item, cat, isOpen, onClose, onNow, onReact, resolvedImg }: ReactPanelProps) {
   if (!item) return null;
 
-  const imgUrl = (item as DataItem & { posterUrl?: string; poster?: string; backdrop?: string; image?: string; imgUrl?: string }).posterUrl
-    || (item as DataItem & { poster?: string }).poster
-    || (item as DataItem & { backdrop?: string }).backdrop
-    || (item as DataItem & { image?: string }).image
-    || (item as DataItem & { imgUrl?: string }).imgUrl
-    || null;
+  const imgUrl = resolvedImg || null;
 
   const gradient = CAT_GRADIENTS[cat?.id || 'watch'] || '135deg, #111 0%, #222 100%';
 
@@ -64,93 +57,30 @@ export default function ReactPanel({ item, cat, isOpen, onClose, onNow, onReact,
           );
         })()}
 
-        {/* 2-column grid for main actions */}
-        <div className="rp-grid">
+        {/* 3 Main simplified actions */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 16, marginBottom: 16 }}>
           <button
             className="rp-btn"
-            style={{ background: '#0d2212', borderColor: '#4a8c5c', color: '#6ab87a', height: 56 }}
-            onClick={onNow}
-          >
-            <span>▷</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 12 }}>Sim, agora!</div>
-              <div style={{ fontSize: 9, color: 'rgba(106,184,122,.6)', marginTop: 1 }}>Abrir e acompanhar</div>
-            </div>
-          </button>
-
-          <button
-            className="rp-btn"
-            style={{ background: '#0d1829', borderColor: '#3a6a9a', color: '#6ab4e0', height: 56 }}
-            onClick={() => onReact('hoje')}
-          >
-            <span>✓</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 12 }}>Sim, hoje!</div>
-              <div style={{ fontSize: 9, color: 'rgba(106,180,224,.6)', marginTop: 1 }}>Marcar para hoje</div>
-            </div>
-          </button>
-
-          <button
-            className="rp-btn"
-            style={{ background: '#1a1428', borderColor: '#6a4a8a', color: '#9a7ac4', height: 56 }}
-            onClick={() => onReact('save')}
-          >
-            <span>♡</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 12 }}>Guardar</div>
-              <div style={{ fontSize: 9, color: 'rgba(154,122,196,.6)', marginTop: 1 }}>Para outro dia</div>
-            </div>
-          </button>
-
-          <button
-            className="rp-btn"
-            style={{ background: '#1a1a24', borderColor: 'rgba(255,255,255,0.08)', color: '#7a8499', height: 56 }}
+            style={{ flex: 1, padding: 18, borderRadius: 24, background: 'rgba(224,112,112,0.1)', border: '1px solid rgba(224,112,112,0.3)', color: '#e07070', fontSize: 16, fontWeight: 'bold' }}
             onClick={() => onReact('skip')}
           >
-            <span>✕</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 12 }}>Hoje não</div>
-              <div style={{ fontSize: 9, color: 'rgba(122,132,153,.6)', marginTop: 1 }}>Talvez depois</div>
-            </div>
+            ← Não
+          </button>
+          <button
+            className="rp-btn"
+            style={{ flex: 1, padding: 18, borderRadius: 24, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 16, fontWeight: 'bold' }}
+            onClick={() => onReact('save')}
+          >
+            ↑ Guardar
+          </button>
+          <button
+            className="rp-btn"
+            style={{ flex: 1, padding: 18, borderRadius: 24, background: 'linear-gradient(135deg, #c8974a, #a87535)', border: 'none', color: '#000', fontSize: 16, fontWeight: 'bold' }}
+            onClick={onNow}
+          >
+            Sim →
           </button>
         </div>
-
-        {/* Full-width secondary buttons */}
-        <button
-          className="rp-btn-full"
-          style={{ background: '#1a1a24', borderColor: 'rgba(255,255,255,0.08)', color: '#7a8499', height: 48 }}
-          onClick={onWhy}
-        >
-          <span>💭</span> Não… porquê
-        </button>
-
-        <button
-          className="rp-btn-full"
-          style={{ background: '#1a1a24', borderColor: 'rgba(255,255,255,0.08)', color: '#7a8499', height: 48 }}
-          onClick={() => onReact('next')}
-        >
-          <span>✨</span> Outra sugestão
-        </button>
-
-        {cat?.trackable && (
-          <button
-            className="rp-btn-full"
-            style={{ background: '#1a1a24', borderColor: 'rgba(255,255,255,0.08)', color: '#7a8499', height: 48 }}
-            onClick={onTracking}
-          >
-            <span>📺</span> Tracking
-          </button>
-        )}
-
-        {onSchedule && (
-          <button
-            className="rp-btn-full"
-            style={{ background: '#1a1508', borderColor: 'rgba(200,151,74,0.25)', color: '#c8974a', height: 48 }}
-            onClick={onSchedule}
-          >
-            <span>🗓️</span> Agendar
-          </button>
-        )}
 
         <button className="btn-x" style={{ color: '#3a4558' }} onClick={onClose}>FECHAR</button>
       </div>

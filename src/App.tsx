@@ -48,6 +48,7 @@ export default function App() {
   // Current suggest state
   const [curCat, setCurCat] = useState<Category | null>(null);
   const [curSugg, setCurSugg] = useState<DataItem | null>(null);
+  const [curSuggImg, setCurSuggImg] = useState<string | null>(null);
   const [afterReactTrigger, setAfterReactTrigger] = useState(0);
   const [afterReactGenre, setAfterReactGenre] = useState<string | null>(null);
 
@@ -357,6 +358,8 @@ export default function App() {
             onSwipeNo={() => {
               toast('⏭ Ok, próxima!');
             }}
+            onOpenWhy={() => setWhyOpen(true)}
+            onImgResolved={(img) => setCurSuggImg(img)}
             curSugg={curSugg}
             setCurSugg={setCurSugg}
           />
@@ -422,6 +425,7 @@ export default function App() {
             onClose={() => setReactOpen(false)}
             onNow={reactNow}
             onReact={reactAction}
+            resolvedImg={curSuggImg}
           />
 
           <WhyPanel

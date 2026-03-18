@@ -1201,7 +1201,7 @@ body::after {
 .cat-3d-card:active { transform: scale(0.96); }
 .cat-3d-bg { position: absolute; inset: 0; background-size: cover; background-position: center; transition: transform 0.4s ease; }
 .cat-3d-card:hover .cat-3d-bg { transform: scale(1.08); }
-.cat-3d-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(11,13,18,0.95) 0%, rgba(11,13,18,0.4) 50%, rgba(11,13,18,0.1) 100%); pointer-events: none; }
+.cat-3d-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.10) 100%); border-radius: inherit; pointer-events: none; }
 .cat-3d-content { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 6px; }
 .cat-3d-i { font-size: 26px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5)); transition: transform 0.2s ease; }
 .cat-3d-card:hover .cat-3d-i { transform: scale(1.1) translateY(-2px); }
