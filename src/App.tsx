@@ -347,6 +347,13 @@ export default function App() {
             curSugg={curSugg}
             setCurSugg={setCurSugg}
             watchPrefs={store.watchPrefs}
+            eatPrefs={store.eatPrefs}
+            listenPrefs={store.listenPrefs}
+            readPrefs={store.readPrefs}
+            playPrefs={store.playPrefs}
+            learnPrefs={store.learnPrefs}
+            visitPrefs={store.visitPrefs}
+            doPrefs={store.doPrefs}
           />
 
           {/* Overlay screens */}
@@ -411,6 +418,8 @@ export default function App() {
             onNow={reactNow}
             onReact={reactAction}
             resolvedImg={curSuggImg}
+            actionUrl={curSugg?.platforms?.[0]?.url || null}
+            catId={curCat?.id || ''}
           />
 
           <WhyPanel

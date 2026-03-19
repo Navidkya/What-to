@@ -63,3 +63,94 @@ export async function fetchMeal(name: string): Promise<MealResult | null> {
 
   return null;
 }
+
+export interface MealDiscoverItem {
+  id: string;
+  title: string;
+  coverUrl: string | null;
+  category: string;
+  area: string;
+  ingredients: string[];
+  youtubeUrl: string | null;
+  type: 'Receita';
+}
+
+export interface MealFilters {
+  local: string[];        // 'casa', 'sair', 'takeaway'
+  fome: string;           // 'leve', 'normal', 'pesado'
+  budget: string;
+  restrictions: string[]; // 'vegetariano', 'vegan', 'sem-gluten'
+  tempo: string;          // 'rapido', 'normal', 'demorado'
+}
+
+// Categorias MealDB por contexto
+const CATEGORY_MAP: Record<string, string[]> = {
+  'leve': ['Salad', 'Seafood', 'Vegan', 'Vegetarian'],
+  'normal': ['Chicken', 'Pasta', 'Beef', 'Pork'],
+  'pesado': ['Beef', 'Lamb', 'Miscellaneous', 'Side'],
+  'vegetariano': ['Vegetarian', 'Vegan', 'Salad'],
+  'vegan': ['Vegan', 'Vegetarian'],
+  'rapido': ['Starter', 'Salad', 'Pasta'],
+  'demorado': ['Beef', 'Lamb', 'Pork', 'Miscellaneous'],
+};
+
+const MEAL_DISCOVER_CACHE = 'wt_meal_disc_';
+
+export async function discoverMeals(filters: MealFilters): Promise<MealDiscoverItem[]> {
+  const cacheKey = JSON.stringify(filters);
+  try {
+    const v = localStorage.getItem(MEAL_DISCOVER_CACHE + cacheKey);
+    if (v) {
+      const parsed = JSON.parse(v) as { ts: number; data: MealDiscoverItem[] };
+      if (Date.now() - parsed.ts < 2 * 60 * 60 * 1000) return parsed.data;
+    }
+  } catch {}
+
+  // Determina categorias com base nos filtros
+  let categories: string[] = [];
+
+  if (filters.restrictions.includes('vegetariano') || filters.restrictions.includes('vegan')) {
+    categories = CATEGORY_MAP['vegetariano'];
+  } else if (filters.fome) {
+    categories = CATEGORY_MAP[filters.fome] || CATEGORY_MAP['normal'];
+  } else {
+    categories = CATEGORY_MAP['normal'];
+  }
+
+  const results: MealDiscoverItem[] = [];
+
+  // Busca por cada categoria, max 2 categorias
+  for (const cat of categories.slice(0, 2)) {
+    try {
+      const res = await fetch(`${MEALDB_BASE}/filter.php?c=${encodeURIComponent(cat)}`);
+      if (!res.ok) continue;
+      const data = await res.json() as {
+        meals?: Array<{ idMeal: string; strMeal: string; strMealThumb: string }>;
+      };
+      const meals = (data.meals || [])
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 8);
+
+      for (const meal of meals) {
+        results.push({
+          id: meal.idMeal,
+          title: meal.strMeal,
+          coverUrl: meal.strMealThumb ? meal.strMealThumb + '/large' : null,
+          category: cat,
+          area: '',
+          ingredients: [],
+          youtubeUrl: null,
+          type: 'Receita',
+        });
+      }
+    } catch { continue; }
+  }
+
+  const shuffled = results.sort(() => Math.random() - 0.5).slice(0, 20);
+
+  try {
+    localStorage.setItem(MEAL_DISCOVER_CACHE + cacheKey, JSON.stringify({ ts: Date.now(), data: shuffled }));
+  } catch {}
+
+  return shuffled;
+}

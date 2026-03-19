@@ -75,14 +75,16 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: WatchOnb
           </div>
         </div>
 
-        <div className="eat-ob-section">
-          <div className="eat-ob-lbl">Duração?</div>
-          <div className="eat-ob-row">
-            {([['curto', '⚡ -90min'], ['normal', '🎬 90-120min'], ['longo', '🍿 +120min']] as [string, string][]).map(([v, l]) => (
-              <Toggle key={v} label={l} active={duration === v} onClick={() => setDuration(v)} />
-            ))}
+        {type !== 'Série' && (
+          <div className="eat-ob-section">
+            <div className="eat-ob-lbl">Duração?</div>
+            <div className="eat-ob-row">
+              {([['curto', '⚡ -90min'], ['normal', '🎬 90-120min'], ['longo', '🍿 +120min']] as [string, string][]).map(([v, l]) => (
+                <Toggle key={v} label={l} active={duration === v} onClick={() => setDuration(v)} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="eat-ob-section">
           <div className="eat-ob-lbl">Tipo?</div>

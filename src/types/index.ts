@@ -53,6 +53,12 @@ export interface Profile {
   platforms: string[];
   blockedPlatforms?: string[];
   savedPeople?: string[];
+  location?: {
+    lat: number;
+    lng: number;
+    label: string;
+    radius: number; // km
+  };
 }
 
 export interface HistoryEntry {

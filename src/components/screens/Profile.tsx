@@ -24,6 +24,32 @@ export default function Profile({
 }: ProfileProps) {
   const [nameVal, setNameVal] = useState(profile.name || '');
   const [selectedPlats, setSelectedPlats] = useState<string[]>(profile.platforms || []);
+  const [locationRadius, setLocationRadius] = useState(profile.location?.radius || 5);
+  const [locLoading, setLocLoading] = useState(false);
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) { onToast('GPS não disponível'); return; }
+    setLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+          const data = await res.json() as { address?: { city?: string; town?: string; village?: string; country?: string } };
+          const city = data.address?.city || data.address?.town || data.address?.village || 'Localização';
+          const country = data.address?.country || '';
+          const label = `${city}, ${country}`;
+          onUpdateProfile({ ...profile, location: { lat, lng, label, radius: locationRadius } });
+          onToast(`📍 ${label}`);
+        } catch {
+          onUpdateProfile({ ...profile, location: { lat, lng, label: `${lat.toFixed(2)}, ${lng.toFixed(2)}`, radius: locationRadius } });
+          onToast('📍 Localização guardada');
+        }
+        setLocLoading(false);
+      },
+      () => { onToast('Não foi possível obter localização'); setLocLoading(false); }
+    );
+  };
 
   const name = profile.name || 'Anónimo';
   const done = history.filter(h => h.action === 'agora' || h.action === 'hoje');
@@ -219,11 +245,10 @@ export default function Profile({
           </div>
         </div>
 
-        {/* BLOCO 9 — Localização */}
+        {/* LOCALIZAÇÃO REAL */}
         <div className="prof-section fade-in">
           <div className="prof-sec-lbl">A Minha Localização</div>
           <div className="location-card">
-            <div className="location-soon-badge">Em breve</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
@@ -234,16 +259,28 @@ export default function Profile({
                 <div style={{ fontSize: 12, color: '#8a94a8' }}>Sugestões perto de ti</div>
               </div>
             </div>
+
             <div style={{ fontSize: 13, color: 'var(--mu2)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-              📍 Lisboa, Portugal
+              📍 {profile.location?.label || 'Localização não definida'}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 4 }}>Raio: 5 km</div>
-            <div className="location-slider">
-              <div className="location-slider-fill" />
-              <div className="location-slider-thumb" />
+
+            <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 8 }}>
+              Raio: {locationRadius} km
             </div>
-            <button style={{ marginTop: 12, width: '100%', padding: '10px 0', background: 'none', border: '1px solid rgba(200,151,74,0.4)', borderRadius: 10, color: 'var(--ac)', fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: 'pointer' }}>
-              Actualizar localização
+            <input
+              type="range"
+              min={1}
+              max={50}
+              value={locationRadius}
+              onChange={e => setLocationRadius(Number(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--ac)', marginBottom: 12 }}
+            />
+
+            <button
+              style={{ width: '100%', padding: '10px 0', background: 'none', border: '1px solid rgba(200,151,74,0.4)', borderRadius: 10, color: 'var(--ac)', fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: 'pointer' }}
+              onClick={handleGetLocation}
+            >
+              {locLoading ? '⏳ A obter localização...' : '📍 Usar a minha localização'}
             </button>
           </div>
         </div>

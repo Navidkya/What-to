@@ -1,9 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { Category, DataItem, Profile, TrackingMap, PrefsMap, WatchPrefs } from '../../types';
+import type { Category, DataItem, Profile, TrackingMap, PrefsMap, WatchPrefs, EatPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs } from '../../types';
 import { DATA, GRAD, GENRES, TSTATE, TCOLOR, getPlatformId } from '../../data';
 import { fetchTMDB, discoverTMDB, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
-import { fetchMeal, type MealResult } from '../../services/mealdb';
+import { fetchMeal, discoverMeals, type MealResult, type MealDiscoverItem } from '../../services/mealdb';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
+import { discoverRAWG, type RAWGItem } from '../../services/rawg';
+import { discoverYouTube, type YTItem } from '../../services/youtube';
+import { discoverDeezer, type DeezerItem } from '../../services/deezer';
+import { discoverFSQ, type FSQItem } from '../../services/foursquare';
+import { discoverBooks, type GBItem } from '../../services/googleBooks';
 
 const SUGGEST_FALLBACKS: Record<string, string> = {
   watch:  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=80',
@@ -54,6 +59,13 @@ interface SuggestProps {
   curSugg: DataItem | null;
   setCurSugg: (item: DataItem) => void;
   watchPrefs?: WatchPrefs;
+  eatPrefs?: EatPrefs;
+  listenPrefs?: ListenPrefs;
+  readPrefs?: ReadPrefs;
+  playPrefs?: PlayPrefs;
+  learnPrefs?: LearnPrefs;
+  visitPrefs?: VisitPrefs;
+  doPrefs?: DoPrefs;
 }
 
 function hasPlatform(item: DataItem, profile: Profile): boolean {
@@ -117,34 +129,58 @@ interface CardData {
   cover: string | null;
 }
 
-function discoverToDataItem(d: DiscoverItem): DataItem {
-  return {
-    title: d.title,
-    type: d.type as 'Filme' | 'Série',
-    genre: d.genre,
-    desc: d.overview || 'Sem descrição disponível.',
-    emoji: d.type === 'Filme' ? '🎬' : '📺',
-    platforms: d.platforms,
-    rating: typeof d.rating === 'number' ? d.rating : undefined,
-    year: d.year ?? undefined,
-  } as unknown as DataItem;
+type APIItem = DiscoverItem | RAWGItem | YTItem | DeezerItem | FSQItem | GBItem | MealDiscoverItem;
+
+interface DisplayData {
+  title: string;
+  desc: string;
+  img: string | null;
+  rating: number | null;
+  year: string | null;
+  type: string;
+  genre: string;
+  url: string | null;
+  emoji: string;
 }
 
-function discoverToCardData(d: DiscoverItem): CardData {
-  return {
-    tmdb: {
-      posterUrl: d.posterUrl,
-      backdropUrl: d.backdropUrl,
-      overview: d.overview,
-      rating: d.rating,
-      year: d.year,
-      runtime: null,
-      cast: [],
-      trailerKey: null,
-    },
-    meal: null,
-    cover: null,
-  };
+function getDisplayData(item: APIItem, catId: string): DisplayData | null {
+  // TMDB DiscoverItem (watch)
+  if (catId === 'watch' && 'backdropUrl' in item) {
+    const i = item as DiscoverItem;
+    return { title: i.title, desc: i.overview || '', img: i.posterUrl, rating: i.rating, year: i.year, type: i.type, genre: i.genre, url: null, emoji: i.type === 'Filme' ? '🎬' : '📺' };
+  }
+  // RAWG (play)
+  if (catId === 'play' && 'metacritic' in item) {
+    const i = item as RAWGItem;
+    return { title: i.title, desc: i.description, img: i.coverUrl, rating: i.rating, year: i.year, type: 'Videojogo', genre: i.genres[0] || 'Jogo', url: null, emoji: '🎮' };
+  }
+  // YouTube (learn)
+  if (catId === 'learn' && 'channelName' in item) {
+    const i = item as YTItem;
+    return { title: i.title, desc: `${i.channelName} · ${i.publishedAt || ''}`, img: i.thumbnailUrl, rating: null, year: i.publishedAt, type: 'Vídeo', genre: 'Aprender', url: `https://youtube.com/watch?v=${i.id}`, emoji: '🧠' };
+  }
+  // Deezer (listen)
+  if (catId === 'listen' && 'artist' in item) {
+    const i = item as DeezerItem;
+    return { title: i.title, desc: i.artist, img: i.coverUrl, rating: null, year: null, type: i.type, genre: i.genre, url: i.url, emoji: '🎵' };
+  }
+  // Google Books (read)
+  if (catId === 'read' && 'authors' in item) {
+    const i = item as GBItem;
+    return { title: i.title, desc: `${i.authors.join(', ')} · ${i.pages ? i.pages + ' págs' : ''}`, img: i.coverUrl, rating: i.rating, year: i.year, type: 'Livro', genre: i.genre, url: i.previewUrl, emoji: '📚' };
+  }
+  // Foursquare (visit)
+  if (catId === 'visit' && 'address' in item) {
+    const i = item as FSQItem;
+    const dist = i.distance ? (i.distance < 1000 ? `${i.distance}m` : `${(i.distance / 1000).toFixed(1)}km`) : '';
+    return { title: i.title, desc: `${i.category} · ${dist} · ${i.address}`.replace(/\s·\s$/, ''), img: i.coverUrl, rating: i.rating, year: null, type: i.category, genre: 'Local', url: i.mapsUrl, emoji: '📍' };
+  }
+  // MealDB (eat)
+  if (catId === 'eat' && 'category' in item && 'type' in item && (item as MealDiscoverItem).type === 'Receita') {
+    const i = item as MealDiscoverItem;
+    return { title: i.title, desc: i.category, img: i.coverUrl, rating: null, year: null, type: 'Receita', genre: i.category, url: null, emoji: '🍽️' };
+  }
+  return null;
 }
 
 export default function Suggest({
@@ -152,7 +188,8 @@ export default function Suggest({
   afterReactTrigger, afterReactGenre,
   onBack, onOpenReact, onOpenWishlist, onOpenWhy, onImgResolved,
   onSwipeYes: _onSwipeYes, onSwipeNo: _onSwipeNo,
-  curSugg, setCurSugg, watchPrefs,
+  curSugg, setCurSugg,
+  watchPrefs, eatPrefs, listenPrefs, readPrefs, playPrefs, learnPrefs, visitPrefs,
 }: SuggestProps) {
   const [curMood, setCurMood] = useState('Tudo');
   const [cbarOn, setCbarOn] = useState(false);
@@ -170,41 +207,13 @@ export default function Suggest({
   activeIdxRef.current = activeIdx;
 
   const [quickYesOpen, setQuickYesOpen] = useState(false);
-  const [discoverLoading, setDiscoverLoading] = useState(false);
-  const discoverPageRef = useRef(1);
-  const watchPrefsRef = useRef(watchPrefs);
-  watchPrefsRef.current = watchPrefs;
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiItems, setApiItems] = useState<APIItem[]>([]);
+  const apiItemsRef = useRef<APIItem[]>([]);
+  apiItemsRef.current = apiItems;
 
   // Track which titles we've already initiated fetches for
   const fetchedRef = useRef(new Set<string>());
-
-  const loadDiscover = useCallback(async (prefs: WatchPrefs, page = 1) => {
-    setDiscoverLoading(true);
-    discoverPageRef.current = page;
-    try {
-      const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
-      const filters: DiscoverFilters = {
-        type: typeMap[prefs.type] || 'both',
-        genres: prefs.genres || [],
-        duration: (prefs.duration || 'normal') as DiscoverFilters['duration'],
-        discovery: (prefs.discovery || 'populares') as DiscoverFilters['discovery'],
-        platforms: [],
-        page,
-      };
-      const items = await discoverTMDB(filters);
-      if (!items.length) return;
-      const fakeCards = items.map(discoverToDataItem);
-      const fakeMap: Record<string, CardData> = {};
-      items.forEach(d => { fakeMap[d.title] = discoverToCardData(d); });
-      setCards(fakeCards);
-      setActiveIdx(0);
-      setCardDataMap(fakeMap);
-      fetchedRef.current = new Set(); // let fetchTMDB enrich with cast/trailer/runtime
-      setCurSugg(fakeCards[0]);
-    } catch {} finally {
-      setDiscoverLoading(false);
-    }
-  }, [setCurSugg]);
 
   const getPool = useCallback((gf?: string, moodOverride?: string) => {
     const mood = moodOverride ?? curMood;
@@ -241,29 +250,39 @@ export default function Suggest({
   }, [getPool, setCurSugg]);
 
   const doAdvance = useCallback(() => {
-    const currentCards = cardsRef.current;
+    const currentApiItems = apiItemsRef.current;
+    const isAPIMode = currentApiItems.length > 0;
     const currentIdx = activeIdxRef.current;
     const nextIdx = currentIdx + 1;
-    if (nextIdx >= currentCards.length) {
-      if (cat.id === 'watch' && watchPrefsRef.current) {
-        loadDiscover(watchPrefsRef.current, discoverPageRef.current + 1);
+
+    if (isAPIMode) {
+      if (nextIdx >= currentApiItems.length) {
+        // Shuffle and restart
+        setApiItems(prev => [...prev].sort(() => Math.random() - 0.5));
+        setActiveIdx(0);
       } else {
-        loadBatch(undefined, undefined, currentCards.map(c => c.title));
+        setActiveIdx(nextIdx);
       }
+      return;
+    }
+
+    // Mock/local pool logic
+    const currentCards = cardsRef.current;
+    if (nextIdx >= currentCards.length) {
+      loadBatch(undefined, undefined, currentCards.map(c => c.title));
     } else {
       setActiveIdx(nextIdx);
       setCurSugg(currentCards[nextIdx]);
     }
-  }, [loadBatch, loadDiscover, setCurSugg, cat.id]);
+  }, [loadBatch, setCurSugg]);
 
   // Load when screen activates or category changes
   useEffect(() => {
     if (isActive) {
       setCurMood('Tudo');
       setCbarOn(false);
-      if (cat.id === 'watch' && watchPrefsRef.current) {
-        loadDiscover(watchPrefsRef.current);
-      } else if (curSugg) {
+      setApiItems([]);
+      if (curSugg) {
         // Pre-set from hero: start batch with this item
         const pool = getPool();
         const rest = pool.filter(s => s.title !== curSugg!.title).slice(0, 7);
@@ -277,6 +296,82 @@ export default function Suggest({
       }
     }
   }, [cat.id, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Unified API discover for all categories
+  useEffect(() => {
+    if (!isActive) return;
+    setApiLoading(true);
+    setApiItems([]);
+
+    const load = async () => {
+      try {
+        if (cat.id === 'watch' && watchPrefs) {
+          const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
+          const items = await discoverTMDB({
+            type: typeMap[watchPrefs.type] || 'both',
+            genres: watchPrefs.genres || [],
+            duration: (watchPrefs.duration || 'normal') as DiscoverFilters['duration'],
+            discovery: (watchPrefs.discovery || 'mistura') as DiscoverFilters['discovery'],
+            platforms: profile.platforms || [],
+          });
+          setApiItems(items);
+        } else if (cat.id === 'eat' && eatPrefs) {
+          const items = await discoverMeals({
+            local: eatPrefs.local || [],
+            fome: eatPrefs.fome || 'normal',
+            budget: eatPrefs.budget || 'medio',
+            restrictions: eatPrefs.restrictions || [],
+            tempo: eatPrefs.tempo || 'normal',
+          });
+          setApiItems(items);
+        } else if (cat.id === 'play' && playPrefs) {
+          const items = await discoverRAWG({
+            genres: playPrefs.genres || [],
+            platforms: profile.platforms || [],
+            dificuldade: playPrefs.dificuldade || 'normal',
+            type: playPrefs.type || 'Ambos',
+          });
+          setApiItems(items);
+        } else if (cat.id === 'learn' && learnPrefs) {
+          const items = await discoverYouTube({
+            genres: learnPrefs.genres || [],
+            formato: learnPrefs.formato || 'Ambos',
+            duracao: learnPrefs.duracao || 'normal',
+          });
+          setApiItems(items);
+        } else if (cat.id === 'listen' && listenPrefs) {
+          const items = await discoverDeezer({
+            type: listenPrefs.type || 'Ambos',
+            genres: listenPrefs.genres || [],
+            energia: listenPrefs.energia || 'mistura',
+          });
+          setApiItems(items);
+        } else if (cat.id === 'read' && readPrefs) {
+          const items = await discoverBooks({
+            genres: readPrefs.genres || [],
+            type: readPrefs.type || 'Ambos',
+            peso: readPrefs.peso || 'mistura',
+          });
+          setApiItems(items);
+        } else if (cat.id === 'visit' && visitPrefs && profile.location) {
+          const items = await discoverFSQ({
+            lat: profile.location.lat,
+            lng: profile.location.lng,
+            radius: profile.location.radius || 5,
+            tipo: visitPrefs.tipo || [],
+            custo: visitPrefs.custo || 'qualquer',
+          });
+          setApiItems(items);
+        }
+      } catch {
+        // silently fail — usa mock
+      } finally {
+        setApiLoading(false);
+      }
+    };
+
+    load();
+  }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // After ReactPanel/WhyPanel action → advance carousel
   useEffect(() => {
@@ -386,17 +481,31 @@ export default function Suggest({
       </div>
 
       <div className="carousel-viewport">
-        {discoverLoading && (
+        {apiLoading && (
           <div className="discover-loading">
             <div className="discover-spinner" />
-            <div className="discover-loading-lbl">A procurar sugestões…</div>
+            <div className="discover-loading-lbl">A descobrir…</div>
           </div>
         )}
-        {!discoverLoading && cards[activeIdx] && (() => {
+        {!apiLoading && cards[activeIdx] && (() => {
           const card = cards[activeIdx];
           const data = cardDataMap[card.title];
-          const hasImg = !!(data?.tmdb?.posterUrl || data?.cover);
-          const imgSrc = data?.tmdb?.posterUrl || data?.cover || '';
+
+          // API mode: use API item data when available
+          const apiItem = apiItemsRef.current.length > 0 ? apiItemsRef.current[activeIdx] ?? null : null;
+          const displayData = apiItem ? getDisplayData(apiItem, cat.id) : null;
+
+          const displayTitle = displayData?.title ?? card.title;
+          const displayDesc = displayData?.desc ?? (data?.tmdb?.overview ? data.tmdb.overview.substring(0, 140) + (data.tmdb.overview.length > 140 ? '…' : '') : card.desc);
+          const displayImg = displayData?.img ?? data?.tmdb?.posterUrl ?? data?.cover ?? '';
+          const displayRating = displayData?.rating ?? data?.tmdb?.rating ?? card.rating ?? null;
+          const displayYear = displayData?.year ?? data?.tmdb?.year ?? card.year ?? null;
+          const displayType = displayData?.type ?? card.type;
+          const displayGenre = displayData?.genre ?? card.genre;
+          const displayUrl = displayData?.url ?? null;
+          const displayEmoji = displayData?.emoji ?? card.emoji;
+          const hasImg = !!displayImg;
+
           const cardTrackInfo = tracking[cat.id + ':' + card.title];
           const cardTrackState = cardTrackInfo ? TSTATE.find(x => x.id === cardTrackInfo.state) : null;
 
@@ -411,12 +520,12 @@ export default function Suggest({
                 {hasImg && (
                   <img
                     className="cin-poster-img"
-                    src={imgSrc}
+                    src={displayImg}
                     alt=""
                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 )}
-                {!hasImg && <span className="cin-em">{card.emoji}</span>}
+                {!hasImg && <span className="cin-em">{displayEmoji}</span>}
                 <div className="cin-overlay" />
                 {/* Category badge top-left */}
                 <div className="cin-badge">{cat.icon} {cat.name}</div>
@@ -424,21 +533,17 @@ export default function Suggest({
 
               {/* Content overlay */}
               <div className="cin-body">
-                <div className="cin-title">{card.title}</div>
+                <div className="cin-title">{displayTitle}</div>
 
                 <div className="cin-meta">
-                  <span>{card.type}</span>
-                  {card.genre && <><span className="cin-meta-sep"> · </span><span>{card.genre}</span></>}
-                  {(data?.tmdb?.year || card.year) && <><span className="cin-meta-sep"> · </span><span>{data?.tmdb?.year ?? card.year}</span></>}
+                  <span>{displayType}</span>
+                  {displayGenre && <><span className="cin-meta-sep"> · </span><span>{displayGenre}</span></>}
+                  {displayYear && <><span className="cin-meta-sep"> · </span><span>{displayYear}</span></>}
                   {data?.tmdb?.runtime && <><span className="cin-meta-sep"> · </span><span>{data.tmdb.runtime}</span></>}
-                  {(data?.tmdb?.rating || card.rating) && <><span className="cin-meta-sep"> · </span><span>⭐ {data?.tmdb?.rating || card.rating}</span></>}
+                  {displayRating && <><span className="cin-meta-sep"> · </span><span>⭐ {displayRating}</span></>}
                 </div>
 
-                <div className="cin-desc">
-                  {data?.tmdb?.overview
-                    ? data.tmdb.overview.substring(0, 140) + (data.tmdb.overview.length > 140 ? '…' : '')
-                    : card.desc}
-                </div>
+                <div className="cin-desc">{displayDesc}</div>
 
                 {data?.tmdb?.cast && data.tmdb.cast.length > 0 && (
                   <div className="cin-cast">{data.tmdb.cast.slice(0, 3).join(' · ')}</div>
@@ -454,7 +559,7 @@ export default function Suggest({
 
                 {/* Platform links */}
                 <div className="cin-actions">
-                  {card.platforms && card.platforms.length > 0 && card.platforms.map((p, j) => (
+                  {!displayData && card.platforms && card.platforms.length > 0 && card.platforms.map((p, j) => (
                     <button key={j} className="pb"
                       onClick={e => { e.stopPropagation(); window.open(p.url, '_blank', 'noopener,noreferrer'); }}
                     >
@@ -462,6 +567,14 @@ export default function Suggest({
                       {p.n}
                     </button>
                   ))}
+                  {displayUrl && (
+                    <button className="pb"
+                      onClick={e => { e.stopPropagation(); window.open(displayUrl, '_blank', 'noopener,noreferrer'); }}
+                    >
+                      <span className="dot" style={{ background: '#C89B3C' }} />
+                      {cat.id === 'visit' ? 'Ver no Maps' : cat.id === 'learn' ? 'Ver no YouTube' : cat.id === 'listen' ? 'Abrir no Deezer' : cat.id === 'read' ? 'Pré-visualizar' : 'Abrir'}
+                    </button>
+                  )}
                   {data?.tmdb?.trailerKey && (
                     <button className="trailer-btn"
                       onClick={e => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${data.tmdb!.trailerKey}`, '_blank', 'noopener,noreferrer'); }}
@@ -533,14 +646,14 @@ export default function Suggest({
                 <div className="qy-btn-sub">Abre e acompanha em tempo real</div>
               </div>
             </button>
-            <button className="qy-btn qy-later" onClick={() => { if (_onSwipeYes) _onSwipeYes(); setQuickYesOpen(false); }}>
+            <button className="qy-btn qy-later" onClick={() => { if (_onSwipeYes) _onSwipeYes(); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
               <span>✅</span>
               <div>
                 <div className="qy-btn-title">Sim, mais tarde</div>
                 <div className="qy-btn-sub">Fica marcado para hoje</div>
               </div>
             </button>
-            <button className="qy-btn qy-schedule" onClick={() => { setQuickYesOpen(false); }}>
+            <button className="qy-btn qy-schedule" onClick={() => { setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
               <span>🗓</span>
               <div>
                 <div className="qy-btn-title">Escolher hora</div>

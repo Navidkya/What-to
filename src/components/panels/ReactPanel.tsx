@@ -8,6 +8,8 @@ interface ReactPanelProps {
   onNow: () => void;
   onReact: (type: 'hoje' | 'save' | 'skip' | 'next') => void;
   resolvedImg?: string | null;
+  actionUrl?: string | null;
+  catId?: string;
 }
 
 const CAT_GRADIENTS: Record<string, string> = {
@@ -21,7 +23,7 @@ const CAT_GRADIENTS: Record<string, string> = {
   do:     '135deg, #052828 0%, #051a1a 100%',
 };
 
-export default function ReactPanel({ item, cat, isOpen, onClose, onNow, onReact, resolvedImg }: ReactPanelProps) {
+export default function ReactPanel({ item, cat, isOpen, onClose, onNow, onReact, resolvedImg, actionUrl }: ReactPanelProps) {
   if (!item) return null;
 
   const imgUrl = resolvedImg || null;
@@ -76,9 +78,12 @@ export default function ReactPanel({ item, cat, isOpen, onClose, onNow, onReact,
           <button
             className="rp-btn"
             style={{ flex: 1, padding: 18, borderRadius: 24, background: 'linear-gradient(135deg, #c8974a, #a87535)', border: 'none', color: '#000', fontSize: 16, fontWeight: 'bold' }}
-            onClick={onNow}
+            onClick={() => {
+              if (actionUrl) window.open(actionUrl, '_blank', 'noopener,noreferrer');
+              onNow();
+            }}
           >
-            Sim →
+            {actionUrl ? '▶ Abrir' : 'Sim →'}
           </button>
         </div>
 
