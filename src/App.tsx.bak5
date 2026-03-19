@@ -314,7 +314,6 @@ export default function App() {
                 }}
                 onClearTracking={() => {
                   store.updateTracking({});
-                  store.updateHistory(store.history.filter(h => h.action !== 'hoje'));
                 }}
               />
             </div>
@@ -537,7 +536,7 @@ export default function App() {
             onClose={() => setAddToListOpen(false)}
             onAddToList={(listId: string) => {
               if (!curSugg || !curCat) return;
-              const newItem: import('./types').UserListItem = {
+              const item: import('./types').UserListItem = {
                 id: Math.random().toString(36).slice(2, 9),
                 title: curSugg.title,
                 emoji: curSugg.emoji,
@@ -546,15 +545,11 @@ export default function App() {
                 type: curSugg.type,
                 addedAt: new Date().toISOString(),
               };
-              const updatedLists = store.userLists.map(l =>
-                l.id === listId
-                  ? { ...l, items: [...l.items.filter(i => i.title !== newItem.title), newItem] }
-                  : l
+              const updated = store.userLists.map(l =>
+                l.id === listId ? { ...l, items: [...l.items, item] } : l
               );
-              store.updateUserLists(updatedLists);
-              const listName = store.userLists.find(l => l.id === listId)?.name || '';
-              toast(`♡ Guardado em "${listName}"`);
-              setAddToListOpen(false);
+              store.updateUserLists(updated);
+              toast(`♡ Guardado em "${store.userLists.find(l => l.id === listId)?.name}"`);
             }}
             onCreateAndAdd={() => {}}
             onToast={toast}

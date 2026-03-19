@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Profile, HistoryEntry, TrackingMap, DataItem, Screen, ScheduleEntry } from '../../types';
 import { DATA, CATS, GRAD } from '../../data';
-import ConfirmModal from '../layout/ConfirmModal';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
 import { fetchMeal } from '../../services/mealdb';
 
@@ -15,9 +14,6 @@ interface HomeProps {
   onOpenLive: (title: string, emoji: string, catId: string) => void;
   onNav: (screen: Screen) => void;
   isActive: boolean;
-  onHideTracking: (key: string) => void;
-  onRemoveTracking: (key: string) => void;
-  onClearTracking: () => void;
 }
 
 interface HeroSlide {
@@ -147,8 +143,8 @@ async function fetchTMDBBackdrop(title: string): Promise<string | null> {
     if (tvRes.ok) {
       const tvData = await tvRes.json() as { results?: Array<{ backdrop_path?: string; poster_path?: string }> };
       const hit = tvData.results?.[0];
-      if (hit?.backdrop_path) img = `https://image.tmdb.org/t/p/original${hit.backdrop_path}`;
-      else if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w780${hit.poster_path}`;
+      if (hit?.backdrop_path) img = `https://image.tmdb.org/t/p/w1280${hit.backdrop_path}`;
+      else if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w500${hit.poster_path}`;
     }
 
     if (!img) {
@@ -156,8 +152,8 @@ async function fetchTMDBBackdrop(title: string): Promise<string | null> {
       if (mvRes.ok) {
         const mvData = await mvRes.json() as { results?: Array<{ backdrop_path?: string; poster_path?: string }> };
         const hit = mvData.results?.[0];
-        if (hit?.backdrop_path) img = `https://image.tmdb.org/t/p/original${hit.backdrop_path}`;
-        else if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w780${hit.poster_path}`;
+        if (hit?.backdrop_path) img = `https://image.tmdb.org/t/p/w1280${hit.backdrop_path}`;
+        else if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w500${hit.poster_path}`;
       }
     }
 
@@ -214,53 +210,66 @@ const CAT_IMAGES: Record<string, string> = {
   do: 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=400&q=80',
 };
 
+const CAT_ICONS: Record<string, React.ReactNode> = {
+  watch: (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="13" rx="2"/>
+      <path d="M16 2l-4 5-4-5"/>
+    </svg>
+  ),
+  eat: (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/>
+      <path d="M5 2v20"/>
+      <path d="M21 2c0 0-2 2-2 8h4c0-6-2-8-2-8z"/>
+      <path d="M19 10v12"/>
+    </svg>
+  ),
+  do: (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  ),
+  match: (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+  ),
+  play: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="3"/>
+      <path d="M6 12h4m-2-2v4"/>
+      <circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/>
+    </svg>
+  ),
+  read: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </svg>
+  ),
+  listen: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18V5l12-2v13"/>
+      <circle cx="6" cy="18" r="3"/>
+      <circle cx="18" cy="16" r="3"/>
+    </svg>
+  ),
+  learn: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17H8v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/>
+    </svg>
+  ),
+  visit: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+      <circle cx="12" cy="10" r="3"/>
+    </svg>
+  ),
+};
 
-function getPersonalisedSuggestions(history: HistoryEntry[], _profile: Profile, count = 9): HeroSlide[] {
-  // Count genres from history
-  const genreCount: Record<string, number> = {};
-  history.filter(h => h.action === 'agora' || h.action === 'hoje').forEach(h => {
-    if (h.genre) genreCount[h.genre] = (genreCount[h.genre] || 0) + 1;
-  });
-
-  const seenTitles = new Set(history.map(h => h.title));
-  const results: HeroSlide[] = [];
-
-  const cats = ['watch', 'eat', 'play', 'read', 'listen', 'do', 'learn', 'visit'];
-  for (const catId of cats) {
-    const pool = (DATA[catId] || []).filter(item => !seenTitles.has(item.title));
-    if (!pool.length) continue;
-
-    const scored = pool.map(item => ({
-      item,
-      score: (genreCount[item.genre] || 0) + Math.random() * 0.5,
-    })).sort((a, b) => b.score - a.score);
-
-    const pick = scored.slice(0, 2).map(s => ({ item: s.item, catId }));
-    results.push(...pick);
-    if (results.length >= count) break;
-  }
-
-  if (results.length < count) {
-    const allItems: HeroSlide[] = [];
-    cats.forEach(catId => {
-      (DATA[catId] || []).forEach(item => {
-        if (!seenTitles.has(item.title) && !results.some(r => r.item.title === item.title)) {
-          allItems.push({ item, catId });
-        }
-      });
-    });
-    const shuffled = allItems.sort(() => Math.random() - 0.5);
-    results.push(...shuffled.slice(0, count - results.length));
-  }
-
-  return results.slice(0, count).sort(() => Math.random() - 0.5);
-}
-
-export default function Home({ profile, history, tracking, schedules, onOpenCat, onSurprise, onOpenLive, onNav, isActive: _isActive, onHideTracking, onRemoveTracking, onClearTracking }: HomeProps) {
-  const [confirmClear, setConfirmClear] = useState(false);
-  const [heroSuggestions] = useState<HeroSlide[]>(() =>
-    getPersonalisedSuggestions(history, profile, 9)
-  );
+export default function Home({ profile, history, tracking, schedules, onOpenCat, onSurprise, onOpenLive, onNav, isActive: _isActive }: HomeProps) {
   const greeting = getGreeting(profile.name);
   const avatarLetter = profile.name ? profile.name[0].toUpperCase() : '◉';
   const dayTime = getDayTime();
@@ -397,62 +406,31 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         {/* A acompanhar */}
         {pendingItems.length > 0 && (
           <div className="pending-section">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div className="section-lbl" style={{ marginBottom: 0 }}>A acompanhar</div>
-              <button
-                onClick={() => {
-                  setConfirmClear(true);
-                }}
-                style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 11, cursor: 'pointer', fontFamily: "'Outfit', sans-serif", padding: '2px 6px' }}
-              >
-                Limpar
-              </button>
-            </div>
+            <div className="section-lbl" style={{ marginBottom: 8 }}>A acompanhar</div>
             {pendingItems.map((it, i) => (
-              <div key={i} className="pending-card card-base fade-in" data-cat={it.catId} style={{ display: 'flex', alignItems: 'center' }}>
-                {/* Clique na área principal abre o live panel */}
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => onOpenLive(it.title, it.emoji, it.catId)}>
-                  {pendingImages[it.title] ? (
-                    <img className="pending-thumb" src={pendingImages[it.title]} alt="" />
-                  ) : (
-                    <span className="pending-em">{it.emoji}</span>
-                  )}
-                  <div className="pending-info">
-                    <div className="pending-title">{it.title}</div>
-                    <div className="pending-sub">{it.sub}</div>
-                    {it.ep !== undefined && it.ep > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                        <div className="progress-bar-track" style={{ flex: 1 }}>
-                          <div className="progress-bar-fill" style={{ width: `${Math.min((it.ep / (it.total || 10)) * 100, 100)}%` }} />
-                        </div>
-                        <span style={{ fontSize: 10, color: 'var(--mu)', whiteSpace: 'nowrap' }}>
-                          {it.total ? `Ep. ${it.ep}/${it.total}` : `Ep. ${it.ep}`}
-                        </span>
+              <div key={i} className="pending-card card-base fade-in" data-cat={it.catId} onClick={() => onOpenLive(it.title, it.emoji, it.catId)}>
+                {pendingImages[it.title] ? (
+                  <img className="pending-thumb" src={pendingImages[it.title]} alt="" />
+                ) : (
+                  <span className="pending-em">{it.emoji}</span>
+                )}
+                <div className="pending-info">
+                  <div className="pending-title">{it.title}</div>
+                  <div className="pending-sub">{it.sub}</div>
+                  {it.ep !== undefined && it.ep > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                      <div className="progress-bar-track" style={{ flex: 1 }}>
+                        <div className="progress-bar-fill" style={{ width: `${Math.min((it.ep / (it.total || 10)) * 100, 100)}%` }} />
                       </div>
-                    )}
-                  </div>
-                  <span className={`pending-badge ${it.badge}`}>
-                    {it.badge === 'watching' ? '▶ A ver' : '✅ Hoje'}
-                  </span>
+                      <span style={{ fontSize: 10, color: 'var(--mu)', whiteSpace: 'nowrap' }}>
+                        {it.total ? `Ep. ${it.ep}/${it.total}` : `Ep. ${it.ep}`}
+                      </span>
+                    </div>
+                  )}
                 </div>
-
-                {/* Mini botões */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0, marginLeft: 6 }}>
-                  <button
-                    onClick={e => { e.stopPropagation(); onHideTracking(it.catId + ':' + it.title); }}
-                    style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--mu)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    title="Ocultar"
-                  >
-                    –
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); onRemoveTracking(it.catId + ':' + it.title); }}
-                    style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(224,112,112,0.06)', border: '1px solid rgba(224,112,112,0.2)', color: 'var(--rd)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    title="Apagar"
-                  >
-                    ×
-                  </button>
-                </div>
+                <span className={`pending-badge ${it.badge}`}>
+                  {it.badge === 'watching' ? '▶ A ver' : '✅ Hoje'}
+                </span>
               </div>
             ))}
           </div>
@@ -487,51 +465,28 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           </div>
         )}
 
-        {/* Carrossel de sugestões personalizadas */}
-        {heroSuggestions.length > 0 && (
-          <div style={{ marginTop: 16, marginBottom: 4 }}>
-            <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--mu)', marginBottom: 10, padding: '0 2px' }}>
-              Para ti
-            </div>
-            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' as const }}>
-              {heroSuggestions.map((slide, i) => {
-                const cat = CATS.find(c => c.id === slide.catId);
-                return (
-                  <button
-                    key={i}
-                    onClick={() => onOpenCat(slide.catId, slide.item)}
-                    style={{ flexShrink: 0, width: 130, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '12px 12px 10px', textAlign: 'left', cursor: 'pointer', transition: 'background 0.15s' }}
-                  >
-                    <div style={{ fontSize: 24, marginBottom: 6 }}>{slide.item.emoji}</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f1eb', lineHeight: 1.3, marginBottom: 4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
-                      {slide.item.title}
-                    </div>
-                    <div style={{ fontSize: 10, color: 'var(--mu)' }}>{cat?.name}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Categories */}
         <div className="section-lbl" style={{ marginTop: 12 }}>What to...</div>
 
-        <div className="cats-grid">
+        <div className="cats-3d-scroll">
           {exploreCats.map(c => (
             <button
               key={c.id}
-              className="cat-grid-card fade-in"
+              className="cat-3d-card fade-in"
               data-cat={c.id}
+              style={{ '--c': c.color } as React.CSSProperties}
               onClick={() => onOpenCat(c.id)}
             >
               {CAT_IMAGES[c.id] && (
-                <div className="cat-grid-bg" style={{ backgroundImage: `url(${CAT_IMAGES[c.id]})` }} />
+                <>
+                  <div className="cat-3d-bg" style={{ backgroundImage: `url(${CAT_IMAGES[c.id]})` }} />
+                  <div className="cat-3d-overlay" />
+                </>
               )}
-              <div className="cat-grid-overlay" />
-              <div className="cat-grid-content">
-                <span className="cat-grid-name">{c.name}</span>
-                <span className="cat-grid-count">{(DATA[c.id] || []).length} ideias</span>
+              <div className="cat-3d-content">
+                <span className="cat-3d-i">{CAT_ICONS[c.id] || c.icon}</span>
+                <span className="cat-3d-n">{c.name}</span>
+                <span className="cat-3d-count">{(DATA[c.id] || []).length} ideias</span>
               </div>
             </button>
           ))}
@@ -566,16 +521,6 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
 
         <div style={{ height: 8 }} />
       </div>
-      <ConfirmModal
-        isOpen={confirmClear}
-        title="Limpar lista"
-        message="Apaga todos os itens de 'A acompanhar'. Esta acção não pode ser desfeita."
-        confirmLabel="Limpar tudo"
-        cancelLabel="Cancelar"
-        danger={true}
-        onConfirm={() => { onClearTracking(); setConfirmClear(false); }}
-        onCancel={() => setConfirmClear(false)}
-      />
     </div>
   );
 }

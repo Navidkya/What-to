@@ -31,22 +31,15 @@ export default function AddToListPanel({ isOpen, title, emoji, lists, onClose, o
         </div>
 
         {lists.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>📋</div>
-            <div style={{ fontSize: 14, color: 'var(--tx)', marginBottom: 6, fontWeight: 500 }}>Ainda não tens listas</div>
-            <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 16, lineHeight: 1.5 }}>
-              Cria uma lista primeiro na tab Lista da barra inferior
-            </div>
-            <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 50, background: 'rgba(200,155,60,0.1)', border: '1px solid rgba(200,155,60,0.3)', color: 'var(--ac)', fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: 'pointer' }}>
-              OK
-            </button>
+          <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--mu)', fontSize: 13 }}>
+            Ainda não tens listas.<br/>Cria uma primeiro na tab Lista.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
             {lists.map(list => (
               <button
                 key={list.id}
-                onClick={() => { onAddToList(list.id); }}
+                onClick={() => { onAddToList(list.id); onClose(); }}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s', fontFamily: "'Outfit', sans-serif" }}
               >
                 <span style={{ fontSize: 20 }}>{list.emoji}</span>
