@@ -8,9 +8,10 @@ interface WhyPanelProps {
   onClose: () => void;
   onPick: (reason: WhyReason) => void;
   apiContext?: { type?: string; genre?: string; rating?: number };
+  onSkipNow: () => void;
 }
 
-export default function WhyPanel({ item, cat, isOpen, onClose, onPick, apiContext }: WhyPanelProps) {
+export default function WhyPanel({ item, cat, isOpen, onClose, onPick, apiContext, onSkipNow }: WhyPanelProps) {
   if (!item || !cat) return null;
 
   // Use apiContext data when available, fall back to DataItem fields
@@ -52,6 +53,24 @@ export default function WhyPanel({ item, cat, isOpen, onClose, onPick, apiContex
         <div className="why-header">
           <div className="why-item-title">{item.title}</div>
           <div className="why-subtitle">porquê não?</div>
+        </div>
+
+        {/* Botão principal — sem dar razão */}
+        <button
+          className="why-skip-btn"
+          onClick={() => { onSkipNow(); onClose(); }}
+        >
+          <span>→</span>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx)' }}>Próxima sugestão</div>
+            <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 2 }}>Avançar sem dar razão</div>
+          </div>
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 10px' }}>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+          <div style={{ fontSize: 10, color: 'var(--mu)', letterSpacing: 1, textTransform: 'uppercase' }}>ou diz porquê</div>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
         </div>
 
         <div className="why-list">

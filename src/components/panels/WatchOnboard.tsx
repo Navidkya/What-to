@@ -42,6 +42,11 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: WatchOnb
   const [type, setType] = useState(currentPrefs.type || 'Ambos');
   const [discovery, setDiscovery] = useState(currentPrefs.discovery || 'mistura');
   const [showExtraGenres, setShowExtraGenres] = useState(false);
+  const [origem, setOrigem] = useState((currentPrefs as any).origem || 'Qualquer');
+  const [lingua, setLingua] = useState((currentPrefs as any).lingua || 'Qualquer');
+  const [epoca, setEpoca] = useState((currentPrefs as any).epoca || 'qualquer');
+  const [minRating, setMinRating] = useState((currentPrefs as any).minRating || 'qualquer');
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -50,6 +55,11 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: WatchOnb
       setType(currentPrefs.type || 'Ambos');
       setDiscovery(currentPrefs.discovery || 'mistura');
       setShowExtraGenres(false);
+      setOrigem((currentPrefs as any).origem || 'Qualquer');
+      setLingua((currentPrefs as any).lingua || 'Qualquer');
+      setEpoca((currentPrefs as any).epoca || 'qualquer');
+      setMinRating((currentPrefs as any).minRating || 'qualquer');
+      setShowMoreFilters(false);
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -90,7 +100,11 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: WatchOnb
       duration: skip ? 'normal' : duration,
       type: skip ? 'Ambos' : type,
       discovery: skip ? 'mistura' : discovery,
-    });
+      origem: skip ? 'Qualquer' : origem,
+      lingua: skip ? 'Qualquer' : lingua,
+      epoca: skip ? 'qualquer' : epoca,
+      minRating: skip ? 'qualquer' : minRating,
+    } as WatchPrefs);
   };
 
   if (!isOpen) return null;
@@ -141,6 +155,59 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: WatchOnb
             {showExtraGenres ? '▲ menos opções' : '▼ mais opções'}
           </button>
         </div>
+
+        {/* ORIGEM */}
+        <div className="eat-ob-section">
+          <div className="eat-ob-lbl">Origem?</div>
+          <div className="eat-ob-row" style={{ flexWrap: 'wrap' }}>
+            {(['Qualquer', 'Americano', 'Europeu', 'Asiático', 'Português', 'Latino'] as const).map(o => (
+              <Toggle key={o} label={o} active={origem === o} onClick={() => setOrigem(o)} />
+            ))}
+          </div>
+        </div>
+
+        {/* LÍNGUA */}
+        <div className="eat-ob-section">
+          <div className="eat-ob-lbl">Língua?</div>
+          <div className="eat-ob-row">
+            {(['Qualquer', 'Português', 'Inglês', 'Legendado'] as const).map(l => (
+              <Toggle key={l} label={l} active={lingua === l} onClick={() => setLingua(l)} />
+            ))}
+          </div>
+        </div>
+
+        {/* ÉPOCA E RATING — expansíveis */}
+        {!showMoreFilters && (
+          <button onClick={() => setShowMoreFilters(true)} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 11, cursor: 'pointer', padding: '4px 0', fontFamily: "'Outfit', sans-serif", marginBottom: 8 }}>
+            ▼ mais filtros
+          </button>
+        )}
+
+        {showMoreFilters && (
+          <>
+            <div className="eat-ob-section">
+              <div className="eat-ob-lbl">Época?</div>
+              <div className="eat-ob-row">
+                {([['qualquer', 'Qualquer'], ['recente', 'Recente (+2015)'], ['classico', 'Clássico (-2000)']] as [string, string][]).map(([v, l]) => (
+                  <Toggle key={v} label={l} active={epoca === v} onClick={() => setEpoca(v)} />
+                ))}
+              </div>
+            </div>
+
+            <div className="eat-ob-section">
+              <div className="eat-ob-lbl">Rating mínimo?</div>
+              <div className="eat-ob-row">
+                {([['qualquer', 'Qualquer'], ['7', '7+ IMDb'], ['8', '8+ IMDb'], ['8.5', '8.5+ IMDb']] as [string, string][]).map(([v, l]) => (
+                  <Toggle key={v} label={l} active={minRating === v} onClick={() => setMinRating(v)} />
+                ))}
+              </div>
+            </div>
+
+            <button onClick={() => setShowMoreFilters(false)} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 11, cursor: 'pointer', padding: '4px 0', fontFamily: "'Outfit', sans-serif", marginBottom: 8 }}>
+              ▲ menos filtros
+            </button>
+          </>
+        )}
 
         {type !== 'Ambos' && (
           <div className="eat-ob-section">

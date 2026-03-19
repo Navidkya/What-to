@@ -360,6 +360,10 @@ body::after {
 .why-back-btn { width: 100%; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; color: rgba(255,255,255,0.5); font-family: 'Outfit', sans-serif; font-size: 14px; cursor: pointer; transition: border-color 0.2s; }
 .why-back-btn:active { border-color: rgba(255,255,255,0.3); }
 
+.why-skip-btn { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: rgba(200,155,60,0.08); border: 1px solid rgba(200,155,60,0.3); border-radius: 16px; cursor: pointer; text-align: left; transition: background 0.15s, border-color 0.15s; margin-bottom: 4px; }
+.why-skip-btn:active { background: rgba(200,155,60,0.15); border-color: rgba(200,155,60,0.5); }
+.why-skip-btn > span:first-child { font-size: 20px; color: var(--ac); flex-shrink: 0; }
+
 .link-item { background: var(--sf2); border: 1px solid var(--bd); border-radius: var(--r3); padding: 12px 13px; display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
 .link-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .link-info { flex: 1; min-width: 0; }
@@ -960,7 +964,7 @@ body::after {
   position: relative !important;
   flex: 1; width: 100%; display: flex; flex-direction: column; align-items: stretch; min-height: 0; padding: 0;
 }
-.cin-card { position: relative; width: 100%; height: calc(100vh - 150px); min-height: 400px; border-radius: 20px 20px 0 0; overflow: hidden; cursor: grab; transition: transform .2s ease, box-shadow .2s ease; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+.cin-card { position: relative; width: 100%; height: calc(100vh - 220px); min-height: 360px; border-radius: 20px 20px 0 0; overflow: hidden; cursor: grab; transition: transform .2s ease, box-shadow .2s ease; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
 .cin-card:active { cursor: grabbing; }
 
 /* ─── Surprise button ─── */

@@ -12,10 +12,9 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
       <path d="M9 21V12h6v9"/>
     </svg>
   ),
-  checklist: (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 11l3 3L22 4"/>
-      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+  lista: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
     </svg>
   ),
   friends: (
@@ -41,7 +40,7 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
 
 const NAV_ITEMS = [
   { id: 'home' as Screen, label: 'Início' },
-  { id: 'checklist' as Screen, label: 'Histórico' },
+  { id: 'lista' as Screen, label: 'Lista' },
   { id: 'friends' as Screen, label: 'Amigos' },
   { id: 'match-screen' as Screen, label: 'Match' },
   { id: 'profile' as Screen, label: 'Perfil' },

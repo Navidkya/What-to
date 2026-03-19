@@ -14,6 +14,9 @@ interface HomeProps {
   onOpenLive: (title: string, emoji: string, catId: string) => void;
   onNav: (screen: Screen) => void;
   isActive: boolean;
+  onHideTracking: (key: string) => void;
+  onRemoveTracking: (key: string) => void;
+  onClearTracking: () => void;
 }
 
 interface HeroSlide {
@@ -211,7 +214,7 @@ const CAT_IMAGES: Record<string, string> = {
 };
 
 
-export default function Home({ profile, history, tracking, schedules, onOpenCat, onSurprise, onOpenLive, onNav, isActive: _isActive }: HomeProps) {
+export default function Home({ profile, history, tracking, schedules, onOpenCat, onSurprise, onOpenLive, onNav, isActive: _isActive, onHideTracking, onRemoveTracking, onClearTracking }: HomeProps) {
   const greeting = getGreeting(profile.name);
   const avatarLetter = profile.name ? profile.name[0].toUpperCase() : '◉';
   const dayTime = getDayTime();
@@ -348,31 +351,62 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         {/* A acompanhar */}
         {pendingItems.length > 0 && (
           <div className="pending-section">
-            <div className="section-lbl" style={{ marginBottom: 8 }}>A acompanhar</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div className="section-lbl" style={{ marginBottom: 0 }}>A acompanhar</div>
+              <button
+                onClick={() => {
+                  if (confirm('Limpar toda a lista "A acompanhar"?')) onClearTracking();
+                }}
+                style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 11, cursor: 'pointer', fontFamily: "'Outfit', sans-serif", padding: '2px 6px' }}
+              >
+                Limpar
+              </button>
+            </div>
             {pendingItems.map((it, i) => (
-              <div key={i} className="pending-card card-base fade-in" data-cat={it.catId} onClick={() => onOpenLive(it.title, it.emoji, it.catId)}>
-                {pendingImages[it.title] ? (
-                  <img className="pending-thumb" src={pendingImages[it.title]} alt="" />
-                ) : (
-                  <span className="pending-em">{it.emoji}</span>
-                )}
-                <div className="pending-info">
-                  <div className="pending-title">{it.title}</div>
-                  <div className="pending-sub">{it.sub}</div>
-                  {it.ep !== undefined && it.ep > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      <div className="progress-bar-track" style={{ flex: 1 }}>
-                        <div className="progress-bar-fill" style={{ width: `${Math.min((it.ep / (it.total || 10)) * 100, 100)}%` }} />
-                      </div>
-                      <span style={{ fontSize: 10, color: 'var(--mu)', whiteSpace: 'nowrap' }}>
-                        {it.total ? `Ep. ${it.ep}/${it.total}` : `Ep. ${it.ep}`}
-                      </span>
-                    </div>
+              <div key={i} className="pending-card card-base fade-in" data-cat={it.catId} style={{ display: 'flex', alignItems: 'center' }}>
+                {/* Clique na área principal abre o live panel */}
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => onOpenLive(it.title, it.emoji, it.catId)}>
+                  {pendingImages[it.title] ? (
+                    <img className="pending-thumb" src={pendingImages[it.title]} alt="" />
+                  ) : (
+                    <span className="pending-em">{it.emoji}</span>
                   )}
+                  <div className="pending-info">
+                    <div className="pending-title">{it.title}</div>
+                    <div className="pending-sub">{it.sub}</div>
+                    {it.ep !== undefined && it.ep > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <div className="progress-bar-track" style={{ flex: 1 }}>
+                          <div className="progress-bar-fill" style={{ width: `${Math.min((it.ep / (it.total || 10)) * 100, 100)}%` }} />
+                        </div>
+                        <span style={{ fontSize: 10, color: 'var(--mu)', whiteSpace: 'nowrap' }}>
+                          {it.total ? `Ep. ${it.ep}/${it.total}` : `Ep. ${it.ep}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`pending-badge ${it.badge}`}>
+                    {it.badge === 'watching' ? '▶ A ver' : '✅ Hoje'}
+                  </span>
                 </div>
-                <span className={`pending-badge ${it.badge}`}>
-                  {it.badge === 'watching' ? '▶ A ver' : '✅ Hoje'}
-                </span>
+
+                {/* Mini botões */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0, marginLeft: 6 }}>
+                  <button
+                    onClick={e => { e.stopPropagation(); onHideTracking(it.catId + ':' + it.title); }}
+                    style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--mu)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Ocultar"
+                  >
+                    –
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); onRemoveTracking(it.catId + ':' + it.title); }}
+                    style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(224,112,112,0.06)', border: '1px solid rgba(224,112,112,0.2)', color: 'var(--rd)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Apagar"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             ))}
           </div>

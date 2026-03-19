@@ -22,6 +22,7 @@ import Checklist from './components/screens/Checklist';
 import Metrics from './components/screens/Metrics';
 import Match from './components/screens/Match';
 import Wishlist from './components/screens/Wishlist';
+import WatchlistScreen from './components/screens/WatchlistScreen';
 import Profile from './components/screens/Profile';
 import B2B from './components/screens/B2B';
 import Friends from './components/screens/Friends';
@@ -215,6 +216,10 @@ export default function App() {
       newPrefs[curCat.id][reason.p] = reason.v;
     }
     store.updatePrefs(newPrefs);
+    // Se mudou o tipo de conteúdo, actualiza também watchPrefs para forçar re-discover imediato
+    if (reason.p === 'type' && curCat?.id === 'watch' && typeof reason.v === 'string') {
+      store.updateWatchPrefs({ ...store.watchPrefs, type: reason.v as 'Filme' | 'Série' | 'Ambos' });
+    }
     toast(`${reason.icon} Percebido!`);
     // Load next suggestion immediately
     setAfterReactGenre(curSugg.genre || null);
@@ -253,7 +258,7 @@ export default function App() {
   }, [screen, navTo]);
 
   const isOnboarded = store.profile.onboarded;
-  const showBottomNav = isOnboarded && !['suggest', 'onboard'].includes(screen);
+  const showBottomNav = isOnboarded && screen !== 'onboard';
   const hSlot = screen === 'friends' ? 0 : screen === 'profile' ? 2 : 1;
   const overlayActive = !['home', 'friends', 'profile'].includes(screen);
 
@@ -295,6 +300,19 @@ export default function App() {
                 onOpenLive={openLive}
                 onNav={navTo}
                 isActive={true}
+                onHideTracking={(key) => {
+                  const updated = { ...store.tracking };
+                  if (updated[key]) updated[key] = { ...updated[key], state: 'paused' };
+                  store.updateTracking(updated);
+                }}
+                onRemoveTracking={(key) => {
+                  const updated = { ...store.tracking };
+                  delete updated[key];
+                  store.updateTracking(updated);
+                }}
+                onClearTracking={() => {
+                  store.updateTracking({});
+                }}
               />
             </div>
             <div className="h-pane">
@@ -395,6 +413,18 @@ export default function App() {
             }}
           />
 
+          <WatchlistScreen
+            wishlist={store.wishlist}
+            isActive={screen === 'lista'}
+            onRemove={i => {
+              const updated = store.wishlist.filter((_, idx) => idx !== i);
+              store.updateWishlist(updated);
+            }}
+            onClearAll={() => store.updateWishlist([])}
+            onToast={toast}
+            onOpenCat={openCat}
+          />
+
           <B2B
             isActive={screen === 'b2b'}
             onBack={goHome}
@@ -431,6 +461,11 @@ export default function App() {
             onClose={() => setWhyOpen(false)}
             onPick={reason => pickWhy(reason)}
             apiContext={curSuggApiContext}
+            onSkipNow={() => {
+              setWhyOpen(false);
+              setAfterReactGenre(null);
+              setAfterReactTrigger(t => t + 1);
+            }}
           />
 
           <LinkPanel

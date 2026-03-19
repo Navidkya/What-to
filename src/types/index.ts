@@ -178,6 +178,7 @@ export type Screen =
   | 'metrics'
   | 'match-screen'
   | 'wishlist'
+  | 'lista'
   | 'profile'
   | 'b2b'
   | 'friends'

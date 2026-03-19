@@ -314,6 +314,10 @@ export default function Suggest({
             duration: (watchPrefs.duration || 'normal') as DiscoverFilters['duration'],
             discovery: (watchPrefs.discovery || 'mistura') as DiscoverFilters['discovery'],
             platforms: profile.platforms || [],
+            origem: (watchPrefs as any).origem || 'Qualquer',
+            lingua: (watchPrefs as any).lingua || 'Qualquer',
+            epoca: (watchPrefs as any).epoca || 'qualquer',
+            minRating: parseFloat((watchPrefs as any).minRating) || 0,
           });
           setApiItems(items);
         } else if (cat.id === 'eat' && eatPrefs) {

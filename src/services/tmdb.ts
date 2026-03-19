@@ -161,6 +161,10 @@ export interface DiscoverFilters {
   discovery: 'populares' | 'mistura' | 'surpresa';
   platforms: string[];
   page?: number;
+  origem?: string;
+  lingua?: string;
+  epoca?: string;
+  minRating?: number;
 }
 
 export interface DiscoverItem {
@@ -242,6 +246,30 @@ export async function discoverTMDB(filters: DiscoverFilters): Promise<DiscoverIt
         params.set('with_watch_providers', providerIds.join('|'));
         params.set('watch_region', 'PT');
       }
+
+      // Língua original
+      if (filters.lingua === 'Inglês') params.set('with_original_language', 'en');
+      else if (filters.lingua === 'Português') params.set('with_original_language', 'pt');
+
+      // Época
+      if (filters.epoca === 'recente') {
+        params.set(mediaType === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte', '2015-01-01');
+      } else if (filters.epoca === 'classico') {
+        params.set(mediaType === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte', '2000-12-31');
+      }
+
+      // Rating mínimo
+      if (filters.minRating && filters.minRating > 0) {
+        params.set('vote_average.gte', String(filters.minRating));
+        params.set('vote_count.gte', '50');
+      }
+
+      // Origem (região de produção)
+      if (filters.origem === 'Europeu') params.set('with_origin_country', 'GB|FR|DE|IT|ES|PT');
+      else if (filters.origem === 'Asiático') params.set('with_origin_country', 'JP|KR|CN|IN');
+      else if (filters.origem === 'Português') params.set('with_origin_country', 'PT|BR');
+      else if (filters.origem === 'Latino') params.set('with_origin_country', 'MX|AR|CO|CL|BR');
+      // Americano usa o default (sem filtro de país)
 
       const endpoint = mediaType === 'movie' ? 'discover/movie' : 'discover/tv';
       const res = await fetch(`${TMDB_BASE}/${endpoint}?${params.toString()}`);
