@@ -283,9 +283,9 @@ body::after {
 .cin-card { position: relative; width: 100%; min-height: 340px; height: 360px; border-radius: var(--r); overflow: hidden; cursor: pointer; transition: transform 0.22s ease, box-shadow 0.22s ease; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
 .cin-card:hover { transform: translateY(-4px) scale(1.03); box-shadow: 0 20px 48px rgba(0,0,0,.45); }
 .cin-card:active { transform: scale(.99); }
-.cin-poster { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center 20%; }
+.cin-poster { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center 15%; min-height: 55vh; }
 .cin-em { font-size: 90px; position: relative; z-index: 1; filter: drop-shadow(0 6px 28px rgba(0,0,0,.8)); }
-.cin-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 25%, rgba(11,13,18,.4) 55%, rgba(11,13,18,.88) 100%); pointer-events: none; }
+.cin-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(11,13,18,.08) 0%, transparent 20%, rgba(11,13,18,.35) 50%, rgba(11,13,18,.92) 100%); pointer-events: none; }
 .cin-body { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 18px 16px; z-index: 2; }
 .cin-title { font-family: 'Cormorant Garamond', serif; font-size: 40px; font-style: italic; font-weight: 700; line-height: 1.05; margin: 0 0 6px; color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.9); }
 .cin-year { font-size: 11px; color: var(--mu2); margin-bottom: 4px; }
@@ -310,7 +310,6 @@ body::after {
 .pb:hover { background: var(--sf3); border-color: var(--bd3); }
 .pb .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .track-badge { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; background: var(--sf3); border: 1px solid var(--bd2); border-radius: 8px; padding: 5px 10px; font-size: 10px; color: var(--mu2); }
-.card-hint { text-align: center; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(242,237,230,.11); margin-top: 8px; }
 
 .cbar { width: 100%; max-width: 480px; flex-shrink: 0; padding: 3px 20px 8px; display: none; flex-direction: column; gap: 4px; }
 .cbar.on { display: flex; }
@@ -961,7 +960,7 @@ body::after {
   position: relative !important;
   flex: 1; width: 100%; display: flex; flex-direction: column; align-items: stretch; min-height: 0; padding: 0;
 }
-.cin-card { position: relative; width: 100%; height: calc(100vh - 160px); min-height: 340px; border-radius: 16px 16px 0 0; overflow: hidden; cursor: grab; transition: transform .2s ease, box-shadow .2s ease; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+.cin-card { position: relative; width: 100%; height: calc(100vh - 150px); min-height: 400px; border-radius: 20px 20px 0 0; overflow: hidden; cursor: grab; transition: transform .2s ease, box-shadow .2s ease; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
 .cin-card:active { cursor: grabbing; }
 
 /* ─── Surprise button ─── */
@@ -1021,7 +1020,7 @@ body::after {
 @keyframes shimmer { 0% { left: -100%; } 50% { left: 150%; } 100% { left: 150%; } }
 
 /* ─── Cinematic poster img ─── */
-.cin-poster-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; }
+.cin-poster-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 15%; display: block; image-rendering: auto; }
 
 /* ─── Cin-meta row ─── */
 .cin-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; font-size: 11px; color: rgba(245,241,235,0.6); font-family: 'Outfit', sans-serif; margin-bottom: 6px; }
@@ -1120,6 +1119,9 @@ body::after {
 .qy-now { border-color: rgba(94,201,122,0.3); }
 .qy-now:hover { background: rgba(94,201,122,0.1); border-color: rgba(94,201,122,0.5); }
 .qy-now .qy-btn-title { color: #5ec97a; }
+.qy-open { border-color: rgba(200,155,60,0.3); }
+.qy-open:hover { background: rgba(200,155,60,0.1); border-color: rgba(200,155,60,0.5); }
+.qy-open .qy-btn-title { color: #C89B3C; }
 .qy-later .qy-btn-title { color: #C89B3C; }
 .qy-schedule .qy-btn-title { color: #6ab4e0; }
 

@@ -49,6 +49,7 @@ export default function App() {
   const [curCat, setCurCat] = useState<Category | null>(null);
   const [curSugg, setCurSugg] = useState<DataItem | null>(null);
   const [curSuggImg, setCurSuggImg] = useState<string | null>(null);
+  const [curSuggApiContext, setCurSuggApiContext] = useState<{ type?: string; genre?: string; rating?: number } | undefined>(undefined);
   const [afterReactTrigger, setAfterReactTrigger] = useState(0);
   const [afterReactGenre, setAfterReactGenre] = useState<string | null>(null);
 
@@ -344,6 +345,7 @@ export default function App() {
             }}
             onOpenWhy={() => setWhyOpen(true)}
             onImgResolved={(img) => setCurSuggImg(img)}
+            onApiContextResolved={(ctx) => setCurSuggApiContext(ctx)}
             curSugg={curSugg}
             setCurSugg={setCurSugg}
             watchPrefs={store.watchPrefs}
@@ -428,6 +430,7 @@ export default function App() {
             isOpen={whyOpen}
             onClose={() => setWhyOpen(false)}
             onPick={reason => pickWhy(reason)}
+            apiContext={curSuggApiContext}
           />
 
           <LinkPanel

@@ -54,6 +54,7 @@ interface SuggestProps {
   onOpenWishlist: () => void;
   onOpenWhy: () => void;
   onImgResolved?: (img: string | null) => void;
+  onApiContextResolved?: (ctx: { type?: string; genre?: string; rating?: number } | undefined) => void;
   onSwipeYes?: () => void;
   onSwipeNo?: () => void;
   curSugg: DataItem | null;
@@ -186,7 +187,7 @@ function getDisplayData(item: APIItem, catId: string): DisplayData | null {
 export default function Suggest({
   cat, profile, tracking, prefs, disliked, isActive,
   afterReactTrigger, afterReactGenre,
-  onBack, onOpenReact, onOpenWishlist, onOpenWhy, onImgResolved,
+  onBack, onOpenReact, onOpenWishlist, onOpenWhy, onImgResolved, onApiContextResolved,
   onSwipeYes: _onSwipeYes, onSwipeNo: _onSwipeNo,
   curSugg, setCurSugg,
   watchPrefs, eatPrefs, listenPrefs, readPrefs, playPrefs, learnPrefs, visitPrefs,
@@ -456,6 +457,19 @@ export default function Suggest({
     onImgResolved(img);
   }, [activeIdx, cardDataMap, cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Notify parent of active API item context (for WhyPanel smart filtering)
+  useEffect(() => {
+    if (!onApiContextResolved) return;
+    const apiItem = apiItemsRef.current[activeIdx] ?? null;
+    if (!apiItem) { onApiContextResolved(undefined); return; }
+    const display = getDisplayData(apiItem, cat.id);
+    if (display) {
+      onApiContextResolved({ type: display.type ?? undefined, genre: display.genre ?? undefined, rating: display.rating ?? undefined });
+    } else {
+      onApiContextResolved(undefined);
+    }
+  }, [activeIdx, apiItems]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleCardClick = () => {
     onOpenReact();
   };
@@ -608,7 +622,6 @@ export default function Suggest({
           );
         })()}
 
-        <div className="card-hint">← desliza para não · toca para reagir · desliza para sim →</div>
       </div>
 
       <div className={`cbar${cbarOn ? ' on' : ''}`}>
@@ -631,38 +644,74 @@ export default function Suggest({
       </div>
 
       {/* PROBLEMA 4 — Quick Yes panel */}
-      {quickYesOpen && (
-        <div className="quick-yes-overlay" onClick={() => setQuickYesOpen(false)}>
-          <div className="quick-yes-sheet" onClick={e => e.stopPropagation()}>
-            <div className="qy-drag-bar" />
-            <div className="qy-title">
-              <span className="qy-emoji">{cards[activeIdx]?.emoji}</span>
-              <span>{cards[activeIdx]?.title}</span>
+      {quickYesOpen && (() => {
+        const activeApiItem = apiItemsRef.current[activeIdx] ?? null;
+        const qyDisplayData = activeApiItem ? getDisplayData(activeApiItem, cat.id) : null;
+        const qyTitle = qyDisplayData?.title || cards[activeIdx]?.title || '';
+        const qyEmoji = qyDisplayData?.emoji || cards[activeIdx]?.emoji || '✦';
+        const actionUrl = qyDisplayData?.url || cards[activeIdx]?.platforms?.[0]?.url || null;
+
+        const openLabel = cat.id === 'watch' ? '▶ Ver na plataforma'
+          : cat.id === 'listen' ? '🎵 Ouvir'
+          : cat.id === 'read' ? '📖 Ler agora'
+          : cat.id === 'play' ? '🎮 Jogar'
+          : cat.id === 'learn' ? '▶ Ver vídeo'
+          : cat.id === 'visit' ? '🗺 Ver no mapa'
+          : cat.id === 'eat' ? '🍽️ Ver receita'
+          : '▶ Abrir';
+
+        const now = new Date();
+        const start = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const endDate = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        const end = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(qyTitle)}&dates=${start}/${end}`;
+
+        return (
+          <div className="quick-yes-overlay" onClick={() => setQuickYesOpen(false)}>
+            <div className="quick-yes-sheet" onClick={e => e.stopPropagation()}>
+              <div className="qy-drag-bar" />
+              <div className="qy-title">
+                <span className="qy-emoji">{qyEmoji}</span>
+                <span>{qyTitle}</span>
+              </div>
+
+              <button className="qy-btn qy-now" onClick={() => { onOpenReact(); setQuickYesOpen(false); }}>
+                <span>▶</span>
+                <div>
+                  <div className="qy-btn-title">Sim, agora!</div>
+                  <div className="qy-btn-sub">Abre e acompanha em tempo real</div>
+                </div>
+              </button>
+
+              {actionUrl && (
+                <button className="qy-btn qy-open" onClick={() => { window.open(actionUrl, '_blank'); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
+                  <span>{cat.id === 'watch' ? '📺' : cat.id === 'listen' ? '🎵' : cat.id === 'visit' ? '🗺' : '🔗'}</span>
+                  <div>
+                    <div className="qy-btn-title">{openLabel}</div>
+                    <div className="qy-btn-sub">Abre directamente</div>
+                  </div>
+                </button>
+              )}
+
+              <button className="qy-btn qy-later" onClick={() => { if (_onSwipeYes) _onSwipeYes(); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
+                <span>✅</span>
+                <div>
+                  <div className="qy-btn-title">Sim, mais tarde</div>
+                  <div className="qy-btn-sub">Fica marcado para hoje</div>
+                </div>
+              </button>
+
+              <button className="qy-btn qy-schedule" onClick={() => { window.open(calendarUrl, '_blank'); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
+                <span>🗓</span>
+                <div>
+                  <div className="qy-btn-title">Escolher hora</div>
+                  <div className="qy-btn-sub">Abre o Google Calendar</div>
+                </div>
+              </button>
             </div>
-            <button className="qy-btn qy-now" onClick={() => { onOpenReact(); setQuickYesOpen(false); }}>
-              <span>▶</span>
-              <div>
-                <div className="qy-btn-title">Sim, agora!</div>
-                <div className="qy-btn-sub">Abre e acompanha em tempo real</div>
-              </div>
-            </button>
-            <button className="qy-btn qy-later" onClick={() => { if (_onSwipeYes) _onSwipeYes(); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
-              <span>✅</span>
-              <div>
-                <div className="qy-btn-title">Sim, mais tarde</div>
-                <div className="qy-btn-sub">Fica marcado para hoje</div>
-              </div>
-            </button>
-            <button className="qy-btn qy-schedule" onClick={() => { setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
-              <span>🗓</span>
-              <div>
-                <div className="qy-btn-title">Escolher hora</div>
-                <div className="qy-btn-sub">Agenda para um momento específico</div>
-              </div>
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
