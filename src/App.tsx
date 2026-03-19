@@ -346,6 +346,7 @@ export default function App() {
             onImgResolved={(img) => setCurSuggImg(img)}
             curSugg={curSugg}
             setCurSugg={setCurSugg}
+            watchPrefs={store.watchPrefs}
           />
 
           {/* Overlay screens */}

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { Category, DataItem, Profile, TrackingMap, PrefsMap } from '../../types';
+import type { Category, DataItem, Profile, TrackingMap, PrefsMap, WatchPrefs } from '../../types';
 import { DATA, GRAD, GENRES, TSTATE, TCOLOR, getPlatformId } from '../../data';
-import { fetchTMDB, type TMDBResult } from '../../services/tmdb';
+import { fetchTMDB, discoverTMDB, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
 import { fetchMeal, type MealResult } from '../../services/mealdb';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
 
@@ -53,6 +53,7 @@ interface SuggestProps {
   onSwipeNo?: () => void;
   curSugg: DataItem | null;
   setCurSugg: (item: DataItem) => void;
+  watchPrefs?: WatchPrefs;
 }
 
 function hasPlatform(item: DataItem, profile: Profile): boolean {
@@ -116,12 +117,42 @@ interface CardData {
   cover: string | null;
 }
 
+function discoverToDataItem(d: DiscoverItem): DataItem {
+  return {
+    title: d.title,
+    type: d.type as 'Filme' | 'Série',
+    genre: d.genre,
+    desc: d.overview || 'Sem descrição disponível.',
+    emoji: d.type === 'Filme' ? '🎬' : '📺',
+    platforms: d.platforms,
+    rating: typeof d.rating === 'number' ? d.rating : undefined,
+    year: d.year ?? undefined,
+  } as unknown as DataItem;
+}
+
+function discoverToCardData(d: DiscoverItem): CardData {
+  return {
+    tmdb: {
+      posterUrl: d.posterUrl,
+      backdropUrl: d.backdropUrl,
+      overview: d.overview,
+      rating: d.rating,
+      year: d.year,
+      runtime: null,
+      cast: [],
+      trailerKey: null,
+    },
+    meal: null,
+    cover: null,
+  };
+}
+
 export default function Suggest({
   cat, profile, tracking, prefs, disliked, isActive,
   afterReactTrigger, afterReactGenre,
   onBack, onOpenReact, onOpenWishlist, onOpenWhy, onImgResolved,
   onSwipeYes: _onSwipeYes, onSwipeNo: _onSwipeNo,
-  curSugg, setCurSugg,
+  curSugg, setCurSugg, watchPrefs,
 }: SuggestProps) {
   const [curMood, setCurMood] = useState('Tudo');
   const [cbarOn, setCbarOn] = useState(false);
@@ -139,9 +170,41 @@ export default function Suggest({
   activeIdxRef.current = activeIdx;
 
   const [quickYesOpen, setQuickYesOpen] = useState(false);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
+  const discoverPageRef = useRef(1);
+  const watchPrefsRef = useRef(watchPrefs);
+  watchPrefsRef.current = watchPrefs;
 
   // Track which titles we've already initiated fetches for
   const fetchedRef = useRef(new Set<string>());
+
+  const loadDiscover = useCallback(async (prefs: WatchPrefs, page = 1) => {
+    setDiscoverLoading(true);
+    discoverPageRef.current = page;
+    try {
+      const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
+      const filters: DiscoverFilters = {
+        type: typeMap[prefs.type] || 'both',
+        genres: prefs.genres || [],
+        duration: (prefs.duration || 'normal') as DiscoverFilters['duration'],
+        discovery: (prefs.discovery || 'populares') as DiscoverFilters['discovery'],
+        platforms: [],
+        page,
+      };
+      const items = await discoverTMDB(filters);
+      if (!items.length) return;
+      const fakeCards = items.map(discoverToDataItem);
+      const fakeMap: Record<string, CardData> = {};
+      items.forEach(d => { fakeMap[d.title] = discoverToCardData(d); });
+      setCards(fakeCards);
+      setActiveIdx(0);
+      setCardDataMap(fakeMap);
+      fetchedRef.current = new Set(); // let fetchTMDB enrich with cast/trailer/runtime
+      setCurSugg(fakeCards[0]);
+    } catch {} finally {
+      setDiscoverLoading(false);
+    }
+  }, [setCurSugg]);
 
   const getPool = useCallback((gf?: string, moodOverride?: string) => {
     const mood = moodOverride ?? curMood;
@@ -182,19 +245,25 @@ export default function Suggest({
     const currentIdx = activeIdxRef.current;
     const nextIdx = currentIdx + 1;
     if (nextIdx >= currentCards.length) {
-      loadBatch(undefined, undefined, currentCards.map(c => c.title));
+      if (cat.id === 'watch' && watchPrefsRef.current) {
+        loadDiscover(watchPrefsRef.current, discoverPageRef.current + 1);
+      } else {
+        loadBatch(undefined, undefined, currentCards.map(c => c.title));
+      }
     } else {
       setActiveIdx(nextIdx);
       setCurSugg(currentCards[nextIdx]);
     }
-  }, [loadBatch, setCurSugg]);
+  }, [loadBatch, loadDiscover, setCurSugg, cat.id]);
 
   // Load when screen activates or category changes
   useEffect(() => {
     if (isActive) {
       setCurMood('Tudo');
       setCbarOn(false);
-      if (curSugg) {
+      if (cat.id === 'watch' && watchPrefsRef.current) {
+        loadDiscover(watchPrefsRef.current);
+      } else if (curSugg) {
         // Pre-set from hero: start batch with this item
         const pool = getPool();
         const rest = pool.filter(s => s.title !== curSugg!.title).slice(0, 7);
@@ -317,7 +386,13 @@ export default function Suggest({
       </div>
 
       <div className="carousel-viewport">
-        {cards[activeIdx] && (() => {
+        {discoverLoading && (
+          <div className="discover-loading">
+            <div className="discover-spinner" />
+            <div className="discover-loading-lbl">A procurar sugestões…</div>
+          </div>
+        )}
+        {!discoverLoading && cards[activeIdx] && (() => {
           const card = cards[activeIdx];
           const data = cardDataMap[card.title];
           const hasImg = !!(data?.tmdb?.posterUrl || data?.cover);

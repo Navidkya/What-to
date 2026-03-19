@@ -143,8 +143,8 @@ async function fetchTMDBBackdrop(title: string): Promise<string | null> {
     if (tvRes.ok) {
       const tvData = await tvRes.json() as { results?: Array<{ backdrop_path?: string; poster_path?: string }> };
       const hit = tvData.results?.[0];
-      if (hit?.backdrop_path) img = `https://image.tmdb.org/t/p/w1280${hit.backdrop_path}`;
-      else if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w500${hit.poster_path}`;
+      if (hit?.backdrop_path) img = `https://image.tmdb.org/t/p/original${hit.backdrop_path}`;
+      else if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w780${hit.poster_path}`;
     }
 
     if (!img) {
@@ -152,8 +152,8 @@ async function fetchTMDBBackdrop(title: string): Promise<string | null> {
       if (mvRes.ok) {
         const mvData = await mvRes.json() as { results?: Array<{ backdrop_path?: string; poster_path?: string }> };
         const hit = mvData.results?.[0];
-        if (hit?.backdrop_path) img = `https://image.tmdb.org/t/p/w1280${hit.backdrop_path}`;
-        else if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w500${hit.poster_path}`;
+        if (hit?.backdrop_path) img = `https://image.tmdb.org/t/p/original${hit.backdrop_path}`;
+        else if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w780${hit.poster_path}`;
       }
     }
 
