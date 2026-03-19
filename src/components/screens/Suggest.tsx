@@ -53,6 +53,7 @@ interface SuggestProps {
   onOpenLink: (url: string, name: string, color: string) => void;
   onOpenWishlist: () => void;
   onOpenWhy: () => void;
+  onOpenAddToList?: () => void;
   onImgResolved?: (img: string | null) => void;
   onApiContextResolved?: (ctx: { type?: string; genre?: string; rating?: number } | undefined) => void;
   onSwipeYes?: () => void;
@@ -67,6 +68,7 @@ interface SuggestProps {
   learnPrefs?: LearnPrefs;
   visitPrefs?: VisitPrefs;
   doPrefs?: DoPrefs;
+  permanentPrefs?: import('../../types').PermanentPrefs;
 }
 
 function hasPlatform(item: DataItem, profile: Profile): boolean {
@@ -187,10 +189,10 @@ function getDisplayData(item: APIItem, catId: string): DisplayData | null {
 export default function Suggest({
   cat, profile, tracking, prefs, disliked, isActive,
   afterReactTrigger, afterReactGenre,
-  onBack, onOpenReact, onOpenWishlist, onOpenWhy, onImgResolved, onApiContextResolved,
+  onBack, onOpenReact, onOpenWishlist, onOpenWhy, onOpenAddToList, onImgResolved, onApiContextResolved,
   onSwipeYes: _onSwipeYes, onSwipeNo: _onSwipeNo,
   curSugg, setCurSugg,
-  watchPrefs, eatPrefs, listenPrefs, readPrefs, playPrefs, learnPrefs, visitPrefs,
+  watchPrefs, eatPrefs, listenPrefs, readPrefs, playPrefs, learnPrefs, visitPrefs, permanentPrefs,
 }: SuggestProps) {
   const [curMood, setCurMood] = useState('Tudo');
   const [cbarOn, setCbarOn] = useState(false);
@@ -229,6 +231,14 @@ export default function Suggest({
     // Apply hard preference filters (only when not overriding by genre/mood)
     if (!gf && mood === 'Tudo') {
       pool = filterByHardPrefs(pool, cat.id, prefs);
+    }
+    // Apply permanent allergy filter for eat category
+    if (cat.id === 'eat' && permanentPrefs?.foodAllergies?.length) {
+      const allergies = permanentPrefs.foodAllergies;
+      pool = pool.filter(item => {
+        const desc = ((item.desc ?? '') + ' ' + item.title + ' ' + item.genre).toLowerCase();
+        return !allergies.some(a => desc.includes(a.toLowerCase()));
+      });
     }
     pool.sort((a, b) => scoreItem(b, cat.id, prefs) - scoreItem(a, cat.id, prefs));
     return pool;
@@ -614,6 +624,15 @@ export default function Suggest({
                   <button className="suggest-btn-no" onClick={e => { e.stopPropagation(); onOpenWhy(); }}>
                     <span className="suggest-btn-arrow">←</span>
                     <span>Não</span>
+                  </button>
+                  <button
+                    className="suggest-btn-list"
+                    onClick={e => { e.stopPropagation(); onOpenAddToList?.(); }}
+                    title="Guardar em lista"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
                   </button>
                   <button className="suggest-btn-yes" onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}>
                     <span>Sim</span>

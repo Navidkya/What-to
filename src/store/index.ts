@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Profile, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, ScheduleEntry, EatPrefs, WatchPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs } from '../types';
+import type { Profile, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, ScheduleEntry, EatPrefs, WatchPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs, UserList, PermanentPrefs } from '../types';
 
 // ══════════════════════════════════════
 // localStorage helpers
@@ -55,6 +55,18 @@ export function useAppStore() {
   );
   const [doPrefs, setDoPrefsRaw] = useState<DoPrefs>(() =>
     load('wt6_doprefs', { done: false, contexto: 'qualquer' as const, local: 'qualquer' as const, custo: 'qualquer' as const })
+  );
+  const [userLists, setUserListsRaw] = useState<UserList[]>(() =>
+    load('wt6_lists', [])
+  );
+  const [permanentPrefs, setPermanentPrefsRaw] = useState<PermanentPrefs>(() =>
+    load('wt6_permprefs', {
+      foodAllergies: [],
+      foodDislikes: [],
+      alwaysGenres: {},
+      neverGenres: {},
+      preferredLanguage: 'any',
+    })
   );
 
   const updateProfile = useCallback((p: Profile) => {
@@ -132,6 +144,16 @@ export function useAppStore() {
     save('wt6_doprefs', p);
   }, []);
 
+  const updateUserLists = useCallback((l: UserList[]) => {
+    setUserListsRaw(l);
+    save('wt6_lists', l);
+  }, []);
+
+  const updatePermanentPrefs = useCallback((p: PermanentPrefs) => {
+    setPermanentPrefsRaw(p);
+    save('wt6_permprefs', p);
+  }, []);
+
   const clearAll = useCallback(() => {
     const empty: HistoryEntry[] = [];
     const emptyWL: WishlistEntry[] = [];
@@ -159,6 +181,8 @@ export function useAppStore() {
     learnPrefs, updateLearnPrefs,
     visitPrefs, updateVisitPrefs,
     doPrefs, updateDoPrefs,
+    userLists, updateUserLists,
+    permanentPrefs, updatePermanentPrefs,
     clearAll,
   };
 }

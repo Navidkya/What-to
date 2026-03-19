@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Profile as ProfileType, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry } from '../../types';
+import type { Profile as ProfileType, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, PermanentPrefs } from '../../types';
 import { ALL_PLATFORMS, PLATFORM_SECTIONS, CATS } from '../../data';
 
 interface ProfileProps {
@@ -15,12 +15,22 @@ interface ProfileProps {
   onClearAll: () => void;
   onResetEatPrefs: () => void;
   onResetWatchPrefs: () => void;
+  onResetListenPrefs: () => void;
+  onResetReadPrefs: () => void;
+  onResetPlayPrefs: () => void;
+  onResetLearnPrefs: () => void;
+  onResetVisitPrefs: () => void;
+  onResetDoPrefs: () => void;
+  permanentPrefs: PermanentPrefs;
+  onUpdatePermanentPrefs: (p: PermanentPrefs) => void;
   onToast: (msg: string) => void;
 }
 
 export default function Profile({
   profile, history, tracking, prefs, wishlist, isActive: _isActive,
-  onBack, onUpdateProfile, onUpdatePrefs, onClearAll, onResetEatPrefs, onResetWatchPrefs, onToast
+  onBack, onUpdateProfile, onUpdatePrefs, onClearAll, onResetEatPrefs, onResetWatchPrefs,
+  onResetListenPrefs, onResetReadPrefs, onResetPlayPrefs, onResetLearnPrefs, onResetVisitPrefs, onResetDoPrefs,
+  permanentPrefs, onUpdatePermanentPrefs, onToast
 }: ProfileProps) {
   const [nameVal, setNameVal] = useState(profile.name || '');
   const [selectedPlats, setSelectedPlats] = useState<string[]>(profile.platforms || []);
@@ -230,18 +240,83 @@ export default function Profile({
           🗑 Limpar todos os dados
         </button>
 
+        <div className="prof-section fade-in">
+          <div className="prof-sec-lbl">Preferências permanentes</div>
+          <div style={{ fontSize: 11, color: 'var(--mu)', marginBottom: 14, lineHeight: 1.6 }}>
+            Ficam sempre activas, independentemente do questionário de cada sessão.
+          </div>
+
+          {/* Alergias alimentares */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: 'var(--mu)', marginBottom: 8 }}>Alergias / restrições alimentares</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginBottom: 8 }}>
+              {(['gluten', 'lactose', 'frutos secos', 'marisco', 'ovos', 'soja'] as const).map(a => {
+                const active = permanentPrefs.foodAllergies.includes(a);
+                return (
+                  <button
+                    key={a}
+                    onClick={() => {
+                      const updated = active
+                        ? permanentPrefs.foodAllergies.filter(x => x !== a)
+                        : [...permanentPrefs.foodAllergies, a];
+                      onUpdatePermanentPrefs({ ...permanentPrefs, foodAllergies: updated });
+                    }}
+                    style={{ padding: '7px 14px', borderRadius: 50, fontSize: 12, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', background: active ? 'rgba(224,112,112,0.12)' : 'rgba(255,255,255,0.04)', border: active ? '1px solid rgba(224,112,112,0.5)' : '1px solid rgba(255,255,255,0.1)', color: active ? 'var(--rd)' : 'var(--mu)', fontWeight: active ? 600 : 400 }}
+                  >
+                    {active ? '✕ ' : ''}{a}
+                  </button>
+                );
+              })}
+            </div>
+            {permanentPrefs.foodAllergies.length > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--rd)', opacity: 0.8 }}>
+                Sugestões com {permanentPrefs.foodAllergies.join(', ')} serão sempre filtradas
+              </div>
+            )}
+          </div>
+
+          {/* Língua preferida */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: 'var(--mu)', marginBottom: 8 }}>Língua do conteúdo</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {([['any', 'Qualquer'], ['pt', 'Português'], ['en', 'Inglês']] as [string, string][]).map(([v, l]) => (
+                <button
+                  key={v}
+                  onClick={() => onUpdatePermanentPrefs({ ...permanentPrefs, preferredLanguage: v as 'pt' | 'en' | 'any' })}
+                  style={{ flex: 1, padding: '9px', borderRadius: 10, fontSize: 12, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', background: permanentPrefs.preferredLanguage === v ? 'rgba(200,155,60,0.12)' : 'rgba(255,255,255,0.04)', border: permanentPrefs.preferredLanguage === v ? '1px solid rgba(200,155,60,0.5)' : '1px solid rgba(255,255,255,0.1)', color: permanentPrefs.preferredLanguage === v ? 'var(--ac)' : 'var(--mu)', fontWeight: permanentPrefs.preferredLanguage === v ? 600 : 400 }}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="prof-section fade-in" style={{ marginTop: 16 }}>
           <div className="prof-sec-lbl">Preferências de categorias</div>
           <div style={{ fontSize: 11, color: 'var(--mu)', marginBottom: 12, lineHeight: 1.6 }}>
-            Repõe o assistente de configuração inicial.
+            Ao reconfigurar, o questionário de preferências volta a aparecer da próxima vez que abres a categoria.
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="prof-save" style={{ flex: 1 }} onClick={() => { onResetEatPrefs(); onToast('🍽️ Preferências de comer repostas'); }}>
-              🍽️ Reconfigurar comer
-            </button>
-            <button className="prof-save" style={{ flex: 1 }} onClick={() => { onResetWatchPrefs(); onToast('🎬 Preferências de ver repostas'); }}>
-              🎬 Reconfigurar ver
-            </button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {([
+              { id: 'watch', label: 'Ver', fn: onResetWatchPrefs },
+              { id: 'eat',   label: 'Comer', fn: onResetEatPrefs },
+              { id: 'listen',label: 'Ouvir', fn: onResetListenPrefs },
+              { id: 'read',  label: 'Ler', fn: onResetReadPrefs },
+              { id: 'play',  label: 'Jogar', fn: onResetPlayPrefs },
+              { id: 'learn', label: 'Aprender', fn: onResetLearnPrefs },
+              { id: 'visit', label: 'Visitar', fn: onResetVisitPrefs },
+              { id: 'do',    label: 'Fazer', fn: onResetDoPrefs },
+            ] as { id: string; label: string; fn: () => void }[]).map(({ id, label, fn }) => (
+              <button
+                key={id}
+                className="prof-save"
+                style={{ fontSize: 12, padding: '10px 8px' }}
+                onClick={() => { fn(); onToast(`Preferências de ${label} repostas`); }}
+              >
+                ↺ {label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -285,38 +360,7 @@ export default function Profile({
           </div>
         </div>
 
-        {/* BLOCO 8 — Influencers */}
-        <div className="prof-section fade-in">
-          <div className="prof-sec-lbl">
-            Criadores em Destaque
-            <span className="pro-badge">PRO</span>
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--mu)', marginBottom: 12, lineHeight: 1.6 }}>
-            Sugestões curadas pelos teus criadores favoritos
-          </div>
-          <div className="influencer-section">
-            {[
-              { nome: 'Miguel Rodrigues', handle: '@miguelr', av: 'M', cor: '#c8974a', sugestao: 'Elden Ring', cat: 'Jogar' },
-              { nome: 'Sofia Andrade', handle: '@sofiaа', av: 'S', cor: '#4a8c5c', sugestao: 'Pasta Carbonara', cat: 'Comer' },
-              { nome: 'Tiago Lopes', handle: '@tiagol', av: 'T', cor: '#4a6a9a', sugestao: 'Dune: Part Two', cat: 'Ver' },
-            ].map(inf => (
-              <div key={inf.nome} className="influencer-card">
-                <div className="influencer-av" style={{ background: inf.cor + '22', color: inf.cor, border: `1.5px solid ${inf.cor}55` }}>{inf.av}</div>
-                <div className="influencer-info">
-                  <div className="influencer-name">{inf.nome}</div>
-                  <div className="influencer-handle">{inf.handle}</div>
-                  <div style={{ marginTop: 4, fontSize: 12, color: 'var(--mu2)' }}>
-                    Sugere: <strong style={{ color: 'var(--tx)' }}>{inf.sugestao}</strong>
-                    {' '}<span className="influencer-badge">{inf.cat}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <button style={{ width: '100%', padding: '12px 0', background: 'none', border: '1px solid rgba(200,151,74,0.35)', borderRadius: 12, color: 'var(--ac)', fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: 'pointer' }}>
-            Em breve
-          </button>
-        </div>
+
 
         <div style={{ height: 8 }} />
       </div>

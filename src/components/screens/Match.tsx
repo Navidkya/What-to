@@ -382,8 +382,8 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
               <div className="mv-meta">{item.type} · {item.genre}{item.rating ? ` · ⭐${item.rating}` : ''}</div>
               <div className="mv-desc">{item.desc}</div>
               <div className="mv-btns">
-                <button className="mv-btn yes" onClick={() => mVote('yes')} disabled={limitReached} style={limitReached ? { opacity: .3, cursor: 'default' } : {}}>✅ Sim</button>
-                <button className="mv-btn no" onClick={() => mVote('no')}>❌ Não</button>
+                <button className="mv-btn yes" onClick={() => mVote('yes')} disabled={limitReached} style={limitReached ? { opacity: .3, cursor: 'default' } : {}}>Sim</button>
+                <button className="mv-btn no" onClick={() => mVote('no')}>Não</button>
               </div>
               {limitReached ? (
                 <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ac)', marginTop: 7 }}>Limite de {MAX_YES} atingido — confirma ou remove</div>
@@ -454,13 +454,22 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
 
     return (
       <>
-        <div className={`${matches.length ? 'mv-result-win' : 'mv-wait'} fade-in`} style={{ textAlign: 'center', padding: 22 }}>
-          <div style={{ fontSize: 44, marginBottom: 10 }}>{matches.length ? '🎉' : '😅'}</div>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, marginBottom: 6 }}>
+        <div className="mv-result-win fade-in" style={{
+          textAlign: 'center',
+          padding: '28px 20px',
+          background: 'radial-gradient(ellipse at center, rgba(200,155,60,0.15) 0%, transparent 70%)',
+          borderRadius: 20,
+          border: '1px solid rgba(200,155,60,0.2)',
+          marginBottom: 16,
+        }}>
+          <div style={{ fontSize: 52, marginBottom: 12, filter: 'drop-shadow(0 0 20px rgba(200,155,60,0.6))' }}>⚡</div>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, fontStyle: 'italic', color: '#f5f1eb', marginBottom: 8 }}>
             {matches.length ? `${matches.length} Match${matches.length > 1 ? 'es' : ''}!` : 'Sem matches perfeitos'}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--mu2)' }}>
-            {matches.length ? `Toda a equipa (${mS.participants.join(', ')}) concordou!` : 'Gostos muito diferentes hoje 😄'}
+          <div style={{ fontSize: 13, color: 'rgba(245,241,235,0.6)', lineHeight: 1.5 }}>
+            {matches.length
+              ? `Toda a equipa concordou!`
+              : 'Gostos muito diferentes hoje 😄'}
           </div>
         </div>
 

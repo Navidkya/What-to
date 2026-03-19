@@ -211,3 +211,30 @@ export interface MatchState {
   votes: Record<string, DataItem[]>;
   currentVoter: number;
 }
+
+export interface UserListItem {
+  id: string;
+  title: string;
+  emoji: string;
+  catId: string;
+  cat: string;
+  type: string;
+  addedAt: string;
+  note?: string;
+}
+
+export interface UserList {
+  id: string;
+  name: string;
+  emoji: string;
+  createdAt: string;
+  items: UserListItem[];
+}
+
+export interface PermanentPrefs {
+  foodAllergies: string[];
+  foodDislikes: string[];
+  alwaysGenres: Record<string, string[]>;
+  neverGenres: Record<string, string[]>;
+  preferredLanguage: 'pt' | 'en' | 'any';
+}

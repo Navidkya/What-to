@@ -22,7 +22,7 @@ import Checklist from './components/screens/Checklist';
 import Metrics from './components/screens/Metrics';
 import Match from './components/screens/Match';
 import Wishlist from './components/screens/Wishlist';
-import WatchlistScreen from './components/screens/WatchlistScreen';
+import ListsScreen from './components/screens/ListsScreen';
 import Profile from './components/screens/Profile';
 import B2B from './components/screens/B2B';
 import Friends from './components/screens/Friends';
@@ -35,6 +35,7 @@ import LivePanel from './components/panels/LivePanel';
 import TrackPanel from './components/panels/TrackPanel';
 import WrappedOverlay from './components/panels/WrappedOverlay';
 import SchedulePanel from './components/panels/SchedulePanel';
+import AddToListPanel from './components/panels/AddToListPanel';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -52,6 +53,7 @@ export default function App() {
   const [curSuggImg, setCurSuggImg] = useState<string | null>(null);
   const [curSuggApiContext, setCurSuggApiContext] = useState<{ type?: string; genre?: string; rating?: number } | undefined>(undefined);
   const [afterReactTrigger, setAfterReactTrigger] = useState(0);
+  const [addToListOpen, setAddToListOpen] = useState(false);
   const [afterReactGenre, setAfterReactGenre] = useState<string | null>(null);
 
   // Category onboarding
@@ -329,6 +331,14 @@ export default function App() {
                 onClearAll={store.clearAll}
                 onResetEatPrefs={() => store.updateEatPrefs({ done: false, local: [], fome: 'normal', budget: 'medio', restrictions: [], tempo: 'normal' })}
                 onResetWatchPrefs={() => store.updateWatchPrefs({ done: false, genres: [], duration: 'normal', type: 'Ambos', discovery: 'mistura' })}
+                onResetListenPrefs={() => store.updateListenPrefs({ done: false, type: 'Ambos', genres: [], energia: 'mistura' })}
+                onResetReadPrefs={() => store.updateReadPrefs({ done: false, type: 'Ambos', genres: [], peso: 'mistura' })}
+                onResetPlayPrefs={() => store.updatePlayPrefs({ done: false, type: 'Ambos', genres: [], dificuldade: 'normal' })}
+                onResetLearnPrefs={() => store.updateLearnPrefs({ done: false, formato: 'Ambos', genres: [], duracao: 'normal' })}
+                onResetVisitPrefs={() => store.updateVisitPrefs({ done: false, tipo: [], custo: 'qualquer', distancia: 'qualquer' })}
+                onResetDoPrefs={() => store.updateDoPrefs({ done: false, contexto: 'qualquer', local: 'qualquer', custo: 'qualquer' })}
+                permanentPrefs={store.permanentPrefs}
+                onUpdatePermanentPrefs={store.updatePermanentPrefs}
                 onToast={toast}
               />
             </div>
@@ -374,6 +384,7 @@ export default function App() {
             learnPrefs={store.learnPrefs}
             visitPrefs={store.visitPrefs}
             doPrefs={store.doPrefs}
+            permanentPrefs={store.permanentPrefs}
           />
 
           {/* Overlay screens */}
@@ -413,16 +424,11 @@ export default function App() {
             }}
           />
 
-          <WatchlistScreen
-            wishlist={store.wishlist}
+          <ListsScreen
+            lists={store.userLists}
             isActive={screen === 'lista'}
-            onRemove={i => {
-              const updated = store.wishlist.filter((_, idx) => idx !== i);
-              store.updateWishlist(updated);
-            }}
-            onClearAll={() => store.updateWishlist([])}
+            onUpdateLists={store.updateUserLists}
             onToast={toast}
-            onOpenCat={openCat}
           />
 
           <B2B
@@ -516,6 +522,36 @@ export default function App() {
             onSave={(entry: ScheduleEntry) => {
               store.updateSchedules([...store.schedules, entry]);
             }}
+            onToast={toast}
+          />
+
+          <AddToListPanel
+            isOpen={addToListOpen}
+            title={curSugg?.title || ''}
+            emoji={curSugg?.emoji || '✦'}
+            catId={curCat?.id || ''}
+            cat={curCat?.name || ''}
+            type={curSugg?.type || ''}
+            lists={store.userLists}
+            onClose={() => setAddToListOpen(false)}
+            onAddToList={(listId: string) => {
+              if (!curSugg || !curCat) return;
+              const item: import('./types').UserListItem = {
+                id: Math.random().toString(36).slice(2, 9),
+                title: curSugg.title,
+                emoji: curSugg.emoji,
+                catId: curCat.id,
+                cat: curCat.name,
+                type: curSugg.type,
+                addedAt: new Date().toISOString(),
+              };
+              const updated = store.userLists.map(l =>
+                l.id === listId ? { ...l, items: [...l.items, item] } : l
+              );
+              store.updateUserLists(updated);
+              toast(`♡ Guardado em "${store.userLists.find(l => l.id === listId)?.name}"`);
+            }}
+            onCreateAndAdd={() => {}}
             onToast={toast}
           />
 

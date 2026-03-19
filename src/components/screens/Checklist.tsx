@@ -16,29 +16,11 @@ const CAT_PT: Record<string, string> = {
   do: 'Fazer', listen: 'Ouvir', visit: 'Visitar', learn: 'Aprender',
 };
 
-const MOCK_THUMBS: Record<string, string> = {
-  'Oppenheimer': 'https://image.tmdb.org/t/p/w200/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
-  'Pasta Carbonara': 'https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg',
-  'Dune: Part Two': 'https://image.tmdb.org/t/p/w200/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
-  'Balatro': 'https://cdn.cloudflare.steamstatic.com/steam/apps/2379780/capsule_616x353.jpg',
-  'The Bear S02': 'https://image.tmdb.org/t/p/w200/sHFlbKS3WLqMnp9t2ghADIJFnuQ.jpg',
-  'Ramen Tonkotsu': 'https://www.themealdb.com/images/media/meals/wruvqy1503564open.jpg',
-};
 
-function mockDate(offset: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - offset);
-  return d.toISOString();
-}
 
-const MOCK_HISTORY: HistoryEntry[] = [
-  { catId: 'watch', title: 'Oppenheimer', emoji: '🎬', cat: 'Ver', date: mockDate(0), type: 'Filme', genre: 'Drama', action: 'agora' },
-  { catId: 'eat', title: 'Pasta Carbonara', emoji: '🍽️', cat: 'Comer', date: mockDate(0), type: 'Receita', genre: 'Italiano', action: 'agora' },
-  { catId: 'watch', title: 'Dune: Part Two', emoji: '🎬', cat: 'Ver', date: mockDate(1), type: 'Filme', genre: 'Sci-Fi', action: 'save' },
-  { catId: 'play', title: 'Balatro', emoji: '🎮', cat: 'Jogar', date: mockDate(1), type: 'Videojogo', genre: 'Roguelite', action: 'agora' },
-  { catId: 'watch', title: 'The Bear S02', emoji: '🎬', cat: 'Ver', date: mockDate(3), type: 'Série', genre: 'Drama', action: 'agora' },
-  { catId: 'eat', title: 'Ramen Tonkotsu', emoji: '🍽️', cat: 'Comer', date: mockDate(4), type: 'Receita', genre: 'Japonês', action: 'save' },
-];
+
+
+
 
 const CAT_COLORS: Record<string, string> = {
   watch: '#c8974a',
@@ -118,16 +100,7 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
   const renderList = () => {
     const q = search.toLowerCase();
     if (tab === 'hist') {
-      // Merge real history with mock items (real items first), deduplicate by title+date
-      const realTitles = new Set(history.map(h => h.title));
-      const mockItems = MOCK_HISTORY.filter(m => !realTitles.has(m.title));
-      let items = [...history.slice(0, 44), ...mockItems];
-      const seen = new Set<string>();
-      items = items.filter(h => {
-        if (seen.has(h.title)) return false;
-        seen.add(h.title);
-        return true;
-      });
+      let items = [...history];
       if (q) items = items.filter(h => h.title.toLowerCase().includes(q));
 
       if (!items.length) return (
@@ -156,7 +129,7 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
           </div>
         );
         group.forEach((h, i) => {
-          const thumb = MOCK_THUMBS[h.title] || (h.catId === 'watch' ? getTMDBThumb(h.title) : null);
+          const thumb = h.catId === 'watch' ? getTMDBThumb(h.title) : null;
           const catColor = CAT_COLORS[h.catId] || 'var(--mu)';
           rendered.push(
             <div key={`${bucket}-${i}`} className="cl-item card-base fade-in" style={{ cursor: 'pointer', gap: 10 }} onClick={() => setSelectedItem(h)}>
@@ -225,7 +198,10 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
       <div className="tb mw">
         <button className="tbi" onClick={onBack}>←</button>
         <div>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontStyle: 'italic', fontWeight: 600, color: '#f5f1eb' }}>Histórico</div>
+          <div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontStyle: 'italic', fontWeight: 700, color: '#f5f1eb' }}>Histórico</div>
+            <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 2 }}>{history.length} actividades</div>
+          </div>
         </div>
         <div style={{ width: 36 }} />
       </div>
