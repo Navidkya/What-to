@@ -27,6 +27,7 @@ import Profile from './components/screens/Profile';
 import B2B from './components/screens/B2B';
 import Friends from './components/screens/Friends';
 import FeedSocial from './components/screens/FeedSocial';
+import ForYou from './components/screens/ForYou';
 
 import ReactPanel from './components/panels/ReactPanel';
 import WhyPanel from './components/panels/WhyPanel';
@@ -260,7 +261,7 @@ export default function App() {
   }, [screen, navTo]);
 
   const isOnboarded = store.profile.onboarded;
-  const showBottomNav = isOnboarded && screen !== 'onboard';
+  const showBottomNav = isOnboarded && !['onboard', 'suggest'].includes(screen);
   const hSlot = screen === 'friends' ? 0 : screen === 'profile' ? 2 : 1;
   const overlayActive = !['home', 'friends', 'profile'].includes(screen);
 
@@ -373,6 +374,7 @@ export default function App() {
               toast('⏭ Ok, próxima!');
             }}
             onOpenWhy={() => setWhyOpen(true)}
+            onOpenAddToList={() => setAddToListOpen(true)}
             onImgResolved={(img) => setCurSuggImg(img)}
             onApiContextResolved={(ctx) => setCurSuggApiContext(ctx)}
             curSugg={curSugg}
@@ -441,6 +443,18 @@ export default function App() {
           <FeedSocial
             isActive={screen === 'feed'}
             onNav={navTo}
+          />
+
+          <ForYou
+            profile={store.profile}
+            history={store.history}
+            tracking={store.tracking}
+            lists={store.userLists}
+            isActive={screen === 'para-ti'}
+            onBack={() => setScreen('home')}
+            onNav={navTo}
+            onUpdateLists={store.updateUserLists}
+            onToast={toast}
           />
 
           {/* Bottom Nav */}

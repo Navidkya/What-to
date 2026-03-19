@@ -173,6 +173,7 @@ export interface DoPrefs {
 export type Screen =
   | 'onboard'
   | 'home'
+  | 'para-ti'
   | 'suggest'
   | 'checklist'
   | 'metrics'

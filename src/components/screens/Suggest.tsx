@@ -619,44 +619,43 @@ export default function Suggest({
                   </div>
                 )}
 
-                {/* 4 Actions in 2 rows */}
-                <div className="suggest-btns-wrap">
-                  {/* Row 1 */}
-                  <div className="suggest-btns-row">
+                {/* 4 Actions: 2 cols left, bookmark centre, Sim right */}
+                <div className="suggest-btns-v2">
+                  {/* Coluna esquerda: Não + Não porque */}
+                  <div className="suggest-btns-left">
                     <button
                       className="suggest-btn-skip"
                       onClick={e => { e.stopPropagation(); doAdvance(); }}
                     >
-                      <span>←</span>
-                      <span>Não</span>
+                      <span>←</span> Não
                     </button>
                     <button
                       className="suggest-btn-why"
                       onClick={e => { e.stopPropagation(); onOpenWhy(); }}
                     >
-                      <span>Não porque...</span>
-                      <span style={{ opacity: 0.5 }}>›</span>
+                      Não porque<span style={{ opacity: 0.5 }}>...</span>
                     </button>
                   </div>
-                  {/* Row 2 */}
-                  <div className="suggest-btns-row">
-                    <button
-                      className="suggest-btn-list"
-                      onClick={e => { e.stopPropagation(); onOpenAddToList?.(); }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                      </svg>
-                      <span>Guardar</span>
-                    </button>
-                    <button
-                      className="suggest-btn-yes"
-                      onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}
-                    >
-                      <span>Sim</span>
-                      <span className="suggest-btn-arrow">→</span>
-                    </button>
-                  </div>
+
+                  {/* Centro: bookmark */}
+                  <button
+                    className="suggest-btn-bookmark"
+                    onClick={e => { e.stopPropagation(); onOpenAddToList?.(); }}
+                    title="Guardar em lista"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
+                  </button>
+
+                  {/* Direita: Sim */}
+                  <button
+                    className="suggest-btn-yes-v2"
+                    onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}
+                  >
+                    <span>Sim</span>
+                    <span>→</span>
+                  </button>
                 </div>
               </div>
 

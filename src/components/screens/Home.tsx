@@ -215,52 +215,8 @@ const CAT_IMAGES: Record<string, string> = {
 };
 
 
-function getPersonalisedSuggestions(history: HistoryEntry[], _profile: Profile, count = 9): HeroSlide[] {
-  // Count genres from history
-  const genreCount: Record<string, number> = {};
-  history.filter(h => h.action === 'agora' || h.action === 'hoje').forEach(h => {
-    if (h.genre) genreCount[h.genre] = (genreCount[h.genre] || 0) + 1;
-  });
-
-  const seenTitles = new Set(history.map(h => h.title));
-  const results: HeroSlide[] = [];
-
-  const cats = ['watch', 'eat', 'play', 'read', 'listen', 'do', 'learn', 'visit'];
-  for (const catId of cats) {
-    const pool = (DATA[catId] || []).filter(item => !seenTitles.has(item.title));
-    if (!pool.length) continue;
-
-    const scored = pool.map(item => ({
-      item,
-      score: (genreCount[item.genre] || 0) + Math.random() * 0.5,
-    })).sort((a, b) => b.score - a.score);
-
-    const pick = scored.slice(0, 2).map(s => ({ item: s.item, catId }));
-    results.push(...pick);
-    if (results.length >= count) break;
-  }
-
-  if (results.length < count) {
-    const allItems: HeroSlide[] = [];
-    cats.forEach(catId => {
-      (DATA[catId] || []).forEach(item => {
-        if (!seenTitles.has(item.title) && !results.some(r => r.item.title === item.title)) {
-          allItems.push({ item, catId });
-        }
-      });
-    });
-    const shuffled = allItems.sort(() => Math.random() - 0.5);
-    results.push(...shuffled.slice(0, count - results.length));
-  }
-
-  return results.slice(0, count).sort(() => Math.random() - 0.5);
-}
-
 export default function Home({ profile, history, tracking, schedules, onOpenCat, onSurprise, onOpenLive, onNav, isActive: _isActive, onHideTracking, onRemoveTracking, onClearTracking }: HomeProps) {
   const [confirmClear, setConfirmClear] = useState(false);
-  const [heroSuggestions] = useState<HeroSlide[]>(() =>
-    getPersonalisedSuggestions(history, profile, 9)
-  );
   const greeting = getGreeting(profile.name);
   const avatarLetter = profile.name ? profile.name[0].toUpperCase() : '◉';
   const dayTime = getDayTime();
@@ -463,7 +419,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           <div
             className="home-hero"
             style={currentHeroImg ? undefined : { background: `linear-gradient(${GRAD[currentSlide.catId] || '135deg,#111,#222'})` }}
-            onClick={() => onOpenCat(currentSlide.catId, currentSlide.item)}
+            onClick={() => onNav('para-ti')}
           >
             {currentHeroImg && (
               <img className="home-hero-img" src={currentHeroImg} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
@@ -479,37 +435,10 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
               <div className="home-hero-desc">{currentSlide.item.desc}</div>
 
               <div className="home-hero-btns" onClick={e => e.stopPropagation()}>
-                <button className="btn-primary" onClick={() => onOpenCat(currentSlide.catId, currentSlide.item)}>
+                <button className="btn-primary" onClick={() => onNav('para-ti')}>
                   Ver ideia
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Carrossel de sugestões personalizadas */}
-        {heroSuggestions.length > 0 && (
-          <div style={{ marginTop: 16, marginBottom: 4 }}>
-            <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--mu)', marginBottom: 10, padding: '0 2px' }}>
-              Para ti
-            </div>
-            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' as const }}>
-              {heroSuggestions.map((slide, i) => {
-                const cat = CATS.find(c => c.id === slide.catId);
-                return (
-                  <button
-                    key={i}
-                    onClick={() => onOpenCat(slide.catId, slide.item)}
-                    style={{ flexShrink: 0, width: 130, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '12px 12px 10px', textAlign: 'left', cursor: 'pointer', transition: 'background 0.15s' }}
-                  >
-                    <div style={{ fontSize: 24, marginBottom: 6 }}>{slide.item.emoji}</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f1eb', lineHeight: 1.3, marginBottom: 4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
-                      {slide.item.title}
-                    </div>
-                    <div style={{ fontSize: 10, color: 'var(--mu)' }}>{cat?.name}</div>
-                  </button>
-                );
-              })}
             </div>
           </div>
         )}
