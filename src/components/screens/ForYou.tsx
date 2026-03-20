@@ -91,6 +91,19 @@ function buildForYouSlides(history: HistoryEntry[], _profile: Profile): ForYouSl
   return result;
 }
 
+function getActionLabel(catId: string): string {
+  switch (catId) {
+    case 'watch': return 'Ver';
+    case 'play': return 'Jogar';
+    case 'read': return 'Ler';
+    case 'listen': return 'Ouvir';
+    case 'visit': return 'Visitar';
+    case 'eat': return 'Comer';
+    case 'learn': return 'Aprender';
+    default: return 'Abrir';
+  }
+}
+
 export default function ForYou({
   profile: _profile,
   history,
@@ -107,7 +120,23 @@ export default function ForYou({
   const [images, setImages] = useState<Record<string, string>>({});
   const [addListOpen, setAddListOpen] = useState(false);
   const fetchedRef = useRef(new Set<string>());
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Auto-avanço a cada 8 segundos
+  const resetTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setActiveIdx(i => (i >= slides.length - 1 ? 0 : i + 1));
+    }, 8000);
+  };
+
+  useEffect(() => {
+    if (!isActive) return;
+    resetTimer();
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isActive, slides.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch imagens
   useEffect(() => {
     const toFetch = [slides[activeIdx], slides[activeIdx + 1]].filter(Boolean);
     toFetch.forEach(slide => {
@@ -138,6 +167,7 @@ export default function ForYou({
     });
   }, [activeIdx, slides]);
 
+  // Swipe touch
   const dragStart = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -148,8 +178,14 @@ export default function ForYou({
     if (dragStart.current === null) return;
     const dx = e.changedTouches[0].clientX - dragStart.current;
     if (Math.abs(dx) > 50) {
-      if (dx < 0 && activeIdx < slides.length - 1) setActiveIdx(i => i + 1);
-      if (dx > 0 && activeIdx > 0) setActiveIdx(i => i - 1);
+      if (dx < 0 && activeIdx < slides.length - 1) {
+        setActiveIdx(i => i + 1);
+        resetTimer();
+      }
+      if (dx > 0 && activeIdx > 0) {
+        setActiveIdx(i => i - 1);
+        resetTimer();
+      }
     }
     dragStart.current = null;
   };
@@ -161,12 +197,6 @@ export default function ForYou({
   const img = images[slide.title] || null;
   const cat = CATS.find(c => c.id === slide.catId);
   const primaryPlatform = slide.platforms?.[0] || null;
-
-  const now = new Date();
-  const start = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const endD = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-  const end = endD.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(slide.title)}&dates=${start}/${end}`;
 
   return (
     <div
@@ -195,7 +225,7 @@ export default function ForYou({
         {slides.map((_, i) => (
           <button
             key={i}
-            onClick={() => setActiveIdx(i)}
+            onClick={() => { setActiveIdx(i); resetTimer(); }}
             style={{
               height: 3,
               flex: 1,
@@ -214,7 +244,7 @@ export default function ForYou({
         ))}
       </div>
 
-      {/* Card principal */}
+      {/* Card principal — key força fade ao mudar slide */}
       <div
         style={{
           flex: 1,
@@ -227,105 +257,83 @@ export default function ForYou({
           overflowY: 'auto',
         }}
       >
-        <div className="cin-card" style={{ cursor: 'default', userSelect: 'none' }}>
-          {/* Poster */}
-          <div
-            className="cin-poster"
-            style={!img ? { background: `linear-gradient(${GRAD[slide.catId] || '135deg,#111,#222'})` } : undefined}
-          >
-            {img && (
-              <img
-                className="cin-poster-img"
-                src={img}
-                alt=""
-                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-              />
-            )}
-            {!img && <span className="cin-em">{slide.emoji}</span>}
-            <div className="cin-overlay" />
-            <div className="cin-badge">{cat?.icon} {slide.catName}</div>
-          </div>
-
-          {/* Info */}
-          <div className="cin-body">
-            <div className="cin-title">{slide.title}</div>
-            <div className="cin-meta">
-              <span>{slide.type}</span>
-              {slide.genre && <><span className="cin-meta-sep"> · </span><span>{slide.genre}</span></>}
-              {slide.year && <><span className="cin-meta-sep"> · </span><span>{slide.year}</span></>}
-              {slide.rating && <><span className="cin-meta-sep"> · </span><span>⭐ {slide.rating}</span></>}
+        <div
+          key={activeIdx}
+          style={{ transition: 'opacity 0.3s ease', opacity: 1 }}
+        >
+          <div className="cin-card" style={{ cursor: 'default', userSelect: 'none' }}>
+            {/* Poster */}
+            <div
+              className="cin-poster"
+              style={!img ? { background: `linear-gradient(${GRAD[slide.catId] || '135deg,#111,#222'})` } : undefined}
+            >
+              {img && (
+                <img
+                  className="cin-poster-img"
+                  src={img}
+                  alt=""
+                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
+              {!img && <span className="cin-em">{slide.emoji}</span>}
+              <div className="cin-overlay" />
+              <div className="cin-badge">{cat?.icon} {slide.catName}</div>
             </div>
-            <div className="cin-desc">{slide.desc}</div>
 
-            {/* Plataformas */}
-            {slide.platforms.length > 0 && (
-              <div className="cin-actions">
-                {slide.platforms.map((p, j) => (
-                  <button
-                    key={j}
-                    className="pb"
-                    onClick={() => window.open(p.url, '_blank', 'noopener,noreferrer')}
-                  >
-                    <span className="dot" style={{ background: p.c }} />
-                    {p.n}
-                  </button>
-                ))}
+            {/* Info */}
+            <div className="cin-body">
+              <div className="cin-title">{slide.title}</div>
+              <div className="cin-meta">
+                <span>{slide.type}</span>
+                {slide.genre && <><span className="cin-meta-sep"> · </span><span>{slide.genre}</span></>}
+                {slide.year && <><span className="cin-meta-sep"> · </span><span>{slide.year}</span></>}
+                {slide.rating && <><span className="cin-meta-sep"> · </span><span>⭐ {slide.rating}</span></>}
               </div>
-            )}
+              <div className="cin-desc">{slide.desc}</div>
 
-            {/* Acções principais */}
-            <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 8 }}>
-              {primaryPlatform && (
-                <button
-                  onClick={() => window.open(primaryPlatform.url, '_blank', 'noopener,noreferrer')}
-                  style={{ flex: 2, padding: '14px', borderRadius: 50, background: 'linear-gradient(135deg, #C89B3C, #a87535)', border: 'none', color: '#0B0D12', fontFamily: "'Outfit', sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <polygon points="5 3 19 12 5 21 5 3"/>
-                  </svg>
-                  Ver agora
-                </button>
+              {/* Plataformas */}
+              {slide.platforms.length > 0 && (
+                <div className="cin-actions">
+                  {slide.platforms.map((p, j) => (
+                    <button
+                      key={j}
+                      className="pb"
+                      onClick={() => window.open(p.url, '_blank', 'noopener,noreferrer')}
+                    >
+                      <span className="dot" style={{ background: p.c }} />
+                      {p.n}
+                    </button>
+                  ))}
+                </div>
               )}
 
-              <button
-                onClick={() => window.open(calendarUrl, '_blank', 'noopener,noreferrer')}
-                style={{ flex: 1, padding: '14px', borderRadius: 50, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,241,235,0.7)', fontFamily: "'Outfit', sans-serif", fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                Agendar
-              </button>
+              {/* Acções principais */}
+              <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 8 }}>
+                {primaryPlatform && (
+                  <button
+                    onClick={() => {
+                      window.open(primaryPlatform.url, '_blank', 'noopener,noreferrer');
+                      resetTimer();
+                    }}
+                    style={{ flex: 1, padding: '14px', borderRadius: 50, background: 'linear-gradient(135deg, #C89B3C, #a87535)', border: 'none', color: '#0B0D12', fontFamily: "'Outfit', sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    {getActionLabel(slide.catId)}
+                  </button>
+                )}
 
-              <button
-                onClick={() => setAddListOpen(true)}
-                style={{ width: 48, padding: '14px 0', borderRadius: 50, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,241,235,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                </svg>
-              </button>
-            </div>
-
-            {/* Navegação anterior/próximo */}
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-              <button
-                onClick={() => setActiveIdx(i => Math.max(0, i - 1))}
-                disabled={activeIdx === 0}
-                style={{ flex: 1, padding: '11px', borderRadius: 50, background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: activeIdx === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.5)', fontFamily: "'Outfit', sans-serif", fontSize: 13, cursor: activeIdx === 0 ? 'default' : 'pointer' }}
-              >
-                ← Anterior
-              </button>
-              <button
-                onClick={() => setActiveIdx(i => Math.min(slides.length - 1, i + 1))}
-                disabled={activeIdx === slides.length - 1}
-                style={{ flex: 1, padding: '11px', borderRadius: 50, background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: activeIdx === slides.length - 1 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.5)', fontFamily: "'Outfit', sans-serif", fontSize: 13, cursor: activeIdx === slides.length - 1 ? 'default' : 'pointer' }}
-              >
-                Seguinte →
-              </button>
+                {/* Guardar em lista */}
+                <button
+                  onClick={() => setAddListOpen(true)}
+                  style={{ width: 52, padding: '14px 0', borderRadius: 50, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,241,235,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -368,7 +376,7 @@ export default function ForYou({
                           : l
                       );
                       onUpdateLists(updated);
-                      onToast(`♡ Guardado em "${list.name}"`);
+                      onToast(`\u2661 Guardado em "${list.name}"`);
                       setAddListOpen(false);
                     }}
                     style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, cursor: 'pointer', fontFamily: "'Outfit', sans-serif", textAlign: 'left' }}

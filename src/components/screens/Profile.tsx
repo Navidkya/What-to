@@ -23,6 +23,7 @@ interface ProfileProps {
   onResetDoPrefs: () => void;
   permanentPrefs: PermanentPrefs;
   onUpdatePermanentPrefs: (p: PermanentPrefs) => void;
+  onLogout?: () => void;
   onToast: (msg: string) => void;
 }
 
@@ -30,7 +31,7 @@ export default function Profile({
   profile, history, tracking, prefs, wishlist, isActive: _isActive,
   onBack, onUpdateProfile, onUpdatePrefs, onClearAll, onResetEatPrefs, onResetWatchPrefs,
   onResetListenPrefs, onResetReadPrefs, onResetPlayPrefs, onResetLearnPrefs, onResetVisitPrefs, onResetDoPrefs,
-  permanentPrefs, onUpdatePermanentPrefs, onToast
+  permanentPrefs, onUpdatePermanentPrefs, onLogout, onToast
 }: ProfileProps) {
   const [nameVal, setNameVal] = useState(profile.name || '');
   const [selectedPlats, setSelectedPlats] = useState<string[]>(profile.platforms || []);
@@ -231,6 +232,16 @@ export default function Profile({
             <span className="prof-row-r">{wishlist.length} itens</span>
           </div>
         </div>
+
+        {onLogout && (
+          <button
+            className="prof-save"
+            style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,241,235,0.5)', borderRadius: 12, marginBottom: 8 }}
+            onClick={onLogout}
+          >
+            Terminar sessão
+          </button>
+        )}
 
         <button
           className="prof-save"

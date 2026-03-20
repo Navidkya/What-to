@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Screen, Category, DataItem, HistoryEntry, WishlistEntry, WhyReason, ScheduleEntry } from './types';
 import { CATS, getPlatformId } from './data';
 import { useAppStore } from './store';
@@ -37,12 +37,21 @@ import TrackPanel from './components/panels/TrackPanel';
 import WrappedOverlay from './components/panels/WrappedOverlay';
 import SchedulePanel from './components/panels/SchedulePanel';
 import AddToListPanel from './components/panels/AddToListPanel';
+import AuthScreen from './components/screens/AuthScreen';
+import { supabase } from './lib/supabase';
+import { signOut } from './services/auth';
+import { loadAllFromSupabase, syncProfileToSupabase, syncHistoryToSupabase, syncTrackingToSupabase, syncListsToSupabase, syncPrefsToSupabase } from './services/sync';
 
 const SWIPE_THRESHOLD = 60;
 
 export default function App() {
   const store = useAppStore();
   const { msg, visible, toast } = useToast();
+
+  // Auth state
+  const [authUser, setAuthUser] = useState<{ id: string; email?: string } | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -55,6 +64,7 @@ export default function App() {
   const [curSuggApiContext, setCurSuggApiContext] = useState<{ type?: string; genre?: string; rating?: number } | undefined>(undefined);
   const [afterReactTrigger, setAfterReactTrigger] = useState(0);
   const [addToListOpen, setAddToListOpen] = useState(false);
+  const [curDisplayItem, setCurDisplayItem] = useState<{ title: string; emoji: string; catId: string; cat: string; type: string } | null>(null);
   const [afterReactGenre, setAfterReactGenre] = useState<string | null>(null);
 
   // Category onboarding
@@ -229,6 +239,129 @@ export default function App() {
     setAfterReactTrigger(t => t + 1);
   }, [curSugg, curCat, store, toast]);
 
+  // ─── Auth + Sync ────────────────────────────────────────────────
+  const handleLogin = async (userId: string, userName: string) => {
+    setSyncing(true);
+    try {
+      const remote = await loadAllFromSupabase(userId);
+      if (remote.profile) {
+        store.updateProfile({
+          ...store.profile,
+          ...remote.profile,
+          name: remote.profile.name || userName || store.profile.name,
+          onboarded: true,
+        });
+      } else if (userName) {
+        store.updateProfile({ ...store.profile, name: userName, onboarded: true });
+      }
+      if (remote.history.length > 0) store.updateHistory(remote.history);
+      if (Object.keys(remote.tracking).length > 0) store.updateTracking(remote.tracking);
+      if (remote.lists.length > 0) store.updateUserLists(remote.lists);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (remote.prefs.eat) store.updateEatPrefs(remote.prefs.eat as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (remote.prefs.watch) store.updateWatchPrefs(remote.prefs.watch as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (remote.prefs.listen) store.updateListenPrefs(remote.prefs.listen as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (remote.prefs.read) store.updateReadPrefs(remote.prefs.read as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (remote.prefs.play) store.updatePlayPrefs(remote.prefs.play as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (remote.prefs.learn) store.updateLearnPrefs(remote.prefs.learn as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (remote.prefs.visit) store.updateVisitPrefs(remote.prefs.visit as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (remote.prefs.do) store.updateDoPrefs(remote.prefs.do as any);
+      setScreen('home');
+    } catch (e) {
+      console.error('Sync error:', e);
+      setScreen('home');
+    } finally {
+      setSyncing(false);
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    setAuthUser(null);
+    setScreen('onboard');
+  };
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setAuthUser({ id: session.user.id, email: session.user.email });
+        handleLogin(
+          session.user.id,
+          session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
+        );
+      } else {
+        setAuthLoading(false);
+      }
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setAuthUser({ id: session.user.id, email: session.user.email });
+        await handleLogin(
+          session.user.id,
+          session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
+        );
+      } else if (event === 'SIGNED_OUT') {
+        setAuthUser(null);
+        setAuthLoading(false);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 6d — Sync automático
+  useEffect(() => {
+    if (!authUser || syncing) return;
+    const timer = setTimeout(() => {
+      syncProfileToSupabase(authUser.id, store.profile).catch(console.error);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [store.profile, authUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!authUser || syncing) return;
+    const timer = setTimeout(() => {
+      syncHistoryToSupabase(authUser.id, store.history).catch(console.error);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [store.history, authUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!authUser || syncing) return;
+    const timer = setTimeout(() => {
+      syncTrackingToSupabase(authUser.id, store.tracking).catch(console.error);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [store.tracking, authUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!authUser || syncing) return;
+    const timer = setTimeout(() => {
+      syncListsToSupabase(authUser.id, store.userLists).catch(console.error);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [store.userLists, authUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!authUser || syncing) return;
+    const timer = setTimeout(() => {
+      syncPrefsToSupabase(authUser.id, {
+        eat: store.eatPrefs, watch: store.watchPrefs,
+        listen: store.listenPrefs, read: store.readPrefs,
+        play: store.playPrefs, learn: store.learnPrefs,
+        visit: store.visitPrefs, do: store.doPrefs,
+      }).catch(console.error);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [store.eatPrefs, store.watchPrefs, store.listenPrefs, store.readPrefs, store.playPrefs, store.learnPrefs, store.visitPrefs, store.doPrefs, authUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Swipe gesture handlers (for screen-level navigation on home/friends/feed)
   const handleGestureStart = useCallback((e: React.TouchEvent) => {
     if (!['home', 'friends', 'feed'].includes(screen)) return;
@@ -261,9 +394,29 @@ export default function App() {
   }, [screen, navTo]);
 
   const isOnboarded = store.profile.onboarded;
-  const showBottomNav = isOnboarded && !['onboard', 'suggest'].includes(screen);
+  const showBottomNav = isOnboarded && screen !== 'onboard';
   const hSlot = screen === 'friends' ? 0 : screen === 'profile' ? 2 : 1;
   const overlayActive = !['home', 'friends', 'profile'].includes(screen);
+
+  // Auth guards
+  if (authLoading) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: '#0B0D12', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 48, fontWeight: 700, color: '#C89B3C', opacity: 0.8 }}>
+          what<em>to</em>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <>
+        <AuthScreen onSuccess={() => {}} onToast={toast} />
+        <Toast message={msg} visible={visible} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -341,6 +494,7 @@ export default function App() {
                 onResetDoPrefs={() => store.updateDoPrefs({ done: false, contexto: 'qualquer', local: 'qualquer', custo: 'qualquer' })}
                 permanentPrefs={store.permanentPrefs}
                 onUpdatePermanentPrefs={store.updatePermanentPrefs}
+                onLogout={handleLogout}
                 onToast={toast}
               />
             </div>
@@ -375,6 +529,7 @@ export default function App() {
             }}
             onOpenWhy={() => setWhyOpen(true)}
             onOpenAddToList={() => setAddToListOpen(true)}
+            onDisplayItemResolved={(item) => setCurDisplayItem(item)}
             onImgResolved={(img) => setCurSuggImg(img)}
             onApiContextResolved={(ctx) => setCurSuggApiContext(ctx)}
             curSugg={curSugg}
@@ -542,22 +697,27 @@ export default function App() {
 
           <AddToListPanel
             isOpen={addToListOpen}
-            title={curSugg?.title || ''}
-            emoji={curSugg?.emoji || '✦'}
-            catId={curCat?.id || ''}
-            cat={curCat?.name || ''}
-            type={curSugg?.type || ''}
+            title={curDisplayItem?.title || curSugg?.title || ''}
+            emoji={curDisplayItem?.emoji || curSugg?.emoji || '✦'}
+            catId={curDisplayItem?.catId || curCat?.id || ''}
+            cat={curDisplayItem?.cat || curCat?.name || ''}
+            type={curDisplayItem?.type || curSugg?.type || ''}
             lists={store.userLists}
             onClose={() => setAddToListOpen(false)}
             onAddToList={(listId: string) => {
-              if (!curSugg || !curCat) return;
+              const itemTitle = curDisplayItem?.title || curSugg?.title || '';
+              const itemEmoji = curDisplayItem?.emoji || curSugg?.emoji || '❖';
+              const itemCatId = curDisplayItem?.catId || curCat?.id || '';
+              const itemCat = curDisplayItem?.cat || curCat?.name || '';
+              const itemType = curDisplayItem?.type || curSugg?.type || '';
+              if (!itemTitle) return;
               const newItem: import('./types').UserListItem = {
                 id: Math.random().toString(36).slice(2, 9),
-                title: curSugg.title,
-                emoji: curSugg.emoji,
-                catId: curCat.id,
-                cat: curCat.name,
-                type: curSugg.type,
+                title: itemTitle,
+                emoji: itemEmoji,
+                catId: itemCatId,
+                cat: itemCat,
+                type: itemType,
                 addedAt: new Date().toISOString(),
               };
               const updatedLists = store.userLists.map(l =>

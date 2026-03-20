@@ -54,6 +54,7 @@ interface SuggestProps {
   onOpenWishlist: () => void;
   onOpenWhy: () => void;
   onOpenAddToList?: () => void;
+  onDisplayItemResolved?: (item: { title: string; emoji: string; catId: string; cat: string; type: string } | null) => void;
   onImgResolved?: (img: string | null) => void;
   onApiContextResolved?: (ctx: { type?: string; genre?: string; rating?: number } | undefined) => void;
   onSwipeYes?: () => void;
@@ -189,7 +190,7 @@ function getDisplayData(item: APIItem, catId: string): DisplayData | null {
 export default function Suggest({
   cat, profile, tracking, prefs, disliked, isActive,
   afterReactTrigger, afterReactGenre,
-  onBack, onOpenReact, onOpenWishlist, onOpenWhy, onOpenAddToList, onImgResolved, onApiContextResolved,
+  onBack, onOpenReact, onOpenWishlist, onOpenWhy, onOpenAddToList, onDisplayItemResolved, onImgResolved, onApiContextResolved,
   onSwipeYes: _onSwipeYes, onSwipeNo: _onSwipeNo,
   curSugg, setCurSugg,
   watchPrefs, eatPrefs, listenPrefs, readPrefs, playPrefs, learnPrefs, visitPrefs, permanentPrefs,
@@ -483,6 +484,33 @@ export default function Suggest({
       onApiContextResolved(undefined);
     }
   }, [activeIdx, apiItems]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Notify parent of the currently displayed item (for AddToList)
+  useEffect(() => {
+    if (!onDisplayItemResolved) return;
+    const apiItem = apiItemsRef.current[activeIdx] ?? null;
+    const displayData = apiItem ? getDisplayData(apiItem, cat.id) : null;
+    if (displayData) {
+      onDisplayItemResolved({
+        title: displayData.title,
+        emoji: displayData.emoji,
+        catId: cat.id,
+        cat: cat.name,
+        type: displayData.type,
+      });
+    } else if (cards[activeIdx]) {
+      const card = cards[activeIdx];
+      onDisplayItemResolved({
+        title: card.title,
+        emoji: card.emoji,
+        catId: cat.id,
+        cat: cat.name,
+        type: card.type,
+      });
+    } else {
+      onDisplayItemResolved(null);
+    }
+  }, [activeIdx, apiItems, cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCardClick = () => {
     onOpenReact();
