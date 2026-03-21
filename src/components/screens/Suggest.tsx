@@ -9,6 +9,8 @@ import { discoverYouTube, type YTItem } from '../../services/youtube';
 import { discoverDeezer, type DeezerItem } from '../../services/deezer';
 import { discoverFSQ, type FSQItem } from '../../services/foursquare';
 import { discoverBooks, type GBItem } from '../../services/googleBooks';
+import { loadActiveSuggestions } from '../../services/influencers';
+import type { InfluencerSuggestion } from '../../services/influencers';
 
 const SUGGEST_FALLBACKS: Record<string, string> = {
   watch:  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=90',
@@ -133,7 +135,7 @@ interface CardData {
   cover: string | null;
 }
 
-type APIItem = DiscoverItem | RAWGItem | YTItem | DeezerItem | FSQItem | GBItem | MealDiscoverItem;
+type APIItem = DiscoverItem | RAWGItem | YTItem | DeezerItem | FSQItem | GBItem | MealDiscoverItem | InfluencerSuggestion;
 
 interface DisplayData {
   title: string;
@@ -145,9 +147,19 @@ interface DisplayData {
   genre: string;
   url: string | null;
   emoji: string;
+  influencer?: { name: string; handle: string; tier: string };
 }
 
 function getDisplayData(item: APIItem, catId: string): DisplayData | null {
+  // InfluencerSuggestion
+  if ('influencerId' in item) {
+    const i = item as InfluencerSuggestion;
+    return {
+      title: i.title, desc: i.desc, img: i.img, rating: i.rating, year: i.year,
+      type: i.type, genre: i.genre, url: null, emoji: i.emoji,
+      influencer: { name: i.influencerName, handle: i.influencerHandle, tier: i.influencerTier },
+    };
+  }
   // TMDB DiscoverItem (watch)
   if (catId === 'watch' && 'backdropUrl' in item) {
     const i = item as DiscoverItem;
@@ -393,7 +405,38 @@ export default function Suggest({
       }
     };
 
-    load();
+    const loadWithInfluencers = async () => {
+      await load();
+      try {
+        const infAll = await loadActiveSuggestions();
+        const infForCat = infAll
+          .filter(s => s.catId === cat.id && s.active && new Date(s.expiresAt) > new Date())
+          .sort((a, b) => {
+            const tierOrder = { gold: 0, silver: 1, base: 2 };
+            return (tierOrder[a.influencerTier] ?? 3) - (tierOrder[b.influencerTier] ?? 3);
+          })
+          .slice(0, 5);
+        if (infForCat.length > 0) {
+          setApiItems(prev => {
+            if (prev.length === 0) return infForCat;
+            const result = [...prev];
+            const positions = [2, 5, 7, 8, 14];
+            let inserted = 0;
+            for (const pos of positions) {
+              if (inserted >= infForCat.length) break;
+              if (pos <= result.length) {
+                result.splice(pos, 0, infForCat[inserted++]);
+              } else {
+                result.push(infForCat[inserted++]);
+              }
+            }
+            return result;
+          });
+        }
+      } catch { /* ignore */ }
+    };
+
+    loadWithInfluencers();
   }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // After ReactPanel/WhyPanel action → advance carousel
@@ -661,6 +704,7 @@ export default function Suggest({
                     className="cin-poster-img"
                     src={displayImg}
                     alt=""
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', position: 'absolute', inset: 0 }}
                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 )}
@@ -668,6 +712,12 @@ export default function Suggest({
                 <div className="cin-overlay" />
                 {/* Category badge top-left */}
                 <div className="cin-badge">{cat.icon} {cat.name}</div>
+                {/* Influencer badge top-right */}
+                {displayData?.influencer && displayData.influencer.tier !== 'base' && (
+                  <div className={`inf-badge ${displayData.influencer.tier === 'gold' ? 'inf-badge-gold' : 'inf-badge-silver'}`}>
+                    {displayData.influencer.tier === 'gold' ? '✦ Gold' : '◈ Silver'} · @{displayData.influencer.handle}
+                  </div>
+                )}
               </div>
 
               {/* Content overlay */}

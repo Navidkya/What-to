@@ -423,7 +423,7 @@ export default function App() {
   if (isCreator) {
     return (
       <>
-        <CreatorDashboard isActive={true} onBack={() => { setIsCreator(false); }} onToast={toast} />
+        <CreatorDashboard isActive={true} onBack={() => { setIsCreator(false); }} onToast={toast} userId={authUser?.id || ''} />
         <Toast message={msg} visible={visible} />
       </>
     );

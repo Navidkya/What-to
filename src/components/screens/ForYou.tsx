@@ -4,6 +4,8 @@ import { DATA, CATS, GRAD } from '../../data';
 import { fetchTMDB } from '../../services/tmdb';
 import { fetchMeal } from '../../services/mealdb';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
+import { loadActiveSuggestions } from '../../services/influencers';
+import type { InfluencerSuggestion } from '../../services/influencers';
 
 interface ForYouSlide {
   title: string;
@@ -18,6 +20,7 @@ interface ForYouSlide {
   platforms: Array<{ n: string; url: string; c: string }>;
   img: string | null;
   steamId?: number | null;
+  influencer?: { name: string; handle: string; tier: 'gold' };
 }
 
 interface Props {
@@ -30,6 +33,22 @@ interface Props {
   onNav: (screen: Screen) => void;
   onUpdateLists: (lists: UserList[]) => void;
   onToast: (msg: string) => void;
+}
+
+function getContextualImg(catId: string, genre: string): string {
+  if (catId === 'do') {
+    if (genre === 'Natureza') return 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=90';
+    if (genre === 'Criativo') return 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=90';
+    if (genre === 'Social') return 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&q=90';
+  }
+  if (catId === 'visit') return 'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=800&q=90';
+  if (catId === 'learn') return 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=90';
+  if (catId === 'listen') {
+    if (genre === 'Podcast') return 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=90';
+  }
+  return 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=90';
 }
 
 function buildForYouSlides(history: HistoryEntry[], _profile: Profile): ForYouSlide[] {
@@ -91,6 +110,44 @@ function buildForYouSlides(history: HistoryEntry[], _profile: Profile): ForYouSl
   return result;
 }
 
+function buildMixedSlides(base: ForYouSlide[], influencers: InfluencerSuggestion[]): ForYouSlide[] {
+  const goldSlides: ForYouSlide[] = influencers
+    .filter(s => s.influencerTier === 'gold')
+    .slice(0, 3)
+    .map(s => {
+      const cat = CATS.find(c => c.id === s.catId);
+      return {
+        title: s.title,
+        desc: s.desc,
+        emoji: s.emoji,
+        catId: s.catId,
+        catName: cat?.name || s.cat,
+        type: s.type,
+        genre: s.genre,
+        rating: s.rating || undefined,
+        year: s.year || undefined,
+        platforms: [],
+        img: s.img,
+        influencer: { name: s.influencerName, handle: s.influencerHandle, tier: 'gold' as const },
+      };
+    });
+
+  if (goldSlides.length === 0) return base.slice(0, 10);
+
+  const mixed: ForYouSlide[] = [];
+  const positions = [3, 6, 9];
+  let infIdx = 0;
+  for (let i = 0; i < base.length || infIdx < goldSlides.length; i++) {
+    if (mixed.length >= 10) break;
+    if (positions.includes(mixed.length) && infIdx < goldSlides.length) {
+      mixed.push(goldSlides[infIdx++]);
+    } else if (i < base.length) {
+      mixed.push(base[i]);
+    }
+  }
+  return mixed.slice(0, 10);
+}
+
 function getActionLabel(catId: string): string {
   switch (catId) {
     case 'watch': return 'Ver';
@@ -115,14 +172,14 @@ export default function ForYou({
   onUpdateLists,
   onToast,
 }: Props) {
-  const [slides] = useState<ForYouSlide[]>(() => buildForYouSlides(history, _profile));
+  const [baseSlides] = useState<ForYouSlide[]>(() => buildForYouSlides(history, _profile));
+  const [slides, setSlides] = useState<ForYouSlide[]>(() => buildForYouSlides(history, _profile));
   const [activeIdx, setActiveIdx] = useState(0);
   const [images, setImages] = useState<Record<string, string>>({});
   const [addListOpen, setAddListOpen] = useState(false);
   const fetchedRef = useRef(new Set<string>());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Auto-avanço a cada 8 segundos
   const resetTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -133,15 +190,28 @@ export default function ForYou({
   useEffect(() => {
     if (!isActive) return;
     resetTimer();
+    // Load influencer suggestions and mix
+    loadActiveSuggestions().then(all => {
+      const gold = all.filter(s => s.influencerTier === 'gold').slice(0, 3);
+      const mixed = buildMixedSlides(baseSlides, gold);
+      setSlides(mixed);
+    }).catch(() => { /* ignore */ });
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isActive, slides.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, baseSlides.length]);
 
-  // Fetch imagens
+  // Fetch images
   useEffect(() => {
     const toFetch = [slides[activeIdx], slides[activeIdx + 1]].filter(Boolean);
     toFetch.forEach(slide => {
       if (!slide || fetchedRef.current.has(slide.title)) return;
       fetchedRef.current.add(slide.title);
+
+      // Influencer slides: use img directly if available
+      if (slide.influencer && slide.img) {
+        setImages(prev => ({ ...prev, [slide.title]: slide.img as string }));
+        return;
+      }
 
       (async () => {
         let img: string | null = null;
@@ -149,7 +219,7 @@ export default function ForYou({
           if (slide.catId === 'watch') {
             const tmdbType = slide.type === 'Filme' ? 'movie' : 'tv';
             const data = await fetchTMDB(slide.title, tmdbType);
-            img = data?.posterUrl || null;
+            img = data?.backdropUrl || data?.posterUrl || null;
           } else if (slide.catId === 'eat' && slide.type === 'Receita') {
             const meal = await fetchMeal(slide.title);
             img = meal?.photoUrl || null;
@@ -160,6 +230,11 @@ export default function ForYou({
           }
         } catch { /* skip */ }
 
+        // Fallback for categories without API images
+        if (!img && ['do', 'visit', 'learn', 'listen'].includes(slide.catId)) {
+          img = getContextualImg(slide.catId, slide.genre);
+        }
+
         if (img) {
           setImages(prev => ({ ...prev, [slide.title]: img as string }));
         }
@@ -167,34 +242,28 @@ export default function ForYou({
     });
   }, [activeIdx, slides]);
 
-  // Swipe touch
+  // Touch swipe
   const dragStart = useRef<number | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    dragStart.current = e.touches[0].clientX;
-  };
-
+  const handleTouchStart = (e: React.TouchEvent) => { dragStart.current = e.touches[0].clientX; };
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (dragStart.current === null) return;
     const dx = e.changedTouches[0].clientX - dragStart.current;
     if (Math.abs(dx) > 50) {
-      if (dx < 0 && activeIdx < slides.length - 1) {
-        setActiveIdx(i => i + 1);
-        resetTimer();
-      }
-      if (dx > 0 && activeIdx > 0) {
-        setActiveIdx(i => i - 1);
-        resetTimer();
-      }
+      if (dx < 0 && activeIdx < slides.length - 1) { setActiveIdx(i => i + 1); resetTimer(); }
+      if (dx > 0 && activeIdx > 0) { setActiveIdx(i => i - 1); resetTimer(); }
     }
     dragStart.current = null;
   };
+
+  // Mouse drag
+  const mouseDragRef = useRef<number | null>(null);
+  const mouseDraggingRef = useRef(false);
 
   const slide = slides[activeIdx];
   if (!isActive) return null;
   if (!slide) return null;
 
-  const img = images[slide.title] || null;
+  const img = slide.influencer && slide.img ? slide.img : (images[slide.title] || null);
   const cat = CATS.find(c => c.id === slide.catId);
   const primaryPlatform = slide.platforms?.[0] || null;
 
@@ -227,41 +296,33 @@ export default function ForYou({
             key={i}
             onClick={() => { setActiveIdx(i); resetTimer(); }}
             style={{
-              height: 3,
-              flex: 1,
-              borderRadius: 100,
-              background: i === activeIdx
-                ? '#C89B3C'
-                : i < activeIdx
-                  ? 'rgba(200,155,60,0.35)'
-                  : 'rgba(255,255,255,0.15)',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              transition: 'background 0.3s',
+              height: 3, flex: 1, borderRadius: 100,
+              background: i === activeIdx ? '#C89B3C' : i < activeIdx ? 'rgba(200,155,60,0.35)' : 'rgba(255,255,255,0.15)',
+              border: 'none', cursor: 'pointer', padding: 0, transition: 'background 0.3s',
             }}
           />
         ))}
       </div>
 
-      {/* Card principal — key força fade ao mudar slide */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          maxWidth: 480,
-          margin: '0 auto',
-          width: '100%',
-          padding: '0 16px',
-          overflowY: 'auto',
-        }}
-      >
-        <div
-          key={activeIdx}
-          style={{ transition: 'opacity 0.3s ease', opacity: 1 }}
-        >
-          <div className="cin-card" style={{ cursor: 'default', userSelect: 'none' }}>
+      {/* Card */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 480, margin: '0 auto', width: '100%', padding: '0 16px', overflowY: 'auto' }}>
+        <div key={activeIdx} style={{ transition: 'opacity 0.3s ease', opacity: 1 }}>
+          <div
+            className="cin-card"
+            style={{ cursor: 'default', userSelect: 'none' }}
+            onMouseDown={e => { mouseDragRef.current = e.clientX; mouseDraggingRef.current = false; }}
+            onMouseMove={e => { if (mouseDragRef.current !== null && Math.abs(e.clientX - mouseDragRef.current) > 5) mouseDraggingRef.current = true; }}
+            onMouseUp={e => {
+              if (mouseDragRef.current === null) return;
+              const dx = e.clientX - mouseDragRef.current;
+              mouseDragRef.current = null;
+              if (Math.abs(dx) > 50) {
+                if (dx < 0 && activeIdx < slides.length - 1) { setActiveIdx(i => i + 1); resetTimer(); }
+                if (dx > 0 && activeIdx > 0) { setActiveIdx(i => i - 1); resetTimer(); }
+              }
+              mouseDraggingRef.current = false;
+            }}
+          >
             {/* Poster */}
             <div
               className="cin-poster"
@@ -272,12 +333,20 @@ export default function ForYou({
                   className="cin-poster-img"
                   src={img}
                   alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', position: 'absolute', inset: 0 }}
                   onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
               )}
               {!img && <span className="cin-em">{slide.emoji}</span>}
               <div className="cin-overlay" />
               <div className="cin-badge">{cat?.icon} {slide.catName}</div>
+
+              {/* Influencer badge (gold only) */}
+              {slide.influencer && (
+                <div className="inf-badge inf-badge-gold">
+                  ✦ Gold · @{slide.influencer.handle}
+                </div>
+              )}
             </div>
 
             {/* Info */}
@@ -291,40 +360,26 @@ export default function ForYou({
               </div>
               <div className="cin-desc">{slide.desc}</div>
 
-              {/* Plataformas */}
               {slide.platforms.length > 0 && (
                 <div className="cin-actions">
                   {slide.platforms.map((p, j) => (
-                    <button
-                      key={j}
-                      className="pb"
-                      onClick={() => window.open(p.url, '_blank', 'noopener,noreferrer')}
-                    >
-                      <span className="dot" style={{ background: p.c }} />
-                      {p.n}
+                    <button key={j} className="pb" onClick={() => window.open(p.url, '_blank', 'noopener,noreferrer')}>
+                      <span className="dot" style={{ background: p.c }} />{p.n}
                     </button>
                   ))}
                 </div>
               )}
 
-              {/* Acções principais */}
               <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 8 }}>
                 {primaryPlatform && (
                   <button
-                    onClick={() => {
-                      window.open(primaryPlatform.url, '_blank', 'noopener,noreferrer');
-                      resetTimer();
-                    }}
+                    onClick={() => { window.open(primaryPlatform.url, '_blank', 'noopener,noreferrer'); resetTimer(); }}
                     style={{ flex: 1, padding: '14px', borderRadius: 50, background: 'linear-gradient(135deg, #C89B3C, #a87535)', border: 'none', color: '#0B0D12', fontFamily: "'Outfit', sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                      <polygon points="5 3 19 12 5 21 5 3"/>
-                    </svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                     {getActionLabel(slide.catId)}
                   </button>
                 )}
-
-                {/* Guardar em lista */}
                 <button
                   onClick={() => setAddListOpen(true)}
                   style={{ width: 52, padding: '14px 0', borderRadius: 50, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,241,235,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
@@ -339,7 +394,7 @@ export default function ForYou({
         </div>
       </div>
 
-      {/* Painel de adicionar a lista */}
+      {/* Add to list panel */}
       {addListOpen && (
         <div className="ov on" onClick={e => { if (e.target === e.currentTarget) setAddListOpen(false); }}>
           <div className="panel" style={{ maxHeight: '70vh', overflowY: 'auto' }}>

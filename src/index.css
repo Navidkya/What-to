@@ -1278,3 +1278,37 @@ body::after {
 .creator-toggle-btn { flex:1; padding:10px 8px; border:none; border-radius:10px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.2s; }
 .creator-toggle-btn.active { background:linear-gradient(135deg,#C89B3C,#a87535); color:#0B0D12; font-weight:700; }
 .creator-toggle-btn.inactive { background:transparent; color:rgba(156,165,185,0.7); }
+
+
+.cin-poster-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+.inf-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+.inf-badge-gold {
+  background: linear-gradient(135deg, #C89B3C, #a87535);
+  color: #0B0D12;
+}
+.inf-badge-silver {
+  background: rgba(156,165,185,0.25);
+  border: 1px solid rgba(156,165,185,0.4);
+  color: #c8d0e0;
+}
