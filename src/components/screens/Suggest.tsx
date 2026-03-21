@@ -29,11 +29,6 @@ const EAT_TYPE_IMAGES: Record<string, string> = {
   'Receita':     'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=800&q=90',
 };
 
-const LISTEN_TYPE_IMAGES: Record<string, string> = {
-  'Álbum':   'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=90',
-  'Podcast': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=90',
-};
-
 function getContextualImg(catId: string, genre: string): string {
   if (catId === 'do') {
     if (genre === 'Natureza') return 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=90';
@@ -62,13 +57,6 @@ function getContextualImg(catId: string, genre: string): string {
   }
   return SUGGEST_FALLBACKS[catId] || 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=90';
 }
-
-const VISIT_TYPE_IMAGES: Record<string, string> = {
-  'Museu':       'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=90',
-  'Bar':         'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=800&q=90',
-  'Restaurante': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=90',
-  'Experiência': 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=90',
-};
 
 interface SuggestProps {
   cat: Category;
@@ -657,10 +645,6 @@ export default function Suggest({
     } finally {
       setIsLoadingMore(false);
     }
-  };
-
-  const handleCardClick = () => {
-    onOpenReact();
   };
 
   const mouseDragStartX = useRef<number | null>(null);
