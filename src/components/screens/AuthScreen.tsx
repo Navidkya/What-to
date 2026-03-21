@@ -102,14 +102,42 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
         options: { data: { full_name: creatorName.trim() || verifiedCode!.name } },
       });
       if (signUpError) {
-        onToast('Este email já tem conta. Usa a opção Entrar.');
+        if (signUpError.message.includes('already registered')) {
+          onToast('Este email já tem conta. Usa a opção Entrar.');
+        } else {
+          onToast(signUpError.message);
+        }
+        setLoading(false);
         return;
       }
-      const userId = signUpData.user?.id;
-      if (userId) {
-        await activateInviteCode(inviteCode, userId, verifiedCode!.tier as 'base' | 'silver' | 'gold', verifiedCode!.name, verifiedCode!.handle, verifiedCode!.platform);
+      // Login imediato para obter sessão activa
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: creatorEmail,
+        password: creatorPassword,
+      });
+      if (signInError || !signInData.user) {
+        // Email não confirmado — usa o user do signUp para activar o código
+        const userId = signUpData.user?.id;
+        if (userId && verifiedCode) {
+          await activateInviteCode(
+            inviteCode, userId,
+            verifiedCode.tier as 'base' | 'silver' | 'gold',
+            verifiedCode.name, verifiedCode.handle,
+            verifiedCode.platform || 'instagram'
+          );
+        }
+      } else {
+        const userId = signInData.user.id;
+        if (verifiedCode) {
+          await activateInviteCode(
+            inviteCode, userId,
+            verifiedCode.tier as 'base' | 'silver' | 'gold',
+            verifiedCode.name, verifiedCode.handle,
+            verifiedCode.platform || 'instagram'
+          );
+        }
       }
-      onToast('✦ Conta criada! Bem-vindo ao programa de criadores.');
+      onToast('✦ Bem-vindo ao programa de criadores!');
       onCreatorLogin?.();
     } catch {
       onToast('Erro ao criar conta');
