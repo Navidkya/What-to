@@ -295,7 +295,11 @@ export default function App() {
   };
 
   useEffect(() => {
+    const timeout = setTimeout(() => {
+      setAuthLoading(false);
+    }, 5000);
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(timeout);
       if (session?.user) {
         try {
           const influencerProfile = await loadInfluencerProfile(session.user.id);
@@ -341,7 +345,10 @@ export default function App() {
         setAuthLoading(false);
       }
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 6d — Sync automático
