@@ -295,6 +295,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setAuthUser({ id: session.user.id, email: session.user.email });
+        console.log('USER ID:', session.user.id);
         handleLogin(
           session.user.id,
           session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''

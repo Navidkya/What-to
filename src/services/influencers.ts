@@ -100,7 +100,7 @@ export async function createSuggestion(
   const { error } = await supabase.from('influencer_suggestions').insert({
     influencer_id: influencerId,
     title: payload.title,
-    desc: payload.desc,
+    description: payload.desc,
     emoji: payload.emoji,
     cat_id: payload.catId,
     cat: payload.cat,
@@ -140,6 +140,11 @@ export async function submitApplication(data: {
   return { ok: true };
 }
 
+export async function getMyUserId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id || null;
+}
+
 function mapRow(row: Record<string, unknown>): InfluencerSuggestion {
   const inf = row.influencers as Record<string, unknown> | null;
   return {
@@ -149,7 +154,7 @@ function mapRow(row: Record<string, unknown>): InfluencerSuggestion {
     influencerHandle: (inf?.handle as string) || '',
     influencerTier: ((inf?.tier as string) || 'base') as 'base' | 'silver' | 'gold',
     title: row.title as string,
-    desc: (row.desc as string) || '',
+    desc: (row.description as string) || '',
     emoji: (row.emoji as string) || '✦',
     catId: row.cat_id as string,
     cat: row.cat as string,
