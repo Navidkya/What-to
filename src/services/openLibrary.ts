@@ -28,5 +28,5 @@ export async function fetchBookCover(title: string): Promise<string | null> {
 
 export function getSteamImageUrl(steamId: number | null | undefined): string | null {
   if (!steamId) return null;
-  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamId}/capsule_616x353.jpg`;
+  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamId}/library_hero.jpg`;
 }

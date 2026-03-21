@@ -23,13 +23,14 @@ const SUGGEST_FALLBACKS: Record<string, string> = {
   do:     'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=90',
 };
 
-const EAT_TYPE_IMAGES: Record<string, string> = {
-  'Restaurante': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=90',
-  'Delivery':    'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=90',
-  'Receita':     'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=800&q=90',
-};
 
-function getContextualImg(catId: string, genre: string): string {
+function getUnsplashFallback(catId: string, genre: string): string {
+  if (catId === 'eat') {
+    if (genre === 'Restaurante') return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=90';
+    if (genre === 'Delivery') return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=90';
+    if (genre === 'Receita') return 'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=90';
+  }
   if (catId === 'do') {
     if (genre === 'Natureza') return 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=90';
     if (genre === 'Criativo') return 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=90';
@@ -485,13 +486,13 @@ export default function Suggest({
       if (cat.id === 'eat') {
         if (item.type === 'Receita') {
           fetchMeal(item.title).then(data => {
-            const fallback = EAT_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.eat;
+            const fallback = getUnsplashFallback('eat', item.type);
             setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: data?.photoUrl || fallback } }));
           }).catch(() => {
-            setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: EAT_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.eat } }));
+            setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: getUnsplashFallback('eat', item.type) } }));
           });
         } else {
-          const img = EAT_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.eat;
+          const img = getUnsplashFallback('eat', item.type);
           setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
         }
       }
@@ -511,22 +512,22 @@ export default function Suggest({
       }
 
       if (cat.id === 'listen') {
-        const img = getContextualImg('listen', item.genre);
+        const img = getUnsplashFallback('listen', item.genre);
         setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
       }
 
       if (cat.id === 'learn') {
-        const img = getContextualImg('learn', item.genre);
+        const img = getUnsplashFallback('learn', item.genre);
         setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
       }
 
       if (cat.id === 'visit') {
-        const img = getContextualImg('visit', item.genre);
+        const img = getUnsplashFallback('visit', item.genre);
         setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
       }
 
       if (cat.id === 'do') {
-        const img = getContextualImg('do', item.genre);
+        const img = getUnsplashFallback('do', item.genre);
         setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
       }
     });
@@ -703,16 +704,17 @@ export default function Suggest({
           return (
             <div
               className="cin-card"
-              style={{ cursor: 'default' }}
-              onMouseDown={e => { mouseDragStartX.current = e.clientX; mouseDragging.current = false; }}
-              onMouseMove={e => { if (mouseDragStartX.current !== null && Math.abs(e.clientX - mouseDragStartX.current) > 5) mouseDragging.current = true; }}
-              onMouseUp={e => {
+              style={{ cursor: 'default', touchAction: 'pan-y' }}
+              onPointerDown={e => { mouseDragStartX.current = e.clientX; mouseDragging.current = false; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }}
+              onPointerMove={e => { if (mouseDragStartX.current !== null && Math.abs(e.clientX - mouseDragStartX.current) > 5) mouseDragging.current = true; }}
+              onPointerUp={e => {
                 if (mouseDragStartX.current === null) return;
                 const dx = e.clientX - mouseDragStartX.current;
                 mouseDragStartX.current = null;
                 if (Math.abs(dx) > 60) { doAdvance(); }
                 mouseDragging.current = false;
               }}
+              onPointerCancel={() => { mouseDragStartX.current = null; mouseDragging.current = false; }}
             >
               {/* Poster background */}
               <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>

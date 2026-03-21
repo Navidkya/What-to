@@ -35,19 +35,40 @@ interface Props {
   onToast: (msg: string) => void;
 }
 
-function getContextualImg(catId: string, genre: string): string {
+function getUnsplashFallback(catId: string, genre: string): string {
+  if (catId === 'eat') {
+    if (genre === 'Restaurante') return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=90';
+    if (genre === 'Delivery') return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=90';
+    if (genre === 'Receita') return 'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=90';
+  }
   if (catId === 'do') {
     if (genre === 'Natureza') return 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=90';
     if (genre === 'Criativo') return 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=90';
     if (genre === 'Social') return 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=90';
     return 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&q=90';
   }
-  if (catId === 'visit') return 'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=800&q=90';
-  if (catId === 'learn') return 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=90';
+  if (catId === 'visit') {
+    if (genre === 'Museu' || genre === 'Arte') return 'https://images.unsplash.com/photo-1554907984-15263bfd63bd?w=800&q=90';
+    if (genre === 'Natureza') return 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=90';
+    if (genre === 'Bar') return 'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=800&q=90';
+  }
+  if (catId === 'learn') {
+    if (genre === 'Tecnologia' || genre === 'IA') return 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=90';
+    if (genre === 'Arte' || genre === 'Design') return 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=90';
+    if (genre === 'Ciência') return 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=90';
+  }
   if (catId === 'listen') {
     if (genre === 'Podcast') return 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=90';
-    return 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=90';
+    if (genre === 'Jazz') return 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=800&q=90';
+    if (genre === 'Hip-Hop') return 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=90';
   }
+  if (catId === 'play') return 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=90';
+  if (catId === 'watch') return 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=90';
+  if (catId === 'read') return 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=90';
   return 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=90';
 }
 
@@ -231,9 +252,9 @@ export default function ForYou({
           }
         } catch { /* skip */ }
 
-        // Fallback for categories without API images
-        if (!img && ['do', 'visit', 'learn', 'listen'].includes(slide.catId)) {
-          img = getContextualImg(slide.catId, slide.genre);
+        // Fallback for all categories without API images
+        if (!img) {
+          img = getUnsplashFallback(slide.catId, slide.genre);
         }
 
         if (img) {
@@ -243,20 +264,7 @@ export default function ForYou({
     });
   }, [activeIdx, slides]);
 
-  // Touch swipe
-  const dragStart = useRef<number | null>(null);
-  const handleTouchStart = (e: React.TouchEvent) => { dragStart.current = e.touches[0].clientX; };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (dragStart.current === null) return;
-    const dx = e.changedTouches[0].clientX - dragStart.current;
-    if (Math.abs(dx) > 50) {
-      if (dx < 0 && activeIdx < slides.length - 1) { setActiveIdx(i => i + 1); resetTimer(); }
-      if (dx > 0 && activeIdx > 0) { setActiveIdx(i => i - 1); resetTimer(); }
-    }
-    dragStart.current = null;
-  };
-
-  // Mouse drag refs
+  // Pointer drag refs (unified mouse + touch)
   const mouseDragRef = useRef<number | null>(null);
   const mouseDraggingRef = useRef(false);
 
@@ -273,8 +281,6 @@ export default function ForYou({
       className="screen active"
       id="for-you"
       style={{ background: '#060810', paddingBottom: 80, display: 'flex', flexDirection: 'column' }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
     >
       {/* Header */}
       <div className="tb" style={{ maxWidth: 480, margin: '0 auto', width: '100%' }}>
@@ -307,10 +313,10 @@ export default function ForYou({
 
       {/* Card */}
       <div
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 480, margin: '0 auto', width: '100%', padding: '0 16px', overflowY: 'auto', userSelect: 'none' }}
-        onMouseDown={e => { mouseDragRef.current = e.clientX; mouseDraggingRef.current = false; }}
-        onMouseMove={e => { if (mouseDragRef.current === null) return; if (Math.abs(e.clientX - mouseDragRef.current) > 8) mouseDraggingRef.current = true; }}
-        onMouseUp={e => {
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 480, margin: '0 auto', width: '100%', padding: '0 16px', overflowY: 'auto', userSelect: 'none', touchAction: 'pan-y' }}
+        onPointerDown={e => { mouseDragRef.current = e.clientX; mouseDraggingRef.current = false; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }}
+        onPointerMove={e => { if (mouseDragRef.current === null) return; if (Math.abs(e.clientX - mouseDragRef.current) > 8) mouseDraggingRef.current = true; }}
+        onPointerUp={e => {
           if (mouseDragRef.current === null) return;
           const dx = e.clientX - mouseDragRef.current;
           mouseDragRef.current = null;
@@ -320,7 +326,7 @@ export default function ForYou({
           }
           mouseDraggingRef.current = false;
         }}
-        onMouseLeave={() => { mouseDragRef.current = null; }}
+        onPointerCancel={() => { mouseDragRef.current = null; mouseDraggingRef.current = false; }}
       >
         <div key={activeIdx} style={{ transition: 'opacity 0.3s ease', opacity: 1 }}>
           <div
