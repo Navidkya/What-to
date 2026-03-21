@@ -151,7 +151,7 @@ function getDisplayData(item: APIItem, catId: string): DisplayData | null {
   // TMDB DiscoverItem (watch)
   if (catId === 'watch' && 'backdropUrl' in item) {
     const i = item as DiscoverItem;
-    return { title: i.title, desc: i.overview || '', img: i.posterUrl, rating: i.rating, year: i.year, type: i.type, genre: i.genre, url: null, emoji: i.type === 'Filme' ? '🎬' : '📺' };
+    return { title: i.title, desc: i.overview || '', img: i.backdropUrl || i.posterUrl, rating: i.rating, year: i.year, type: i.type, genre: i.genre, url: null, emoji: i.type === 'Filme' ? '🎬' : '📺' };
   }
   // RAWG (play)
   if (catId === 'play' && 'metacritic' in item) {
@@ -587,6 +587,9 @@ export default function Suggest({
     onOpenReact();
   };
 
+  const mouseDragStartX = useRef<number | null>(null);
+  const mouseDragging = useRef(false);
+
   return (
     <div className={`screen${isActive ? ' active' : ''}`} id="suggest">
       <div className="tb">
@@ -640,7 +643,16 @@ export default function Suggest({
             <div
               className="cin-card"
               style={{ cursor: 'pointer' }}
-              onClick={handleCardClick}
+              onMouseDown={e => { mouseDragStartX.current = e.clientX; mouseDragging.current = false; }}
+              onMouseMove={e => { if (mouseDragStartX.current !== null && Math.abs(e.clientX - mouseDragStartX.current) > 5) mouseDragging.current = true; }}
+              onMouseUp={e => {
+                if (mouseDragStartX.current === null) return;
+                const dx = e.clientX - mouseDragStartX.current;
+                mouseDragStartX.current = null;
+                if (Math.abs(dx) > 60) { doAdvance(); }
+                else if (!mouseDragging.current) { handleCardClick(); }
+                mouseDragging.current = false;
+              }}
             >
               {/* Poster background */}
               <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>
@@ -718,42 +730,42 @@ export default function Suggest({
                   </div>
                 )}
 
-                {/* 4 Actions: 2 cols left, bookmark centre, Sim right */}
-                <div className="suggest-btns-v2">
-                  {/* Coluna esquerda: Não + Não porque */}
-                  <div className="suggest-btns-left">
+                {/* 4 Actions: top row (Não + bookmark + Sim) + bottom row (Não porque) */}
+                <div className="suggest-btns-v2" style={{ flexDirection: 'column', gap: 8 }}>
+                  {/* Linha de cima */}
+                  <div style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
                     <button
                       className="suggest-btn-skip"
+                      style={{ flex: 1 }}
                       onClick={e => { e.stopPropagation(); doAdvance(); }}
                     >
                       <span>←</span> Não
                     </button>
                     <button
-                      className="suggest-btn-why"
-                      onClick={e => { e.stopPropagation(); onOpenWhy(); }}
+                      className="suggest-btn-bookmark"
+                      onClick={e => { e.stopPropagation(); onOpenAddToList?.(); }}
+                      title="Guardar em lista"
                     >
-                      Não porque<span style={{ opacity: 0.5 }}>...</span>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                      </svg>
+                    </button>
+                    <button
+                      className="suggest-btn-yes-v2"
+                      style={{ flex: 1, flexDirection: 'row', gap: 6 }}
+                      onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}
+                    >
+                      <span>Sim</span>
+                      <span>→</span>
                     </button>
                   </div>
-
-                  {/* Centro: bookmark */}
+                  {/* Linha de baixo */}
                   <button
-                    className="suggest-btn-bookmark"
-                    onClick={e => { e.stopPropagation(); onOpenAddToList?.(); }}
-                    title="Guardar em lista"
+                    className="suggest-btn-why"
+                    style={{ width: '100%' }}
+                    onClick={e => { e.stopPropagation(); onOpenWhy(); }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                    </svg>
-                  </button>
-
-                  {/* Direita: Sim */}
-                  <button
-                    className="suggest-btn-yes-v2"
-                    onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}
-                  >
-                    <span>Sim</span>
-                    <span>→</span>
+                    Não porque<span style={{ opacity: 0.5 }}>...</span>
                   </button>
                 </div>
               </div>

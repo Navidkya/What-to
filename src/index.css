@@ -1263,3 +1263,13 @@ body::after {
 .cat-grid-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; }
 .cat-grid-name { font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; color: #fff; letter-spacing: 0.3px; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
 .cat-grid-count { font-family: 'Outfit', sans-serif; font-size: 10px; color: rgba(255,255,255,0.55); }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.suggest-btn-yes-v2 {
+  flex-direction: row !important;
+  gap: 6px !important;
+  padding: 14px 10px !important;
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { UserList } from '../../types';
+import type { UserList, UserListItem } from '../../types';
 
 interface Props {
   lists: UserList[];
@@ -16,6 +16,7 @@ const LIST_EMOJIS = ['📋', '🎬', '📚', '🎮', '🍽️', '🎵', '📍', 
 
 export default function ListsScreen({ lists, isActive, onUpdateLists, onToast }: Props) {
   const [activeListId, setActiveListId] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<UserListItem | null>(null);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
@@ -189,14 +190,14 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast }:
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 4 }}>
                 {activeList.items.map(item => (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14 }}>
+                  <div key={item.id} onClick={() => setSelectedItem(item)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, cursor: 'pointer' }}>
                     <span style={{ fontSize: 22, flexShrink: 0 }}>{item.emoji}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
                       <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{item.cat} · {item.type}</div>
                     </div>
                     <button
-                      onClick={() => removeItem(activeList.id, item.id)}
+                      onClick={e => { e.stopPropagation(); removeItem(activeList.id, item.id); }}
                       style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(224,112,112,0.06)', border: '1px solid rgba(224,112,112,0.2)', color: 'var(--rd)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                     >
                       ×
@@ -208,6 +209,58 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast }:
           )}
         </div>
       </div>
+
+      {selectedItem && (() => {
+        const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(selectedItem.title)}`;
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+            onClick={() => setSelectedItem(null)}
+          >
+            <div
+              style={{ width: '100%', maxWidth: 480, background: 'var(--sf2, #18181b)', borderRadius: '24px 24px 0 0', padding: 20, animation: 'slideUp 0.25s ease', paddingBottom: 36 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.15)', margin: '0 auto 18px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <span style={{ fontSize: 28 }}>{selectedItem.emoji}</span>
+                <div>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: 'var(--tx)' }}>{selectedItem.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{selectedItem.cat} · {selectedItem.type}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  onClick={() => { onToast('▶ A abrir...'); setSelectedItem(null); }}
+                  style={{ padding: '14px 16px', borderRadius: 14, background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', color: '#0B0D12', fontWeight: 700, fontSize: 14, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', textAlign: 'left' }}
+                >
+                  ▶ Ver agora
+                </button>
+                <button
+                  onClick={() => { window.open(calendarUrl, '_blank'); setSelectedItem(null); }}
+                  style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(106,180,224,0.12)', border: '1px solid rgba(106,180,224,0.25)', color: '#6ab4e0', fontWeight: 600, fontSize: 14, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', textAlign: 'left' }}
+                >
+                  🗓 Agendar
+                </button>
+                {activeList && (
+                  <button
+                    onClick={() => { removeItem(activeList.id, selectedItem.id); setSelectedItem(null); }}
+                    style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(224,112,112,0.08)', border: '1px solid rgba(224,112,112,0.25)', color: 'var(--rd)', fontWeight: 600, fontSize: 14, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    🗑 Remover da lista
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedItem(null)}
+                style={{ marginTop: 14, width: '100%', padding: '10px', background: 'transparent', border: 'none', color: 'var(--mu)', fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: 'pointer' }}
+              >
+                ← voltar
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

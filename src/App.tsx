@@ -705,6 +705,33 @@ export default function App() {
             lists={store.userLists}
             onClose={() => setAddToListOpen(false)}
             onAddToList={(listId: string) => {
+              if (listId.startsWith('__new__')) {
+                const parts = listId.split('__');
+                // format: ['', 'new', id, emoji, ...name]
+                const newListId = parts[2];
+                const newListEmoji = parts[3];
+                const newListName = parts.slice(4).join('__');
+                const newItem: import('./types').UserListItem = {
+                  id: Math.random().toString(36).slice(2, 9),
+                  title: curDisplayItem?.title || curSugg?.title || '',
+                  emoji: curDisplayItem?.emoji || curSugg?.emoji || '❖',
+                  catId: curDisplayItem?.catId || curCat?.id || '',
+                  cat: curDisplayItem?.cat || curCat?.name || '',
+                  type: curDisplayItem?.type || curSugg?.type || '',
+                  addedAt: new Date().toISOString(),
+                };
+                const newList: import('./types').UserList = {
+                  id: newListId,
+                  name: newListName,
+                  emoji: newListEmoji,
+                  createdAt: new Date().toISOString(),
+                  items: [newItem],
+                };
+                store.updateUserLists([...store.userLists, newList]);
+                toast(`♡ Lista "${newListName}" criada e guardado`);
+                setAddToListOpen(false);
+                return;
+              }
               const itemTitle = curDisplayItem?.title || curSugg?.title || '';
               const itemEmoji = curDisplayItem?.emoji || curSugg?.emoji || '❖';
               const itemCatId = curDisplayItem?.catId || curCat?.id || '';
