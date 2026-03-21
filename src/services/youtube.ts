@@ -84,6 +84,7 @@ export async function discoverYouTube(filters: YTFilters): Promise<YTItem[]> {
           publishedAt: string;
           thumbnails: {
             maxres?: { url: string };
+            standard?: { url: string };
             high?: { url: string };
             medium?: { url: string };
           };
@@ -95,6 +96,7 @@ export async function discoverYouTube(filters: YTFilters): Promise<YTItem[]> {
       id: r.id.videoId,
       title: r.snippet.title,
       thumbnailUrl: r.snippet.thumbnails.maxres?.url
+        || r.snippet.thumbnails.standard?.url
         || r.snippet.thumbnails.high?.url
         || r.snippet.thumbnails.medium?.url
         || null,
