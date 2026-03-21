@@ -180,20 +180,9 @@ export interface DiscoverItem {
   platforms: Array<{ n: string; url: string; c: string }>;
 }
 
-const DISCOVER_CACHE_PREFIX = 'wt_disc_';
-
 export async function discoverTMDB(filters: DiscoverFilters): Promise<DiscoverItem[]> {
   const apiKey = import.meta.env.VITE_TMDB_KEY as string;
   if (!apiKey) return [];
-
-  const cacheKey = DISCOVER_CACHE_PREFIX + JSON.stringify(filters);
-  try {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      const parsed = JSON.parse(cached) as { ts: number; data: DiscoverItem[] };
-      if (Date.now() - parsed.ts < 2 * 60 * 60 * 1000) return parsed.data;
-    }
-  } catch {}
 
   const results: DiscoverItem[] = [];
   const types: Array<'movie' | 'tv'> = filters.type === 'both'
@@ -318,10 +307,6 @@ export async function discoverTMDB(filters: DiscoverFilters): Promise<DiscoverIt
   }
 
   const shuffled = results.sort(() => Math.random() - 0.5);
-
-  try {
-    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: shuffled }));
-  } catch {}
 
   return shuffled;
 }

@@ -233,6 +233,7 @@ export async function listInviteCodes(): Promise<Array<{
   platform: string;
   used: boolean;
   usedAt: string | null;
+  usedBy: string | undefined;
   createdAt: string;
 }>> {
   const { data } = await supabase
@@ -249,6 +250,7 @@ export async function listInviteCodes(): Promise<Array<{
     platform: r.platform as string,
     used: r.used as boolean,
     usedAt: (r.used_at as string) || null,
+    usedBy: (r.used_by as string) || undefined,
     createdAt: r.created_at as string,
   }));
 }

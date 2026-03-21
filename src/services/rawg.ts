@@ -1,6 +1,4 @@
 const RAWG_BASE = 'https://api.rawg.io/api';
-const RAWG_CACHE = 'wt_rawg_';
-const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 horas
 
 export interface RAWGItem {
   id: number;
@@ -45,22 +43,6 @@ const RAWG_PLATFORM_MAP: Record<string, number> = {
   'xbox': 186,       // Xbox Series X
 };
 
-function cacheGet<T>(key: string): T | null {
-  try {
-    const v = localStorage.getItem(RAWG_CACHE + key);
-    if (!v) return null;
-    const parsed = JSON.parse(v) as { ts: number; data: T };
-    if (Date.now() - parsed.ts > CACHE_TTL) return null;
-    return parsed.data;
-  } catch { return null; }
-}
-
-function cacheSet<T>(key: string, data: T) {
-  try {
-    localStorage.setItem(RAWG_CACHE + key, JSON.stringify({ ts: Date.now(), data }));
-  } catch {}
-}
-
 export async function discoverRAWG(filters: RAWGFilters): Promise<RAWGItem[]> {
   const apiKey = import.meta.env.VITE_RAWG_KEY as string;
   if (!apiKey) return [];
@@ -68,9 +50,6 @@ export async function discoverRAWG(filters: RAWGFilters): Promise<RAWGItem[]> {
   // Tabuleiro não tem API — usa mock
   if (filters.type === 'Tabuleiro') return [];
 
-  const cacheKey = JSON.stringify(filters);
-  const cached = cacheGet<RAWGItem[]>(cacheKey);
-  if (cached) return cached;
 
   try {
     const params = new URLSearchParams();
@@ -132,7 +111,6 @@ export async function discoverRAWG(filters: RAWGFilters): Promise<RAWGItem[]> {
       metacritic: r.metacritic || null,
     }));
 
-    cacheSet(cacheKey, items);
     return items;
   } catch {
     return [];

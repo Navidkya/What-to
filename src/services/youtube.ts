@@ -1,6 +1,4 @@
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
-const YT_CACHE = 'wt_yt_';
-const CACHE_TTL = 2 * 60 * 60 * 1000;
 
 export interface YTItem {
   id: string;
@@ -27,22 +25,6 @@ const DURATION_MAP: Record<string, string> = {
   'longa': 'long',    // > 20 min
 };
 
-function cacheGet<T>(key: string): T | null {
-  try {
-    const v = localStorage.getItem(YT_CACHE + key);
-    if (!v) return null;
-    const parsed = JSON.parse(v) as { ts: number; data: T };
-    if (Date.now() - parsed.ts > CACHE_TTL) return null;
-    return parsed.data;
-  } catch { return null; }
-}
-
-function cacheSet<T>(key: string, data: T) {
-  try {
-    localStorage.setItem(YT_CACHE + key, JSON.stringify({ ts: Date.now(), data }));
-  } catch {}
-}
-
 export async function discoverYouTube(filters: YTFilters): Promise<YTItem[]> {
   const apiKey = import.meta.env.VITE_YOUTUBE_KEY as string;
   if (!apiKey) return [];
@@ -53,10 +35,6 @@ export async function discoverYouTube(filters: YTFilters): Promise<YTItem[]> {
   const searchQuery = filters.genres.length > 0
     ? filters.genres.join(' OR ') + ' tutorial aprender português'
     : 'tutorial aprender português';
-
-  const cacheKey = JSON.stringify(filters);
-  const cached = cacheGet<YTItem[]>(cacheKey);
-  if (cached) return cached;
 
   try {
     const params = new URLSearchParams();
@@ -109,7 +87,6 @@ export async function discoverYouTube(filters: YTFilters): Promise<YTItem[]> {
       publishedAt: r.snippet.publishedAt?.substring(0, 4) || null,
     }));
 
-    cacheSet(cacheKey, items);
     return items;
   } catch {
     return [];

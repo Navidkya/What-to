@@ -50,8 +50,8 @@ export default function PlayOnboard({ isOpen, currentPrefs, onClose }: Props) {
   };
 
   const handleSave = (skip = false) => onClose(skip
-    ? { done: true, type: 'Ambos', genres: [], dificuldade: 'normal' }
-    : { done: true, type, genres, dificuldade }
+    ? { done: false, type: 'Ambos', genres: [], dificuldade: 'normal' }
+    : { done: false, type, genres, dificuldade }
   );
 
   if (!isOpen) return null;

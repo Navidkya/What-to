@@ -42,6 +42,7 @@ import CreatorDashboard from './components/screens/CreatorDashboard';
 import AdminPanel from './components/screens/AdminPanel';
 import { supabase } from './lib/supabase';
 import { signOut } from './services/auth';
+import { loadInfluencerProfile } from './services/influencers';
 import { loadAllFromSupabase, syncProfileToSupabase, syncHistoryToSupabase, syncTrackingToSupabase, syncListsToSupabase, syncPrefsToSupabase } from './services/sync';
 
 const SWIPE_THRESHOLD = 60;
@@ -293,10 +294,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        const influencerProfile = await loadInfluencerProfile(session.user.id);
+        if (influencerProfile) {
+          setAuthUser({ id: session.user.id, email: session.user.email });
+          setIsCreator(true);
+          setAuthLoading(false);
+          return;
+        }
         setAuthUser({ id: session.user.id, email: session.user.email });
-        console.log('USER ID:', session.user.id);
         handleLogin(
           session.user.id,
           session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
@@ -307,6 +314,13 @@ export default function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
+        const influencerProfile = await loadInfluencerProfile(session.user.id);
+        if (influencerProfile) {
+          setAuthUser({ id: session.user.id, email: session.user.email });
+          setIsCreator(true);
+          setAuthLoading(false);
+          return;
+        }
         setAuthUser({ id: session.user.id, email: session.user.email });
         await handleLogin(
           session.user.id,
@@ -314,6 +328,7 @@ export default function App() {
         );
       } else if (event === 'SIGNED_OUT') {
         setAuthUser(null);
+        setIsCreator(false);
         setAuthLoading(false);
       }
     });

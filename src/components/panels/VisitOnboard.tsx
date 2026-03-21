@@ -24,8 +24,8 @@ export default function VisitOnboard({ isOpen, currentPrefs, onClose }: Props) {
 
   const toggle = (t: string) => setTipo(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   const handleSave = (skip = false) => onClose(skip
-    ? { done: true, tipo: [], custo: 'qualquer', distancia: 'qualquer' }
-    : { done: true, tipo, custo, distancia }
+    ? { done: false, tipo: [], custo: 'qualquer', distancia: 'qualquer' }
+    : { done: false, tipo, custo, distancia }
   );
 
   if (!isOpen) return null;

@@ -1,6 +1,4 @@
 const GB_BASE = 'https://www.googleapis.com/books/v1';
-const GB_CACHE = 'wt_gb_';
-const CACHE_TTL = 2 * 60 * 60 * 1000;
 
 export interface GBItem {
   id: string;
@@ -36,29 +34,9 @@ const GENRE_QUERY_MAP: Record<string, string> = {
   'Aventura': 'adventure fiction',
 };
 
-function cacheGet<T>(key: string): T | null {
-  try {
-    const v = localStorage.getItem(GB_CACHE + key);
-    if (!v) return null;
-    const parsed = JSON.parse(v) as { ts: number; data: T };
-    if (Date.now() - parsed.ts > CACHE_TTL) return null;
-    return parsed.data;
-  } catch { return null; }
-}
-
-function cacheSet<T>(key: string, data: T) {
-  try {
-    localStorage.setItem(GB_CACHE + key, JSON.stringify({ ts: Date.now(), data }));
-  } catch {}
-}
-
 export async function discoverBooks(filters: GBFilters): Promise<GBItem[]> {
   const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_KEY as string;
   if (!apiKey) return [];
-
-  const cacheKey = JSON.stringify(filters);
-  const cached = cacheGet<GBItem[]>(cacheKey);
-  if (cached) return cached;
 
   try {
     const query = filters.genres.length > 0
@@ -125,7 +103,6 @@ export async function discoverBooks(filters: GBFilters): Promise<GBItem[]> {
     const withCovers = items.filter(i => i.coverUrl);
     const result = withCovers.length >= 5 ? withCovers : items;
 
-    cacheSet(cacheKey, result);
     return result;
   } catch {
     return [];

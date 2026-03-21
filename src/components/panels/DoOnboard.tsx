@@ -21,8 +21,8 @@ export default function DoOnboard({ isOpen, currentPrefs, onClose }: Props) {
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = (skip = false) => onClose(skip
-    ? { done: true, contexto: 'qualquer', local: 'qualquer', custo: 'qualquer' }
-    : { done: true, contexto, local, custo }
+    ? { done: false, contexto: 'qualquer', local: 'qualquer', custo: 'qualquer' }
+    : { done: false, contexto, local, custo }
   );
 
   if (!isOpen) return null;

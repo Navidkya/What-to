@@ -1,6 +1,4 @@
 const DEEZER_BASE = 'https://api.deezer.com';
-const DEEZER_CACHE = 'wt_deezer_';
-const CACHE_TTL = 2 * 60 * 60 * 1000;
 
 export interface DeezerItem {
   id: number;
@@ -48,27 +46,7 @@ const DEEZER_GENRE_IDS: Record<string, number> = {
   'Indie': 85,
 };
 
-function cacheGet<T>(key: string): T | null {
-  try {
-    const v = localStorage.getItem(DEEZER_CACHE + key);
-    if (!v) return null;
-    const parsed = JSON.parse(v) as { ts: number; data: T };
-    if (Date.now() - parsed.ts > CACHE_TTL) return null;
-    return parsed.data;
-  } catch { return null; }
-}
-
-function cacheSet<T>(key: string, data: T) {
-  try {
-    localStorage.setItem(DEEZER_CACHE + key, JSON.stringify({ ts: Date.now(), data }));
-  } catch {}
-}
-
 export async function discoverDeezer(filters: DeezerFilters): Promise<DeezerItem[]> {
-  const cacheKey = JSON.stringify(filters);
-  const cached = cacheGet<DeezerItem[]>(cacheKey);
-  if (cached) return cached;
-
   const items: DeezerItem[] = [];
 
   try {
@@ -148,6 +126,5 @@ export async function discoverDeezer(filters: DeezerFilters): Promise<DeezerItem
   }
 
   const shuffled = items.sort(() => Math.random() - 0.5);
-  cacheSet(cacheKey, shuffled);
   return shuffled;
 }

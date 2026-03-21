@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createInviteCode, listInviteCodes, updateInviteCode, removeInviteCode } from '../../services/influencers';
+import { supabase } from '../../lib/supabase';
 
 const ADMIN_USER = 'Navidkia';
 const ADMIN_PASS = 'Leste1825!';
@@ -12,8 +13,11 @@ const TIER_COLORS = {
 
 interface InviteCode {
   id: string; code: string; name: string; handle: string;
-  tier: string; platform: string; used: boolean; usedAt: string | null; createdAt: string;
+  tier: string; platform: string; used: boolean; usedAt: string | null;
+  usedBy?: string; createdAt: string;
 }
+
+interface UsedByInfo { name: string; handle: string; }
 
 export default function AdminPanel() {
   const [authed, setAuthed]       = useState(false);
@@ -39,6 +43,7 @@ export default function AdminPanel() {
   const [editTier, setEditTier]       = useState<'base' | 'silver' | 'gold'>('gold');
   const [editPlatform, setEditPlatform] = useState('instagram');
   const [saving, setSaving]           = useState(false);
+  const [usedByInfo, setUsedByInfo]   = useState<Record<string, UsedByInfo>>({});
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px', borderRadius: 10,
@@ -57,6 +62,26 @@ export default function AdminPanel() {
   useEffect(() => {
     if (authed) loadCodes();
   }, [authed]);
+
+  // Busca info do influencer para códigos usados
+  useEffect(() => {
+    const usedCodes = codes.filter(c => c.used && c.usedBy);
+    if (usedCodes.length === 0) return;
+    Promise.all(
+      usedCodes.map(async c => {
+        const { data } = await supabase
+          .from('influencers')
+          .select('name, handle')
+          .eq('user_id', c.usedBy)
+          .single();
+        return { id: c.usedBy!, name: (data?.name as string) || '', handle: (data?.handle as string) || '' };
+      })
+    ).then(results => {
+      const map: Record<string, UsedByInfo> = {};
+      results.forEach(r => { if (r.id) map[r.id] = { name: r.name, handle: r.handle }; });
+      setUsedByInfo(map);
+    }).catch(() => {});
+  }, [codes]);
 
   const handleLogin = () => {
     if (user === ADMIN_USER && pass === ADMIN_PASS) {
@@ -225,6 +250,11 @@ export default function AdminPanel() {
                       <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.6)' }}>
                         {c.name} · {c.handle} · {c.platform}
                       </div>
+                      {c.used && usedByInfo[c.usedBy || ''] && (
+                        <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.5)', marginTop: 3 }}>
+                          👤 {usedByInfo[c.usedBy || ''].name} · @{usedByInfo[c.usedBy || ''].handle}
+                        </div>
+                      )}
                     </div>
                     {/* Botões ação */}
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
