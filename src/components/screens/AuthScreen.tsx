@@ -25,8 +25,10 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
   // Creator login state
   const [creatorEmail, setCreatorEmail] = useState('');
   const [creatorPassword, setCreatorPassword] = useState('');
-  const [isFirstTime, setIsFirstTime] = useState(false);
+  const [creatorPasswordConfirm, setCreatorPasswordConfirm] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [creatorStep, setCreatorStep] = useState<'code' | 'register' | 'login'>('code');
+  const [verifiedCode, setVerifiedCode] = useState<{ tier: string; name: string; handle: string; platform: string } | null>(null);
 
   // Creator apply state
   const [applyName, setApplyName] = useState('');
@@ -62,47 +64,65 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
     }
   };
 
-  const handleCreatorLogin = async () => {
-    if (!creatorEmail.trim() || !creatorPassword.trim()) { onToast('Preenche email e password'); return; }
-    if (isFirstTime && !inviteCode.trim()) { onToast('Insere o código de convite'); return; }
+  const resetCreatorFlow = () => {
+    setCreatorStep('code');
+    setVerifiedCode(null);
+    setInviteCode('');
+    setCreatorEmail('');
+    setCreatorPassword('');
+    setCreatorPasswordConfirm('');
+  };
+
+  const handleVerifyCode = async () => {
+    if (!inviteCode.trim()) { onToast('Insere o código de convite'); return; }
     setLoading(true);
     try {
-      if (isFirstTime) {
-        // Verificar código ANTES do login
-        const check = await verifyInviteCode(inviteCode);
-        if (!check.ok) { onToast(check.error || 'Código inválido'); setLoading(false); return; }
-        // Tentar registo; se já existe, faz login
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: creatorEmail,
-          password: creatorPassword,
-          options: { data: { full_name: check.name } },
-        });
-        if (signUpError) {
-          // Conta já existe — tenta login
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: creatorEmail, password: creatorPassword,
-          });
-          if (signInError) { onToast('Email ou password incorrectos'); setLoading(false); return; }
-          const userId = signInData.user?.id;
-          if (userId) {
-            await activateInviteCode(inviteCode, userId, check.tier!, check.name!, check.handle!, check.platform || 'instagram');
-          }
-        } else {
-          const userId = signUpData.user?.id;
-          if (userId) {
-            await activateInviteCode(inviteCode, userId, check.tier!, check.name!, check.handle!, check.platform || 'instagram');
-          }
-        }
-        onToast('✦ Bem-vindo ao programa de criadores!');
-        onCreatorLogin?.();
-      } else {
-        // Login normal de criador
-        const { error } = await supabase.auth.signInWithPassword({
-          email: creatorEmail, password: creatorPassword,
-        });
-        if (error) { onToast('Email ou password incorrectos'); setLoading(false); return; }
-        onCreatorLogin?.();
+      const check = await verifyInviteCode(inviteCode);
+      if (!check.ok) { onToast(check.error || 'Código inválido'); return; }
+      setVerifiedCode({ tier: check.tier!, name: check.name!, handle: check.handle!, platform: check.platform || 'instagram' });
+      setCreatorStep('register');
+    } catch {
+      onToast('Erro ao verificar código');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreatorRegister = async () => {
+    if (!creatorEmail.trim()) { onToast('Preenche o email'); return; }
+    if (creatorPassword.length < 6) { onToast('Password com mínimo 6 caracteres'); return; }
+    if (creatorPassword !== creatorPasswordConfirm) { onToast('As passwords não coincidem'); return; }
+    setLoading(true);
+    try {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: creatorEmail,
+        password: creatorPassword,
+        options: { data: { full_name: verifiedCode!.name } },
+      });
+      if (signUpError) {
+        onToast('Este email já tem conta. Usa a opção Entrar.');
+        return;
       }
+      const userId = signUpData.user?.id;
+      if (userId) {
+        await activateInviteCode(inviteCode, userId, verifiedCode!.tier as 'base' | 'silver' | 'gold', verifiedCode!.name, verifiedCode!.handle, verifiedCode!.platform);
+      }
+      onToast('✦ Conta criada! Bem-vindo ao programa de criadores.');
+      onCreatorLogin?.();
+    } catch {
+      onToast('Erro ao criar conta');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreatorLoginStep = async () => {
+    if (!creatorEmail.trim() || !creatorPassword.trim()) { onToast('Preenche email e password'); return; }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: creatorEmail, password: creatorPassword });
+      if (error) { onToast('Email ou password incorrectos'); return; }
+      onCreatorLogin?.();
     } catch {
       onToast('Erro ao autenticar');
     } finally {
@@ -214,7 +234,7 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
               </div>
             </div>
             <button
-              onClick={() => setSubmode('creator-login')}
+              onClick={() => { resetCreatorFlow(); setSubmode('creator-login'); }}
               style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px', background: 'rgba(200,155,60,0.08)', border: '1px solid rgba(200,155,60,0.25)', borderRadius: 16, cursor: 'pointer', textAlign: 'left' }}
             >
               <span style={{ fontSize: 24 }}>🔑</span>
@@ -239,22 +259,68 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
         {/* ── Creator login ── */}
         {portal === 'creator' && submode === 'creator-login' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 4 }}>Acesso de criador</div>
-            <input type="email" value={creatorEmail} onChange={e => setCreatorEmail(e.target.value)} placeholder="Email" style={inputStyle} />
-            <input type="password" value={creatorPassword} onChange={e => setCreatorPassword(e.target.value)} placeholder="Password" style={inputStyle} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--mu)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={isFirstTime} onChange={e => setIsFirstTime(e.target.checked)} style={{ accentColor: '#C89B3C' }} />
-              Primeira vez?
-            </label>
-            {isFirstTime && (
-              <input value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Código de convite" style={inputStyle} />
+
+            {/* PASSO 1 — código */}
+            {creatorStep === 'code' && (
+              <>
+                <div style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 4 }}>Acesso de criador · Código de convite</div>
+                <input
+                  value={inviteCode}
+                  onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                  placeholder="Código de convite (ex: MARIA-GOLD-WT24)"
+                  onKeyDown={e => { if (e.key === 'Enter') handleVerifyCode(); }}
+                  style={{ ...inputStyle, fontFamily: 'monospace', letterSpacing: 1 }}
+                />
+                <button onClick={handleVerifyCode} disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', color: '#0B0D12', fontFamily: "'Outfit',sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
+                  {loading ? '...' : 'Verificar código'}
+                </button>
+                <button onClick={() => setCreatorStep('login')} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontFamily: "'Outfit',sans-serif", fontSize: 12, cursor: 'pointer', padding: '6px 0', textAlign: 'center' }}>
+                  Já tenho conta? Entrar →
+                </button>
+                <button onClick={() => setSubmode(null)} style={{ background: 'none', border: 'none', color: 'rgba(156,165,185,0.4)', fontFamily: "'Outfit',sans-serif", fontSize: 12, cursor: 'pointer', padding: '2px 0', textAlign: 'center' }}>
+                  ← voltar
+                </button>
+              </>
             )}
-            <button onClick={handleCreatorLogin} disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', color: '#0B0D12', fontFamily: "'Outfit',sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
-              {loading ? '...' : 'Entrar no painel'}
-            </button>
-            <button onClick={() => setSubmode(null)} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontFamily: "'Outfit',sans-serif", fontSize: 12, cursor: 'pointer', padding: '6px 0', textAlign: 'center' }}>
-              ← voltar
-            </button>
+
+            {/* PASSO 2 — registo */}
+            {creatorStep === 'register' && verifiedCode && (
+              <>
+                <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#C89B3C' }}>
+                    Bem-vindo, {verifiedCode.name}!
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 4, letterSpacing: 1, textTransform: 'uppercase' }}>
+                    Tier {verifiedCode.tier} · {verifiedCode.platform}
+                  </div>
+                </div>
+                <input type="email" value={creatorEmail} onChange={e => setCreatorEmail(e.target.value)} placeholder="Email" style={inputStyle} />
+                <input type="password" value={creatorPassword} onChange={e => setCreatorPassword(e.target.value)} placeholder="Password (mín. 6 caracteres)" style={inputStyle} />
+                <input type="password" value={creatorPasswordConfirm} onChange={e => setCreatorPasswordConfirm(e.target.value)} placeholder="Confirmar password" onKeyDown={e => { if (e.key === 'Enter') handleCreatorRegister(); }} style={inputStyle} />
+                <button onClick={handleCreatorRegister} disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', color: '#0B0D12', fontFamily: "'Outfit',sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
+                  {loading ? '...' : 'Criar conta e entrar'}
+                </button>
+                <button onClick={() => setCreatorStep('code')} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontFamily: "'Outfit',sans-serif", fontSize: 12, cursor: 'pointer', padding: '6px 0', textAlign: 'center' }}>
+                  ← voltar
+                </button>
+              </>
+            )}
+
+            {/* PASSO 3 — login */}
+            {creatorStep === 'login' && (
+              <>
+                <div style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 4 }}>Acesso de criador · Entrar</div>
+                <input type="email" value={creatorEmail} onChange={e => setCreatorEmail(e.target.value)} placeholder="Email" style={inputStyle} />
+                <input type="password" value={creatorPassword} onChange={e => setCreatorPassword(e.target.value)} placeholder="Password" onKeyDown={e => { if (e.key === 'Enter') handleCreatorLoginStep(); }} style={inputStyle} />
+                <button onClick={handleCreatorLoginStep} disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', color: '#0B0D12', fontFamily: "'Outfit',sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
+                  {loading ? '...' : 'Entrar no painel'}
+                </button>
+                <button onClick={() => setCreatorStep('code')} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontFamily: "'Outfit',sans-serif", fontSize: 12, cursor: 'pointer', padding: '6px 0', textAlign: 'center' }}>
+                  ← voltar
+                </button>
+              </>
+            )}
+
           </div>
         )}
 
