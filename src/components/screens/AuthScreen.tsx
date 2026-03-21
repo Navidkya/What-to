@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../../services/auth';
+import { verifyInviteCode, activateInviteCode } from '../../services/influencers';
+import { supabase } from '../../lib/supabase';
 
 interface Props {
   onSuccess: () => void;
@@ -65,11 +67,44 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
     if (isFirstTime && !inviteCode.trim()) { onToast('Insere o código de convite'); return; }
     setLoading(true);
     try {
-      await signInWithEmail(creatorEmail, creatorPassword);
-      onCreatorLogin?.();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Erro ao autenticar';
-      onToast(msg.includes('Invalid') ? 'Email ou password incorrectos' : msg);
+      if (isFirstTime) {
+        // Verificar código ANTES do login
+        const check = await verifyInviteCode(inviteCode);
+        if (!check.ok) { onToast(check.error || 'Código inválido'); setLoading(false); return; }
+        // Tentar registo; se já existe, faz login
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: creatorEmail,
+          password: creatorPassword,
+          options: { data: { full_name: check.name } },
+        });
+        if (signUpError) {
+          // Conta já existe — tenta login
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: creatorEmail, password: creatorPassword,
+          });
+          if (signInError) { onToast('Email ou password incorrectos'); setLoading(false); return; }
+          const userId = signInData.user?.id;
+          if (userId) {
+            await activateInviteCode(inviteCode, userId, check.tier!, check.name!, check.handle!, check.platform || 'instagram');
+          }
+        } else {
+          const userId = signUpData.user?.id;
+          if (userId) {
+            await activateInviteCode(inviteCode, userId, check.tier!, check.name!, check.handle!, check.platform || 'instagram');
+          }
+        }
+        onToast('✦ Bem-vindo ao programa de criadores!');
+        onCreatorLogin?.();
+      } else {
+        // Login normal de criador
+        const { error } = await supabase.auth.signInWithPassword({
+          email: creatorEmail, password: creatorPassword,
+        });
+        if (error) { onToast('Email ou password incorrectos'); setLoading(false); return; }
+        onCreatorLogin?.();
+      }
+    } catch {
+      onToast('Erro ao autenticar');
     } finally {
       setLoading(false);
     }

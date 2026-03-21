@@ -145,6 +145,114 @@ export async function getMyUserId(): Promise<string | null> {
   return user?.id || null;
 }
 
+// ── Invite codes ──────────────────────────────────────────────────────────────
+
+export async function verifyInviteCode(code: string): Promise<{
+  ok: boolean;
+  tier?: 'base' | 'silver' | 'gold';
+  name?: string;
+  handle?: string;
+  platform?: string;
+  error?: string;
+}> {
+  const { data, error } = await supabase
+    .from('invite_codes')
+    .select('*')
+    .eq('code', code.toUpperCase().trim())
+    .eq('used', false)
+    .single();
+  if (error || !data) return { ok: false, error: 'Código inválido ou já utilizado' };
+  return {
+    ok: true,
+    tier: data.tier as 'base' | 'silver' | 'gold',
+    name: data.name as string,
+    handle: data.handle as string,
+    platform: data.platform as string,
+  };
+}
+
+export async function activateInviteCode(
+  code: string,
+  userId: string,
+  tier: 'base' | 'silver' | 'gold',
+  name: string,
+  handle: string,
+  platform: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const allCats = ['watch', 'eat', 'read', 'listen', 'play', 'learn', 'visit', 'do'];
+  const allowedCats =
+    tier === 'gold' ? allCats :
+    tier === 'silver' ? ['watch', 'eat', 'read', 'listen'] :
+    ['watch', 'eat'];
+
+  const { error: profError } = await supabase.from('influencers').insert({
+    user_id: userId,
+    name,
+    handle,
+    platform,
+    tier,
+    allowed_cats: allowedCats,
+    status: 'active',
+    invite_code: code.toUpperCase().trim(),
+  });
+  if (profError) return { ok: false, error: profError.message };
+
+  await supabase.from('invite_codes').update({
+    used: true,
+    used_by: userId,
+    used_at: new Date().toISOString(),
+  }).eq('code', code.toUpperCase().trim());
+
+  return { ok: true };
+}
+
+export async function createInviteCode(payload: {
+  code: string;
+  name: string;
+  handle: string;
+  tier: 'base' | 'silver' | 'gold';
+  platform: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('invite_codes').insert({
+    code: payload.code.toUpperCase().trim(),
+    name: payload.name,
+    handle: payload.handle,
+    tier: payload.tier,
+    platform: payload.platform,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function listInviteCodes(): Promise<Array<{
+  id: string;
+  code: string;
+  name: string;
+  handle: string;
+  tier: string;
+  platform: string;
+  used: boolean;
+  usedAt: string | null;
+  createdAt: string;
+}>> {
+  const { data } = await supabase
+    .from('invite_codes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (!data) return [];
+  return data.map(r => ({
+    id: r.id as string,
+    code: r.code as string,
+    name: r.name as string,
+    handle: r.handle as string,
+    tier: r.tier as string,
+    platform: r.platform as string,
+    used: r.used as boolean,
+    usedAt: (r.used_at as string) || null,
+    createdAt: r.created_at as string,
+  }));
+}
+
 function mapRow(row: Record<string, unknown>): InfluencerSuggestion {
   const inf = row.influencers as Record<string, unknown> | null;
   return {

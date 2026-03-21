@@ -39,6 +39,7 @@ import SchedulePanel from './components/panels/SchedulePanel';
 import AddToListPanel from './components/panels/AddToListPanel';
 import AuthScreen from './components/screens/AuthScreen';
 import CreatorDashboard from './components/screens/CreatorDashboard';
+import AdminPanel from './components/screens/AdminPanel';
 import { supabase } from './lib/supabase';
 import { signOut } from './services/auth';
 import { loadAllFromSupabase, syncProfileToSupabase, syncHistoryToSupabase, syncTrackingToSupabase, syncListsToSupabase, syncPrefsToSupabase } from './services/sync';
@@ -400,6 +401,11 @@ export default function App() {
   const showBottomNav = isOnboarded && screen !== 'onboard';
   const hSlot = screen === 'friends' ? 0 : screen === 'profile' ? 2 : 1;
   const overlayActive = !['home', 'friends', 'profile'].includes(screen);
+
+  // Rota admin secreta
+  if (window.location.hash === '#admin') {
+    return <AdminPanel />;
+  }
 
   // Auth guards
   if (authLoading) {
