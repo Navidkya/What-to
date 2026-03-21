@@ -20,3 +20,6 @@ CREATE POLICY "invite_codes_read" ON invite_codes
 
 CREATE POLICY "invite_codes_update" ON invite_codes
   FOR UPDATE USING (true);
+
+CREATE POLICY "invite_codes_insert" ON invite_codes
+  FOR INSERT WITH CHECK (true);
