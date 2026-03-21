@@ -704,17 +704,15 @@ export default function Suggest({
           return (
             <div
               className="cin-card"
-              style={{ cursor: 'default', touchAction: 'pan-y' }}
-              onPointerDown={e => { mouseDragStartX.current = e.clientX; mouseDragging.current = false; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }}
-              onPointerMove={e => { if (mouseDragStartX.current !== null && Math.abs(e.clientX - mouseDragStartX.current) > 5) mouseDragging.current = true; }}
-              onPointerUp={e => {
+              style={{ cursor: 'default', userSelect: 'none' }}
+              onMouseDown={e => { mouseDragStartX.current = e.clientX; mouseDragging.current = false; }}
+              onMouseUp={e => {
                 if (mouseDragStartX.current === null) return;
                 const dx = e.clientX - mouseDragStartX.current;
                 mouseDragStartX.current = null;
-                if (Math.abs(dx) > 60) { doAdvance(); }
+                if (Math.abs(dx) > 60) doAdvance();
                 mouseDragging.current = false;
               }}
-              onPointerCancel={() => { mouseDragStartX.current = null; mouseDragging.current = false; }}
             >
               {/* Poster background */}
               <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>

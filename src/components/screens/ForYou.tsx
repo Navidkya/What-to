@@ -264,7 +264,20 @@ export default function ForYou({
     });
   }, [activeIdx, slides]);
 
-  // Pointer drag refs (unified mouse + touch)
+  // Touch swipe (mobile)
+  const dragStart = useRef<number | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => { dragStart.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (dragStart.current === null) return;
+    const dx = e.changedTouches[0].clientX - dragStart.current;
+    if (Math.abs(dx) > 50) {
+      if (dx < 0 && activeIdx < slides.length - 1) { setActiveIdx(i => i + 1); resetTimer(); }
+      if (dx > 0 && activeIdx > 0) { setActiveIdx(i => i - 1); resetTimer(); }
+    }
+    dragStart.current = null;
+  };
+
+  // Mouse drag refs (desktop)
   const mouseDragRef = useRef<number | null>(null);
   const mouseDraggingRef = useRef(false);
 
@@ -281,6 +294,8 @@ export default function ForYou({
       className="screen active"
       id="for-you"
       style={{ background: '#060810', paddingBottom: 80, display: 'flex', flexDirection: 'column' }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Header */}
       <div className="tb" style={{ maxWidth: 480, margin: '0 auto', width: '100%' }}>
@@ -313,10 +328,9 @@ export default function ForYou({
 
       {/* Card */}
       <div
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 480, margin: '0 auto', width: '100%', padding: '0 16px', overflowY: 'auto', userSelect: 'none', touchAction: 'pan-y' }}
-        onPointerDown={e => { mouseDragRef.current = e.clientX; mouseDraggingRef.current = false; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }}
-        onPointerMove={e => { if (mouseDragRef.current === null) return; if (Math.abs(e.clientX - mouseDragRef.current) > 8) mouseDraggingRef.current = true; }}
-        onPointerUp={e => {
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 480, margin: '0 auto', width: '100%', padding: '0 16px', overflowY: 'auto', userSelect: 'none' }}
+        onMouseDown={e => { mouseDragRef.current = e.clientX; mouseDraggingRef.current = false; }}
+        onMouseUp={e => {
           if (mouseDragRef.current === null) return;
           const dx = e.clientX - mouseDragRef.current;
           mouseDragRef.current = null;
@@ -326,7 +340,7 @@ export default function ForYou({
           }
           mouseDraggingRef.current = false;
         }}
-        onPointerCancel={() => { mouseDragRef.current = null; mouseDraggingRef.current = false; }}
+        onMouseLeave={() => { mouseDragRef.current = null; }}
       >
         <div key={activeIdx} style={{ transition: 'opacity 0.3s ease', opacity: 1 }}>
           <div
