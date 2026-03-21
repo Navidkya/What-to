@@ -34,6 +34,35 @@ const LISTEN_TYPE_IMAGES: Record<string, string> = {
   'Podcast': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=90',
 };
 
+function getContextualImg(catId: string, genre: string): string {
+  if (catId === 'do') {
+    if (genre === 'Natureza') return 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=90';
+    if (genre === 'Criativo') return 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=90';
+    if (genre === 'Social') return 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=90';
+    if (genre === 'Bem-estar') return 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&q=90';
+  }
+  if (catId === 'visit') {
+    if (genre === 'Museu' || genre === 'Arte') return 'https://images.unsplash.com/photo-1554907984-15263bfd63bd?w=800&q=90';
+    if (genre === 'Natureza') return 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=90';
+    if (genre === 'Bar') return 'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=800&q=90';
+  }
+  if (catId === 'learn') {
+    if (genre === 'Tecnologia' || genre === 'IA') return 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=90';
+    if (genre === 'Arte' || genre === 'Design') return 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=90';
+    if (genre === 'Ciência') return 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=90';
+  }
+  if (catId === 'listen') {
+    if (genre === 'Podcast') return 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=90';
+    if (genre === 'Jazz') return 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=800&q=90';
+    if (genre === 'Hip-Hop') return 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=90';
+    return 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=90';
+  }
+  return SUGGEST_FALLBACKS[catId] || 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=90';
+}
+
 const VISIT_TYPE_IMAGES: Record<string, string> = {
   'Museu':       'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=90',
   'Bar':         'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=800&q=90',
@@ -493,21 +522,23 @@ export default function Suggest({
       }
 
       if (cat.id === 'listen') {
-        const img = LISTEN_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.listen;
+        const img = getContextualImg('listen', item.genre);
         setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
       }
 
       if (cat.id === 'learn') {
-        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: SUGGEST_FALLBACKS.learn } }));
+        const img = getContextualImg('learn', item.genre);
+        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
       }
 
       if (cat.id === 'visit') {
-        const img = VISIT_TYPE_IMAGES[item.type] || SUGGEST_FALLBACKS.visit;
+        const img = getContextualImg('visit', item.genre);
         setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
       }
 
       if (cat.id === 'do') {
-        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: SUGGEST_FALLBACKS.do } }));
+        const img = getContextualImg('do', item.genre);
+        setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: img } }));
       }
     });
   }, [activeIdx, cards]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -672,7 +703,7 @@ export default function Suggest({
 
           const displayTitle = displayData?.title ?? card.title;
           const displayDesc = displayData?.desc ?? (data?.tmdb?.overview ? data.tmdb.overview.substring(0, 140) + (data.tmdb.overview.length > 140 ? '…' : '') : card.desc);
-          const displayImg = displayData?.img ?? data?.tmdb?.posterUrl ?? data?.cover ?? '';
+          const displayImg = displayData?.img ?? data?.tmdb?.backdropUrl ?? data?.tmdb?.posterUrl ?? data?.cover ?? '';
           const displayRating = displayData?.rating ?? data?.tmdb?.rating ?? card.rating ?? null;
           const displayYear = displayData?.year ?? data?.tmdb?.year ?? card.year ?? null;
           const displayType = displayData?.type ?? card.type;
@@ -687,6 +718,7 @@ export default function Suggest({
           return (
             <div
               className="cin-card"
+              style={{ cursor: 'default' }}
               onMouseDown={e => { mouseDragStartX.current = e.clientX; mouseDragging.current = false; }}
               onMouseMove={e => { if (mouseDragStartX.current !== null && Math.abs(e.clientX - mouseDragStartX.current) > 5) mouseDragging.current = true; }}
               onMouseUp={e => {
@@ -712,12 +744,16 @@ export default function Suggest({
                 <div className="cin-overlay" />
                 {/* Category badge top-left */}
                 <div className="cin-badge">{cat.icon} {cat.name}</div>
-                {/* Influencer badge top-right */}
-                {displayData?.influencer && displayData.influencer.tier !== 'base' && (
-                  <div className={`inf-badge ${displayData.influencer.tier === 'gold' ? 'inf-badge-gold' : 'inf-badge-silver'}`}>
-                    {displayData.influencer.tier === 'gold' ? '✦ Gold' : '◈ Silver'} · @{displayData.influencer.handle}
-                  </div>
-                )}
+                {/* Source badge top-right — always visible */}
+                <div className={
+                  displayData?.influencer?.tier === 'gold' ? 'inf-badge inf-badge-gold' :
+                  displayData?.influencer?.tier === 'silver' ? 'inf-badge inf-badge-silver' :
+                  'inf-badge inf-badge-app'
+                }>
+                  {displayData?.influencer?.tier === 'gold' ? `✦ Gold · @${displayData.influencer.handle}` :
+                   displayData?.influencer?.tier === 'silver' ? `◈ Silver · @${displayData.influencer.handle}` :
+                   '✦ What to'}
+                </div>
               </div>
 
               {/* Content overlay */}

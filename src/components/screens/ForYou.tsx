@@ -274,6 +274,19 @@ export default function ForYou({
       style={{ background: '#060810', paddingBottom: 80, display: 'flex', flexDirection: 'column' }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onMouseDown={e => { mouseDragRef.current = e.clientX; mouseDraggingRef.current = false; }}
+      onMouseMove={e => { if (mouseDragRef.current !== null && Math.abs(e.clientX - mouseDragRef.current) > 5) mouseDraggingRef.current = true; }}
+      onMouseUp={e => {
+        if (mouseDragRef.current === null) return;
+        const dx = e.clientX - mouseDragRef.current;
+        mouseDragRef.current = null;
+        if (Math.abs(dx) > 50) {
+          if (dx < 0 && activeIdx < slides.length - 1) { setActiveIdx(i => i + 1); resetTimer(); }
+          if (dx > 0 && activeIdx > 0) { setActiveIdx(i => i - 1); resetTimer(); }
+        }
+        mouseDraggingRef.current = false;
+      }}
+      onMouseLeave={() => { mouseDragRef.current = null; mouseDraggingRef.current = false; }}
     >
       {/* Header */}
       <div className="tb" style={{ maxWidth: 480, margin: '0 auto', width: '100%' }}>
@@ -310,18 +323,6 @@ export default function ForYou({
           <div
             className="cin-card"
             style={{ cursor: 'default', userSelect: 'none' }}
-            onMouseDown={e => { mouseDragRef.current = e.clientX; mouseDraggingRef.current = false; }}
-            onMouseMove={e => { if (mouseDragRef.current !== null && Math.abs(e.clientX - mouseDragRef.current) > 5) mouseDraggingRef.current = true; }}
-            onMouseUp={e => {
-              if (mouseDragRef.current === null) return;
-              const dx = e.clientX - mouseDragRef.current;
-              mouseDragRef.current = null;
-              if (Math.abs(dx) > 50) {
-                if (dx < 0 && activeIdx < slides.length - 1) { setActiveIdx(i => i + 1); resetTimer(); }
-                if (dx > 0 && activeIdx > 0) { setActiveIdx(i => i - 1); resetTimer(); }
-              }
-              mouseDraggingRef.current = false;
-            }}
           >
             {/* Poster */}
             <div
@@ -341,12 +342,15 @@ export default function ForYou({
               <div className="cin-overlay" />
               <div className="cin-badge">{cat?.icon} {slide.catName}</div>
 
-              {/* Influencer badge (gold only) */}
-              {slide.influencer && (
-                <div className="inf-badge inf-badge-gold">
-                  ✦ Gold · @{slide.influencer.handle}
-                </div>
-              )}
+              {/* Source badge — always visible */}
+              <div className={
+                slide.influencer?.tier === 'gold' ? 'inf-badge inf-badge-gold' :
+                'inf-badge inf-badge-app'
+              }>
+                {slide.influencer?.tier === 'gold'
+                  ? `✦ Gold · @${slide.influencer.handle}`
+                  : '✦ What to'}
+              </div>
             </div>
 
             {/* Info */}

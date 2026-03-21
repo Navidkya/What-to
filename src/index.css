@@ -1312,3 +1312,8 @@ body::after {
   border: 1px solid rgba(156,165,185,0.4);
   color: #c8d0e0;
 }
+.inf-badge-app {
+  background: rgba(11,13,18,0.7);
+  border: 1px solid rgba(200,155,60,0.3);
+  color: rgba(200,155,60,0.9);
+}
