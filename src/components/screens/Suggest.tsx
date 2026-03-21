@@ -11,32 +11,32 @@ import { discoverFSQ, type FSQItem } from '../../services/foursquare';
 import { discoverBooks, type GBItem } from '../../services/googleBooks';
 
 const SUGGEST_FALLBACKS: Record<string, string> = {
-  watch:  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=80',
-  eat:    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
-  read:   'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=80',
-  listen: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80',
-  play:   'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=80',
-  learn:  'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=80',
-  visit:  'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=800&q=80',
-  do:     'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=80',
+  watch:  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=90',
+  eat:    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=90',
+  read:   'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=90',
+  listen: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=90',
+  play:   'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=90',
+  learn:  'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=90',
+  visit:  'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=800&q=90',
+  do:     'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=90',
 };
 
 const EAT_TYPE_IMAGES: Record<string, string> = {
-  'Restaurante': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
-  'Delivery':    'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80',
-  'Receita':     'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=800&q=80',
+  'Restaurante': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=90',
+  'Delivery':    'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=90',
+  'Receita':     'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=800&q=90',
 };
 
 const LISTEN_TYPE_IMAGES: Record<string, string> = {
-  'Álbum':   'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80',
-  'Podcast': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=80',
+  'Álbum':   'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=90',
+  'Podcast': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=90',
 };
 
 const VISIT_TYPE_IMAGES: Record<string, string> = {
-  'Museu':       'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-  'Bar':         'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=800&q=80',
-  'Restaurante': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
-  'Experiência': 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=80',
+  'Museu':       'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=90',
+  'Bar':         'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=800&q=90',
+  'Restaurante': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=90',
+  'Experiência': 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=90',
 };
 
 interface SuggestProps {
@@ -271,8 +271,10 @@ export default function Suggest({
     const nextIdx = currentIdx + 1;
 
     if (isAPIMode) {
+      if (nextIdx >= currentApiItems.length - 2) {
+        handleLoadMore();
+      }
       if (nextIdx >= currentApiItems.length) {
-        // Shuffle and restart
         setApiItems(prev => [...prev].sort(() => Math.random() - 0.5));
         setActiveIdx(0);
       } else {
@@ -731,9 +733,8 @@ export default function Suggest({
                 )}
 
                 {/* 4 Actions: top row (Não + bookmark + Sim) + bottom row (Não porque) */}
-                <div className="suggest-btns-v2" style={{ flexDirection: 'column', gap: 8 }}>
-                  {/* Linha de cima */}
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', marginTop: 16, marginBottom: 20 }}>
+                  <div style={{ display: 'flex', gap: 8, width: '100%' }}>
                     <button
                       className="suggest-btn-skip"
                       style={{ flex: 1 }}
@@ -755,11 +756,9 @@ export default function Suggest({
                       style={{ flex: 1, flexDirection: 'row', gap: 6 }}
                       onClick={e => { e.stopPropagation(); setQuickYesOpen(true); }}
                     >
-                      <span>Sim</span>
-                      <span>→</span>
+                      Sim →
                     </button>
                   </div>
-                  {/* Linha de baixo */}
                   <button
                     className="suggest-btn-why"
                     style={{ width: '100%' }}
@@ -775,32 +774,6 @@ export default function Suggest({
         })()}
 
       </div>
-
-      {/* Ver mais sugestões — aparece perto do fim da lista API */}
-      {apiItems.length > 0 && activeIdx >= apiItems.length - 3 && (
-        <button
-          onClick={handleLoadMore}
-          disabled={isLoadingMore}
-          style={{
-            margin: '8px auto 4px',
-            display: 'block',
-            padding: '12px 28px',
-            background: isLoadingMore ? 'rgba(200,155,60,0.2)' : 'linear-gradient(135deg,#C89B3C,#a87535)',
-            color: isLoadingMore ? 'rgba(200,155,60,0.6)' : '#0B0D12',
-            border: isLoadingMore ? '1px solid rgba(200,155,60,0.3)' : 'none',
-            borderRadius: 14,
-            fontSize: 14,
-            fontWeight: 700,
-            fontFamily: 'Outfit, sans-serif',
-            cursor: isLoadingMore ? 'not-allowed' : 'pointer',
-            letterSpacing: '0.01em',
-            boxShadow: isLoadingMore ? 'none' : '0 4px 16px rgba(200,155,60,0.3)',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          {isLoadingMore ? '⟳ A carregar...' : '✦ Ver mais sugestões'}
-        </button>
-      )}
 
       <div className={`cbar${cbarOn ? ' on' : ''}`}>
         <div className="cbar-lbl">continuar ou mudar?</div>

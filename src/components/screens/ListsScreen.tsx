@@ -210,57 +210,35 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast }:
         </div>
       </div>
 
-      {selectedItem && (() => {
-        const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(selectedItem.title)}`;
-        return (
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-            onClick={() => setSelectedItem(null)}
-          >
-            <div
-              style={{ width: '100%', maxWidth: 480, background: 'var(--sf2, #18181b)', borderRadius: '24px 24px 0 0', padding: 20, animation: 'slideUp 0.25s ease', paddingBottom: 36 }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.15)', margin: '0 auto 18px' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                <span style={{ fontSize: 28 }}>{selectedItem.emoji}</span>
-                <div>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: 'var(--tx)' }}>{selectedItem.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{selectedItem.cat} · {selectedItem.type}</div>
-                </div>
+      {selectedItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 24px', zIndex: 400 }} onClick={() => setSelectedItem(null)}>
+          <div style={{ width: '100%', maxWidth: 480, background: 'rgba(10,12,20,0.92)', backdropFilter: 'blur(40px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, padding: '20px 20px 24px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 36, height: 3, background: 'rgba(255,255,255,0.15)', borderRadius: 10, margin: '0 auto 20px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(200,155,60,0.08)', border: '1px solid rgba(200,155,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>{selectedItem.emoji}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic', color: 'var(--tx)', lineHeight: 1.15, marginBottom: 4 }}>{selectedItem.title}</div>
+                <div style={{ fontSize: 11, color: 'var(--mu)' }}>{selectedItem.cat} · {selectedItem.type}</div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button
-                  onClick={() => { onToast('▶ A abrir...'); setSelectedItem(null); }}
-                  style={{ padding: '14px 16px', borderRadius: 14, background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', color: '#0B0D12', fontWeight: 700, fontSize: 14, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', textAlign: 'left' }}
-                >
-                  ▶ Ver agora
-                </button>
-                <button
-                  onClick={() => { window.open(calendarUrl, '_blank'); setSelectedItem(null); }}
-                  style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(106,180,224,0.12)', border: '1px solid rgba(106,180,224,0.25)', color: '#6ab4e0', fontWeight: 600, fontSize: 14, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', textAlign: 'left' }}
-                >
-                  🗓 Agendar
-                </button>
-                {activeList && (
-                  <button
-                    onClick={() => { removeItem(activeList.id, selectedItem.id); setSelectedItem(null); }}
-                    style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(224,112,112,0.08)', border: '1px solid rgba(224,112,112,0.25)', color: 'var(--rd)', fontWeight: 600, fontSize: 14, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', textAlign: 'left' }}
-                  >
-                    🗑 Remover da lista
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => setSelectedItem(null)}
-                style={{ marginTop: 14, width: '100%', padding: '10px', background: 'transparent', border: 'none', color: 'var(--mu)', fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: 'pointer' }}
-              >
-                ← voltar
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => { onToast(`▶ A abrir ${selectedItem.title}…`); setSelectedItem(null); }} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'rgba(200,155,60,0.1)', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 16, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                <span style={{ fontSize: 22 }}>▶</span>
+                <div><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ac)', fontFamily: "'Outfit',sans-serif" }}>Ver agora</div><div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 1 }}>Abre e acompanha em tempo real</div></div>
+              </button>
+              <button onClick={() => { const now = new Date(); const s = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; const e2 = new Date(now.getTime() + 7200000).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(selectedItem.title)}&dates=${s}/${e2}`, '_blank'); setSelectedItem(null); }} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'rgba(106,180,224,0.07)', border: '1px solid rgba(106,180,224,0.2)', borderRadius: 16, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                <span style={{ fontSize: 22 }}>🗓</span>
+                <div><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--bl)', fontFamily: "'Outfit',sans-serif" }}>Agendar</div><div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 1 }}>Adicionar ao Google Calendar</div></div>
+              </button>
+              <button onClick={() => { if (activeList) removeItem(activeList.id, selectedItem.id); setSelectedItem(null); }} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'rgba(224,112,112,0.05)', border: '1px solid rgba(224,112,112,0.15)', borderRadius: 16, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                <span style={{ fontSize: 22 }}>🗑</span>
+                <div><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--rd)', fontFamily: "'Outfit',sans-serif" }}>Remover da lista</div><div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 1 }}>Remove este item</div></div>
               </button>
             </div>
+            <button onClick={() => setSelectedItem(null)} style={{ width: '100%', marginTop: 14, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, color: 'var(--mu)', fontSize: 13, fontFamily: "'Outfit',sans-serif", cursor: 'pointer' }}>← voltar</button>
           </div>
-        );
-      })()}
+        </div>
+      )}
     </div>
   );
 }

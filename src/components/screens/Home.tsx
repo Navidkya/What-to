@@ -181,7 +181,7 @@ async function fetchTMDBPoster(title: string): Promise<string | null> {
     if (tvRes.ok) {
       const tvData = await tvRes.json() as { results?: Array<{ poster_path?: string }> };
       const hit = tvData.results?.[0];
-      if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w342${hit.poster_path}`;
+      if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w780${hit.poster_path}`;
     }
 
     if (!img) {
@@ -189,7 +189,7 @@ async function fetchTMDBPoster(title: string): Promise<string | null> {
       if (mvRes.ok) {
         const mvData = await mvRes.json() as { results?: Array<{ poster_path?: string }> };
         const hit = mvData.results?.[0];
-        if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w342${hit.poster_path}`;
+        if (hit?.poster_path) img = `https://image.tmdb.org/t/p/w780${hit.poster_path}`;
       }
     }
 
@@ -204,14 +204,14 @@ async function fetchTMDBPoster(title: string): Promise<string | null> {
 const EXPLORE_CAT_IDS = ['watch', 'eat', 'play', 'read', 'listen', 'learn', 'visit', 'do'];
 
 const CAT_IMAGES: Record<string, string> = {
-  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&q=80',
-  eat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80',
-  play: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&q=80',
-  read: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80',
-  listen: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&q=80',
-  learn: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&q=80',
-  visit: 'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=400&q=80',
-  do: 'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=400&q=80',
+  watch:  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=90',
+  eat:    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=90',
+  play:   'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=90',
+  read:   'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=90',
+  listen: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=90',
+  learn:  'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=90',
+  visit:  'https://images.unsplash.com/photo-1526392060635-9d6019884377?w=800&q=90',
+  do:     'https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?w=800&q=90',
 };
 
 
@@ -460,7 +460,6 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
               <div className="cat-grid-overlay" />
               <div className="cat-grid-content">
                 <span className="cat-grid-name">{c.name}</span>
-                <span className="cat-grid-count">{(DATA[c.id] || []).length} ideias</span>
               </div>
             </button>
           ))}

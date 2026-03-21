@@ -38,6 +38,7 @@ import WrappedOverlay from './components/panels/WrappedOverlay';
 import SchedulePanel from './components/panels/SchedulePanel';
 import AddToListPanel from './components/panels/AddToListPanel';
 import AuthScreen from './components/screens/AuthScreen';
+import CreatorDashboard from './components/screens/CreatorDashboard';
 import { supabase } from './lib/supabase';
 import { signOut } from './services/auth';
 import { loadAllFromSupabase, syncProfileToSupabase, syncHistoryToSupabase, syncTrackingToSupabase, syncListsToSupabase, syncPrefsToSupabase } from './services/sync';
@@ -52,6 +53,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState<{ id: string; email?: string } | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -409,10 +411,19 @@ export default function App() {
     );
   }
 
-  if (!authUser) {
+  if (!authUser && !isCreator) {
     return (
       <>
-        <AuthScreen onSuccess={() => {}} onToast={toast} />
+        <AuthScreen onSuccess={() => {}} onToast={toast} onCreatorLogin={() => { setIsCreator(true); }} />
+        <Toast message={msg} visible={visible} />
+      </>
+    );
+  }
+
+  if (isCreator) {
+    return (
+      <>
+        <CreatorDashboard isActive={true} onBack={() => { setIsCreator(false); }} onToast={toast} />
         <Toast message={msg} visible={visible} />
       </>
     );

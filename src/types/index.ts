@@ -183,7 +183,8 @@ export type Screen =
   | 'profile'
   | 'b2b'
   | 'friends'
-  | 'feed';
+  | 'feed'
+  | 'creator-dashboard';
 
 export type OverlayId =
   | 'reactOv'

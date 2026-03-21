@@ -1273,3 +1273,8 @@ body::after {
   gap: 6px !important;
   padding: 14px 10px !important;
 }
+
+.creator-toggle { display:flex; gap:4px; width:100%; margin-bottom:20px; background:rgba(255,255,255,0.04); border-radius:14px; padding:4px; }
+.creator-toggle-btn { flex:1; padding:10px 8px; border:none; border-radius:10px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.2s; }
+.creator-toggle-btn.active { background:linear-gradient(135deg,#C89B3C,#a87535); color:#0B0D12; font-weight:700; }
+.creator-toggle-btn.inactive { background:transparent; color:rgba(156,165,185,0.7); }
