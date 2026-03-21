@@ -216,6 +216,9 @@ export default function Suggest({
   const apiItemsRef = useRef<APIItem[]>([]);
   apiItemsRef.current = apiItems;
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   // Track which titles we've already initiated fetches for
   const fetchedRef = useRef(new Set<string>());
 
@@ -314,6 +317,8 @@ export default function Suggest({
     if (!isActive) return;
     setApiLoading(true);
     setApiItems([]);
+    setCurrentPage(1);
+    setIsLoadingMore(false);
 
     const load = async () => {
       try {
@@ -512,6 +517,72 @@ export default function Suggest({
     }
   }, [activeIdx, apiItems, cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleLoadMore = async () => {
+    if (isLoadingMore || apiItemsRef.current.length === 0) return;
+    setIsLoadingMore(true);
+    const nextPage = currentPage + 1;
+    try {
+      let newItems: APIItem[] = [];
+      if (cat.id === 'watch' && watchPrefs) {
+        const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
+        newItems = await discoverTMDB({
+          type: typeMap[watchPrefs.type] || 'both',
+          genres: watchPrefs.genres || [],
+          duration: (watchPrefs.duration || 'normal') as DiscoverFilters['duration'],
+          discovery: (watchPrefs.discovery || 'mistura') as DiscoverFilters['discovery'],
+          platforms: profile.platforms || [],
+          origem: (watchPrefs as any).origem || 'Qualquer',
+          lingua: (watchPrefs as any).lingua || 'Qualquer',
+          epoca: (watchPrefs as any).epoca || 'qualquer',
+          minRating: parseFloat((watchPrefs as any).minRating) || 0,
+          page: nextPage,
+        });
+      } else if (cat.id === 'play' && playPrefs) {
+        newItems = await discoverRAWG({
+          genres: playPrefs.genres || [],
+          platforms: profile.platforms || [],
+          dificuldade: playPrefs.dificuldade || 'normal',
+          type: playPrefs.type || 'Ambos',
+          page: nextPage,
+        });
+      } else if (cat.id === 'eat' && eatPrefs) {
+        newItems = await discoverMeals({
+          local: eatPrefs.local || [],
+          fome: eatPrefs.fome || 'normal',
+          budget: eatPrefs.budget || 'medio',
+          restrictions: eatPrefs.restrictions || [],
+          tempo: eatPrefs.tempo || 'normal',
+        });
+      } else if (cat.id === 'learn' && learnPrefs) {
+        newItems = await discoverYouTube({
+          genres: learnPrefs.genres || [],
+          formato: learnPrefs.formato || 'Ambos',
+          duracao: learnPrefs.duracao || 'normal',
+        });
+      } else if (cat.id === 'listen' && listenPrefs) {
+        newItems = await discoverDeezer({
+          type: listenPrefs.type || 'Ambos',
+          genres: listenPrefs.genres || [],
+          energia: listenPrefs.energia || 'mistura',
+        });
+      } else if (cat.id === 'read' && readPrefs) {
+        newItems = await discoverBooks({
+          genres: readPrefs.genres || [],
+          type: readPrefs.type || 'Ambos',
+          peso: readPrefs.peso || 'mistura',
+        });
+      }
+      if (newItems.length > 0) {
+        setApiItems(prev => [...prev, ...newItems]);
+        setCurrentPage(nextPage);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   const handleCardClick = () => {
     onOpenReact();
   };
@@ -692,6 +763,32 @@ export default function Suggest({
         })()}
 
       </div>
+
+      {/* Ver mais sugestões — aparece perto do fim da lista API */}
+      {apiItems.length > 0 && activeIdx >= apiItems.length - 3 && (
+        <button
+          onClick={handleLoadMore}
+          disabled={isLoadingMore}
+          style={{
+            margin: '8px auto 4px',
+            display: 'block',
+            padding: '12px 28px',
+            background: isLoadingMore ? 'rgba(200,155,60,0.2)' : 'linear-gradient(135deg,#C89B3C,#a87535)',
+            color: isLoadingMore ? 'rgba(200,155,60,0.6)' : '#0B0D12',
+            border: isLoadingMore ? '1px solid rgba(200,155,60,0.3)' : 'none',
+            borderRadius: 14,
+            fontSize: 14,
+            fontWeight: 700,
+            fontFamily: 'Outfit, sans-serif',
+            cursor: isLoadingMore ? 'not-allowed' : 'pointer',
+            letterSpacing: '0.01em',
+            boxShadow: isLoadingMore ? 'none' : '0 4px 16px rgba(200,155,60,0.3)',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          {isLoadingMore ? '⟳ A carregar...' : '✦ Ver mais sugestões'}
+        </button>
+      )}
 
       <div className={`cbar${cbarOn ? ' on' : ''}`}>
         <div className="cbar-lbl">continuar ou mudar?</div>

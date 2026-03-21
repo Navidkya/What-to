@@ -119,8 +119,8 @@ export async function discoverMeals(filters: MealFilters): Promise<MealDiscoverI
 
   const results: MealDiscoverItem[] = [];
 
-  // Busca por cada categoria, max 2 categorias
-  for (const cat of categories.slice(0, 2)) {
+  // Busca por cada categoria, max 5 categorias
+  for (const cat of categories.slice(0, 5)) {
     try {
       const res = await fetch(`${MEALDB_BASE}/filter.php?c=${encodeURIComponent(cat)}`);
       if (!res.ok) continue;
@@ -129,13 +129,13 @@ export async function discoverMeals(filters: MealFilters): Promise<MealDiscoverI
       };
       const meals = (data.meals || [])
         .sort(() => Math.random() - 0.5)
-        .slice(0, 8);
+        .slice(0, 20);
 
       for (const meal of meals) {
         results.push({
           id: meal.idMeal,
           title: meal.strMeal,
-          coverUrl: meal.strMealThumb ? meal.strMealThumb + '/large' : null,
+          coverUrl: meal.strMealThumb || null,
           category: cat,
           area: '',
           ingredients: [],
@@ -146,7 +146,7 @@ export async function discoverMeals(filters: MealFilters): Promise<MealDiscoverI
     } catch { continue; }
   }
 
-  const shuffled = results.sort(() => Math.random() - 0.5).slice(0, 20);
+  const shuffled = results.sort(() => Math.random() - 0.5).slice(0, 100);
 
   try {
     localStorage.setItem(MEAL_DISCOVER_CACHE + cacheKey, JSON.stringify({ ts: Date.now(), data: shuffled }));

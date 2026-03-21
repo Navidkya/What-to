@@ -75,7 +75,7 @@ export async function discoverRAWG(filters: RAWGFilters): Promise<RAWGItem[]> {
   try {
     const params = new URLSearchParams();
     params.set('key', apiKey);
-    params.set('page_size', '20');
+    params.set('page_size', '100');
     params.set('ordering', '-rating');
     params.set('metacritic', '60,100');
     params.set('page', String(filters.page || 1));

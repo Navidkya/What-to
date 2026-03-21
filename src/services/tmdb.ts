@@ -1,5 +1,5 @@
 const TMDB_BASE = 'https://api.themoviedb.org/3';
-const TMDB_IMG_POSTER = 'https://image.tmdb.org/t/p/w780';
+const TMDB_IMG_POSTER = 'https://image.tmdb.org/t/p/original';
 const TMDB_IMG_BACKDROP = 'https://image.tmdb.org/t/p/original';
 const CACHE_PREFIX = 'wt_tmdb_';
 
@@ -290,7 +290,7 @@ export async function discoverTMDB(filters: DiscoverFilters): Promise<DiscoverIt
         }>;
       };
 
-      const items = (data.results || []).slice(0, 10).map(r => {
+      const items = (data.results || []).map(r => {
         const reverseMap = mediaType === 'movie' ? TMDB_GENRE_MAP : TMDB_TV_GENRE_MAP;
         const firstGenreId = r.genre_ids?.[0];
         const genreName = firstGenreId
