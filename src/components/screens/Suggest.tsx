@@ -644,7 +644,6 @@ export default function Suggest({
           return (
             <div
               className="cin-card"
-              style={{ cursor: 'pointer' }}
               onMouseDown={e => { mouseDragStartX.current = e.clientX; mouseDragging.current = false; }}
               onMouseMove={e => { if (mouseDragStartX.current !== null && Math.abs(e.clientX - mouseDragStartX.current) > 5) mouseDragging.current = true; }}
               onMouseUp={e => {
@@ -652,7 +651,6 @@ export default function Suggest({
                 const dx = e.clientX - mouseDragStartX.current;
                 mouseDragStartX.current = null;
                 if (Math.abs(dx) > 60) { doAdvance(); }
-                else if (!mouseDragging.current) { handleCardClick(); }
                 mouseDragging.current = false;
               }}
             >
@@ -819,7 +817,7 @@ export default function Suggest({
 
         return (
           <div className="quick-yes-overlay" onClick={() => setQuickYesOpen(false)}>
-            <div className="quick-yes-sheet" onClick={e => e.stopPropagation()}>
+            <div className="quick-yes-sheet" style={{ paddingBottom: 100 }} onClick={e => e.stopPropagation()}>
               <div className="qy-drag-bar" />
               <div className="qy-title">
                 <span className="qy-emoji">{qyEmoji}</span>
