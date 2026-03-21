@@ -8,6 +8,7 @@ import {
   TIER_CONFIG,
 } from '../../services/influencers';
 import type { InfluencerProfile, InfluencerSuggestion } from '../../services/influencers';
+import { supabase } from '../../lib/supabase';
 
 interface Props {
   isActive: boolean;
@@ -56,6 +57,7 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
   const [profile, setProfile] = useState<InfluencerProfile | null>(null);
   const [suggestions, setSuggestions] = useState<InfluencerSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
 
   const [adding, setAdding] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -81,6 +83,8 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
       const suggs = await loadMySuggestions(p.id);
       setSuggestions(suggs);
     }
+    const { data: { user } } = await supabase.auth.getUser();
+    setEmailConfirmed(!!user?.email_confirmed_at);
     setLoading(false);
   }, [userId]);
 
@@ -100,6 +104,14 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
   const activeCount = suggestions.filter(s => s.active && new Date(s.expiresAt) > new Date()).length;
   const maxActive = profile ? TIER_CONFIG[profile.tier].maxActive : 3;
   const atLimit = activeCount >= maxActive;
+
+  const resendEmail = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      await supabase.auth.resend({ type: 'signup', email: user.email });
+      onToast('✉️ Email de confirmação reenviado!');
+    }
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -229,6 +241,7 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
 
   const handlePublish = async () => {
     if (!profile) return;
+    if (!emailConfirmed) { onToast('⚠️ Confirma o teu email primeiro'); return; }
     if (atLimit) { onToast(`Limite de ${maxActive} sugestões atingido`); return; }
 
     const catInfo = CATS_LIST.find(c => c.id === newCatId);
@@ -321,6 +334,19 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
           </div>
         ) : (
           <>
+            {/* Email not confirmed banner */}
+            {!emailConfirmed && (
+              <div style={{ margin: '0 0 16px', padding: '12px 16px', background: 'rgba(232,160,90,0.1)', border: '1px solid rgba(232,160,90,0.3)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#e8a05a', fontFamily: "'Outfit',sans-serif" }}>⚠️ Email não confirmado</div>
+                  <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Confirma o email para poderes publicar sugestões</div>
+                </div>
+                <button onClick={resendEmail} style={{ padding: '6px 12px', background: 'rgba(232,160,90,0.15)', border: '1px solid rgba(232,160,90,0.3)', borderRadius: 8, color: '#e8a05a', fontSize: 11, fontFamily: "'Outfit',sans-serif", cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  Reenviar
+                </button>
+              </div>
+            )}
+
             {/* Profile card */}
             <div style={{ padding: '16px', background: 'rgba(200,155,60,0.06)', border: '1px solid rgba(200,155,60,0.18)', borderRadius: 18, marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

@@ -23,6 +23,7 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
   const [loading, setLoading] = useState(false);
 
   // Creator login state
+  const [creatorName, setCreatorName] = useState('');
   const [creatorEmail, setCreatorEmail] = useState('');
   const [creatorPassword, setCreatorPassword] = useState('');
   const [creatorPasswordConfirm, setCreatorPasswordConfirm] = useState('');
@@ -68,6 +69,7 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
     setCreatorStep('code');
     setVerifiedCode(null);
     setInviteCode('');
+    setCreatorName('');
     setCreatorEmail('');
     setCreatorPassword('');
     setCreatorPasswordConfirm('');
@@ -97,7 +99,7 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: creatorEmail,
         password: creatorPassword,
-        options: { data: { full_name: verifiedCode!.name } },
+        options: { data: { full_name: creatorName.trim() || verifiedCode!.name } },
       });
       if (signUpError) {
         onToast('Este email já tem conta. Usa a opção Entrar.');
@@ -174,7 +176,7 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
         <div className="creator-toggle">
           <button
             className={`creator-toggle-btn ${portal === 'user' ? 'active' : 'inactive'}`}
-            onClick={() => { setPortal('user'); setSubmode(null); }}
+            onClick={() => { setPortal('user'); setSubmode(null); resetCreatorFlow(); }}
           >
             Entrar na app
           </button>
@@ -294,6 +296,7 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
                     Tier {verifiedCode.tier} · {verifiedCode.platform}
                   </div>
                 </div>
+                <input value={creatorName} onChange={e => setCreatorName(e.target.value)} placeholder={`Nome de utilizador (padrão: ${verifiedCode.name})`} style={inputStyle} />
                 <input type="email" value={creatorEmail} onChange={e => setCreatorEmail(e.target.value)} placeholder="Email" style={inputStyle} />
                 <input type="password" value={creatorPassword} onChange={e => setCreatorPassword(e.target.value)} placeholder="Password (mín. 6 caracteres)" style={inputStyle} />
                 <input type="password" value={creatorPasswordConfirm} onChange={e => setCreatorPasswordConfirm(e.target.value)} placeholder="Confirmar password" onKeyDown={e => { if (e.key === 'Enter') handleCreatorRegister(); }} style={inputStyle} />
