@@ -1089,6 +1089,7 @@ body::after {
 /* ─── Suggest: skip bar ─── */
 .skip-bar { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(8,8,9,0.97)); padding: 20px 16px 16px; border-radius: 0 0 22px 22px; display: flex; gap: 8px; z-index: 5; animation: slideUp 0.3s ease; }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes spin { from { transform: translateY(-50%) rotate(0deg); } to { transform: translateY(-50%) rotate(360deg); } }
 .skip-bar-btn { flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.11); border-radius: 12px; padding: 10px 8px; color: rgba(242,237,230,0.7); font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
 .skip-bar-btn:hover { background: rgba(255,255,255,0.12); color: #f2ede6; }
 .skip-bar-btn.why { border-color: rgba(224,112,112,0.4); color: #e07070; }

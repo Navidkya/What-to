@@ -92,6 +92,13 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
     if (isActive) reload();
   }, [isActive, reload]);
 
+  // Debounce: pesquisa automática ao escrever
+  useEffect(() => {
+    if (isManualCat || searchQuery.trim().length < 2) return;
+    const timer = setTimeout(() => { handleSearch(); }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, newCatId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!isActive) return null;
 
   const activeCat = CATS_LIST.find(c => c.id === newCatId);
@@ -394,16 +401,18 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
               <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(200,155,60,0.2)', borderRadius: 16, marginBottom: 16 }}>
                 <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 12, letterSpacing: 1, textTransform: 'uppercase' }}>Nova sugestão</div>
 
-                {/* Category selector */}
-                <select
-                  value={newCatId}
-                  onChange={e => { setNewCatId(e.target.value); setSelectedResult(null); setSearchResults([]); setSearchQuery(''); }}
-                  style={{ ...inputStyle, marginBottom: 10 }}
-                >
+                {/* Category pills */}
+                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 12, paddingBottom: 4, scrollbarWidth: 'none' }}>
                   {allowedCats.map(c => (
-                    <option key={c.id} value={c.id} style={{ background: '#0B0D12' }}>{c.emoji} {c.name}</option>
+                    <button
+                      key={c.id}
+                      onClick={() => { setNewCatId(c.id); setSelectedResult(null); setSearchResults([]); setSearchQuery(''); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 20, border: newCatId === c.id ? '1px solid rgba(200,155,60,0.5)' : '1px solid rgba(255,255,255,0.08)', background: newCatId === c.id ? 'rgba(200,155,60,0.1)' : 'rgba(255,255,255,0.03)', color: newCatId === c.id ? 'var(--ac)' : 'var(--mu)', fontSize: 12, fontFamily: "'Outfit',sans-serif", cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                    >
+                      <span>{c.emoji}</span><span>{c.name}</span>
+                    </button>
                   ))}
-                </select>
+                </div>
 
                 {isManualCat ? (
                   /* Manual form for visit/do */
@@ -417,66 +426,62 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
                 ) : (
                   /* Search-based */
                   <>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    {/* Input com spinner inline */}
+                    <div style={{ position: 'relative', marginBottom: 10 }}>
                       <input
                         value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
+                        onChange={e => { setSearchQuery(e.target.value); }}
                         onKeyDown={e => e.key === 'Enter' && handleSearch()}
                         placeholder={`Pesquisar ${activeCat?.name || ''}…`}
-                        style={{ ...inputStyle, flex: 1 }}
+                        style={{ ...inputStyle, paddingRight: searching ? 36 : 14 }}
                       />
-                      <button onClick={handleSearch} disabled={searching} style={{ padding: '0 16px', background: 'rgba(200,155,60,0.1)', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 10, color: 'var(--ac)', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0, fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>
-                        {searching ? '…' : 'Pesquisar'}
-                      </button>
+                      {searching && (
+                        <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--ac)', animation: 'spin 1s linear infinite' }}>⟳</span>
+                      )}
                     </div>
 
-                    {/* Search results */}
-                    {searchResults.length > 0 && !selectedResult && (
+                    {/* Resultados com selecção inline */}
+                    {searchResults.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10, maxHeight: 280, overflowY: 'auto' }}>
-                        {searchResults.map((r, i) => (
-                          <button key={i} onClick={() => setSelectedResult(r)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}>
-                            {r.img ? (
-                              <img src={r.img} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                            ) : (
-                              <span style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{r.emoji}</span>
-                            )}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Outfit',sans-serif" }}>{r.title}</div>
-                              <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{r.type}{r.year ? ` · ${r.year}` : ''}{r.rating ? ` · ⭐ ${r.rating}` : ''}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Selected preview */}
-                    {selectedResult && (
-                      <div style={{ padding: 12, background: 'rgba(200,155,60,0.05)', border: '1px solid rgba(200,155,60,0.2)', borderRadius: 10, marginBottom: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          {selectedResult.img ? (
-                            <img src={selectedResult.img} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                          ) : (
-                            <span style={{ fontSize: 32, flexShrink: 0 }}>{selectedResult.emoji}</span>
-                          )}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx)', fontFamily: "'Outfit',sans-serif" }}>{selectedResult.title}</div>
-                            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{selectedResult.type}{selectedResult.year ? ` · ${selectedResult.year}` : ''}</div>
-                          </div>
-                          <button onClick={() => { setSelectedResult(null); }} style={{ background: 'none', border: 'none', color: 'var(--mu)', cursor: 'pointer', fontSize: 18, padding: 4, flexShrink: 0 }}>×</button>
-                        </div>
+                        {searchResults.map((r, i) => {
+                          const isSelected = selectedResult?.title === r.title;
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => setSelectedResult(prev => prev?.title === r.title ? null : r)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: isSelected ? 'rgba(200,155,60,0.08)' : 'rgba(255,255,255,0.03)', border: isSelected ? '1px solid rgba(200,155,60,0.5)' : '1px solid rgba(255,255,255,0.07)', borderRadius: 10, cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s, border 0.15s' }}
+                            >
+                              {r.img ? (
+                                <img src={r.img} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                              ) : (
+                                <span style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{r.emoji}</span>
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: isSelected ? 'var(--ac)' : 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Outfit',sans-serif" }}>{r.title}</div>
+                                <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{r.type}{r.year ? ` · ${r.year}` : ''}{r.rating ? ` · ⭐ ${r.rating}` : ''}</div>
+                              </div>
+                              {isSelected && <span style={{ fontSize: 14, color: 'var(--ac)', flexShrink: 0 }}>✓</span>}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </>
                 )}
 
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={handlePublish}
-                    disabled={publishing}
-                    style={{ flex: 1, padding: '11px', background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', borderRadius: 10, color: '#0B0D12', fontWeight: 700, fontSize: 13, fontFamily: "'Outfit',sans-serif", cursor: publishing ? 'not-allowed' : 'pointer', opacity: publishing ? 0.7 : 1 }}
-                  >
-                    {publishing ? 'A publicar…' : 'Publicar sugestão'}
-                  </button>
+                  {(() => {
+                    const canPublish = isManualCat ? !!manualTitle.trim() : !!selectedResult;
+                    return (
+                      <button
+                        onClick={handlePublish}
+                        disabled={publishing || !canPublish}
+                        style={{ flex: 1, padding: '11px', background: canPublish ? 'linear-gradient(135deg,#C89B3C,#a87535)' : 'rgba(255,255,255,0.05)', border: canPublish ? 'none' : '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: canPublish ? '#0B0D12' : 'var(--mu)', fontWeight: 700, fontSize: 13, fontFamily: "'Outfit',sans-serif", cursor: canPublish && !publishing ? 'pointer' : 'not-allowed', opacity: publishing ? 0.7 : canPublish ? 1 : 0.4, transition: 'all 0.2s' }}
+                      >
+                        {publishing ? 'A publicar…' : canPublish ? 'Publicar sugestão' : 'Selecciona um resultado'}
+                      </button>
+                    );
+                  })()}
                   <button
                     onClick={() => { setAdding(false); setSelectedResult(null); setSearchResults([]); setSearchQuery(''); setManualTitle(''); setManualDesc(''); }}
                     style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'var(--mu)', fontSize: 13, fontFamily: "'Outfit',sans-serif", cursor: 'pointer' }}
