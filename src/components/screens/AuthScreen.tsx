@@ -91,56 +91,49 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
   };
 
   const handleCreatorRegister = async () => {
-    if (!creatorEmail.trim()) { onToast('Preenche o email'); return; }
-    if (creatorPassword.length < 6) { onToast('Password com mínimo 6 caracteres'); return; }
+    if (!creatorName.trim()) { onToast('Escreve o teu nome de utilizador'); return; }
+    if (!creatorEmail.trim()) { onToast('Escreve o teu email'); return; }
+    if (creatorPassword.length < 6) { onToast('Password deve ter pelo menos 6 caracteres'); return; }
     if (creatorPassword !== creatorPasswordConfirm) { onToast('As passwords não coincidem'); return; }
     setLoading(true);
     try {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: creatorEmail,
         password: creatorPassword,
-        options: { data: { full_name: creatorName.trim() || verifiedCode!.name } },
+        options: {
+          data: { full_name: creatorName },
+          emailRedirectTo: window.location.origin,
+        },
       });
       if (signUpError) {
-        if (signUpError.message.includes('already registered')) {
+        if (signUpError.message.includes('already registered') || signUpError.message.includes('already been registered')) {
           onToast('Este email já tem conta. Usa a opção Entrar.');
         } else {
           onToast(signUpError.message);
         }
-        setLoading(false);
         return;
       }
-      // Login imediato para obter sessão activa
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      // Login imediato independentemente da confirmação de email
+      const { data: signInData } = await supabase.auth.signInWithPassword({
         email: creatorEmail,
         password: creatorPassword,
       });
-      if (signInError || !signInData.user) {
-        // Email não confirmado — usa o user do signUp para activar o código
-        const userId = signUpData.user?.id;
-        if (userId && verifiedCode) {
-          await activateInviteCode(
-            inviteCode, userId,
-            verifiedCode.tier as 'base' | 'silver' | 'gold',
-            verifiedCode.name, verifiedCode.handle,
-            verifiedCode.platform || 'instagram'
-          );
-        }
-      } else {
-        const userId = signInData.user.id;
-        if (verifiedCode) {
-          await activateInviteCode(
-            inviteCode, userId,
-            verifiedCode.tier as 'base' | 'silver' | 'gold',
-            verifiedCode.name, verifiedCode.handle,
-            verifiedCode.platform || 'instagram'
-          );
-        }
+      const userId = signInData?.user?.id || signUpData?.user?.id;
+      if (userId && verifiedCode) {
+        await activateInviteCode(
+          inviteCode,
+          userId,
+          verifiedCode.tier as 'base' | 'silver' | 'gold',
+          verifiedCode.name,
+          verifiedCode.handle,
+          verifiedCode.platform || 'instagram',
+        );
       }
       onToast('✦ Bem-vindo ao programa de criadores!');
       onCreatorLogin?.();
-    } catch {
-      onToast('Erro ao criar conta');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro ao criar conta';
+      onToast(msg);
     } finally {
       setLoading(false);
     }

@@ -253,6 +253,24 @@ export async function listInviteCodes(): Promise<Array<{
   }));
 }
 
+export async function updateInviteCode(id: string, payload: {
+  code?: string;
+  name?: string;
+  handle?: string;
+  tier?: 'base' | 'silver' | 'gold';
+  platform?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('invite_codes').update(payload).eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function removeInviteCode(id: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('invite_codes').delete().eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 function mapRow(row: Record<string, unknown>): InfluencerSuggestion {
   const inf = row.influencers as Record<string, unknown> | null;
   return {

@@ -241,7 +241,6 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
 
   const handlePublish = async () => {
     if (!profile) return;
-    if (!emailConfirmed) { onToast('⚠️ Confirma o teu email primeiro'); return; }
     if (atLimit) { onToast(`Limite de ${maxActive} sugestões atingido`); return; }
 
     const catInfo = CATS_LIST.find(c => c.id === newCatId);
@@ -334,14 +333,14 @@ export default function CreatorDashboard({ isActive, onBack, onToast, userId }: 
           </div>
         ) : (
           <>
-            {/* Email not confirmed banner */}
+            {/* Email confirmation banner (informativo, não bloqueia) */}
             {!emailConfirmed && (
-              <div style={{ margin: '0 0 16px', padding: '12px 16px', background: 'rgba(232,160,90,0.1)', border: '1px solid rgba(232,160,90,0.3)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ margin: '0 0 16px', padding: '12px 16px', background: 'rgba(200,155,60,0.08)', border: '1px solid rgba(200,155,60,0.2)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#e8a05a', fontFamily: "'Outfit',sans-serif" }}>⚠️ Email não confirmado</div>
-                  <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Confirma o email para poderes publicar sugestões</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac)', fontFamily: "'Outfit',sans-serif" }}>✉️ Confirma o teu email</div>
+                  <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para garantires acesso permanente à tua conta</div>
                 </div>
-                <button onClick={resendEmail} style={{ padding: '6px 12px', background: 'rgba(232,160,90,0.15)', border: '1px solid rgba(232,160,90,0.3)', borderRadius: 8, color: '#e8a05a', fontSize: 11, fontFamily: "'Outfit',sans-serif", cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <button onClick={resendEmail} style={{ padding: '6px 12px', background: 'rgba(200,155,60,0.12)', border: '1px solid rgba(200,155,60,0.25)', borderRadius: 8, color: 'var(--ac)', fontSize: 11, fontFamily: "'Outfit',sans-serif", cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   Reenviar
                 </button>
               </div>

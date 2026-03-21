@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createInviteCode, listInviteCodes } from '../../services/influencers';
+import { createInviteCode, listInviteCodes, updateInviteCode, removeInviteCode } from '../../services/influencers';
 
 const ADMIN_USER = 'Navidkia';
 const ADMIN_PASS = 'Leste1825!';
@@ -21,6 +21,8 @@ export default function AdminPanel() {
   const [pass, setPass]           = useState('');
   const [codes, setCodes]         = useState<InviteCode[]>([]);
   const [loading, setLoading]     = useState(false);
+
+  // Create form
   const [newCode, setNewCode]     = useState('');
   const [newName, setNewName]     = useState('');
   const [newHandle, setNewHandle] = useState('');
@@ -28,6 +30,15 @@ export default function AdminPanel() {
   const [newPlatform, setNewPlatform] = useState('instagram');
   const [creating, setCreating]   = useState(false);
   const [msg, setMsg]             = useState('');
+
+  // Edit state
+  const [editingId, setEditingId]     = useState<string | null>(null);
+  const [editCode, setEditCode]       = useState('');
+  const [editName, setEditName]       = useState('');
+  const [editHandle, setEditHandle]   = useState('');
+  const [editTier, setEditTier]       = useState<'base' | 'silver' | 'gold'>('gold');
+  const [editPlatform, setEditPlatform] = useState('instagram');
+  const [saving, setSaving]           = useState(false);
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px', borderRadius: 10,
@@ -72,6 +83,40 @@ export default function AdminPanel() {
       setMsg(result.error || 'Erro ao criar código');
     }
     setCreating(false);
+  };
+
+  const openEdit = (c: InviteCode) => {
+    setEditingId(c.id);
+    setEditCode(c.code);
+    setEditName(c.name);
+    setEditHandle(c.handle);
+    setEditTier(c.tier as 'base' | 'silver' | 'gold');
+    setEditPlatform(c.platform);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+    setSaving(true);
+    const result = await updateInviteCode(editingId, {
+      code: editCode, name: editName, handle: editHandle,
+      tier: editTier, platform: editPlatform,
+    });
+    if (result.ok) {
+      setEditingId(null);
+      await loadCodes();
+    } else {
+      setMsg(result.error || 'Erro ao guardar');
+    }
+    setSaving(false);
+  };
+
+  const handleRemove = async (id: string) => {
+    const result = await removeInviteCode(id);
+    if (result.ok) {
+      await loadCodes();
+    } else {
+      setMsg(result.error || 'Erro ao remover');
+    }
   };
 
   if (!authed) return (
@@ -153,32 +198,84 @@ export default function AdminPanel() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {codes.map(c => {
               const tc = TIER_COLORS[c.tier as keyof typeof TIER_COLORS] || TIER_COLORS.base;
+              const isEditing = editingId === c.id;
+
               return (
                 <div
                   key={c.id}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '12px 16px',
                     background: c.used ? 'rgba(255,255,255,0.02)' : tc.bg,
                     border: `1px solid ${c.used ? 'rgba(255,255,255,0.06)' : tc.border}`,
                     borderRadius: 14,
-                    opacity: c.used ? 0.5 : 1,
+                    overflow: 'hidden',
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: c.used ? 'rgba(156,165,185,0.5)' : tc.color, letterSpacing: 1 }}>
-                        {c.code}
-                      </span>
-                      <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 20, background: tc.bg, border: `1px solid ${tc.border}`, color: tc.color, textTransform: 'uppercase', letterSpacing: 1 }}>
-                        {c.tier}
-                      </span>
-                      {c.used && <span style={{ fontSize: 9, color: 'rgba(156,165,185,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>usado</span>}
+                  {/* Row principal */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', opacity: c.used && !isEditing ? 0.5 : 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: c.used ? 'rgba(156,165,185,0.5)' : tc.color, letterSpacing: 1 }}>
+                          {c.code}
+                        </span>
+                        <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 20, background: tc.bg, border: `1px solid ${tc.border}`, color: tc.color, textTransform: 'uppercase', letterSpacing: 1 }}>
+                          {c.tier}
+                        </span>
+                        {c.used && <span style={{ fontSize: 9, color: 'rgba(156,165,185,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>usado</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.6)' }}>
+                        {c.name} · {c.handle} · {c.platform}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.6)' }}>
-                      {c.name} · {c.handle} · {c.platform}
+                    {/* Botões ação */}
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      {!c.used && (
+                        <button
+                          onClick={() => isEditing ? setEditingId(null) : openEdit(c)}
+                          style={{ padding: '5px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'rgba(156,165,185,0.7)', fontSize: 11, fontFamily: "'Outfit',sans-serif", cursor: 'pointer' }}
+                        >
+                          {isEditing ? 'Cancelar' : 'Editar'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleRemove(c.id)}
+                        style={{ padding: '5px 10px', background: 'rgba(224,112,112,0.08)', border: '1px solid rgba(224,112,112,0.2)', borderRadius: 8, color: '#e07070', fontSize: 11, fontFamily: "'Outfit',sans-serif", cursor: 'pointer' }}
+                      >
+                        Remover
+                      </button>
                     </div>
                   </div>
+
+                  {/* Form de edição inline */}
+                  {isEditing && (
+                    <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ paddingTop: 12, fontSize: 11, color: 'rgba(156,165,185,0.5)', letterSpacing: 1, textTransform: 'uppercase' }}>Editar código</div>
+                      <input value={editCode} onChange={e => setEditCode(e.target.value.toUpperCase())} placeholder="Código" style={{ ...inputStyle, fontFamily: 'monospace', letterSpacing: 1 }} />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nome" style={{ ...inputStyle, flex: 1 }} />
+                        <input value={editHandle} onChange={e => setEditHandle(e.target.value)} placeholder="@handle" style={{ ...inputStyle, flex: 1 }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <select value={editTier} onChange={e => setEditTier(e.target.value as 'base' | 'silver' | 'gold')} style={{ ...inputStyle, flex: 1 }}>
+                          <option value="gold">Gold</option>
+                          <option value="silver">Silver</option>
+                          <option value="base">Base</option>
+                        </select>
+                        <select value={editPlatform} onChange={e => setEditPlatform(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+                          <option value="instagram">Instagram</option>
+                          <option value="tiktok">TikTok</option>
+                          <option value="youtube">YouTube</option>
+                          <option value="other">Outro</option>
+                        </select>
+                      </div>
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={saving}
+                        style={{ padding: '10px', background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', borderRadius: 10, color: '#0B0D12', fontWeight: 700, fontSize: 13, fontFamily: "'Outfit',sans-serif", cursor: 'pointer', opacity: saving ? 0.7 : 1 }}
+                      >
+                        {saving ? '...' : '✓ Guardar'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
