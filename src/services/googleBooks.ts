@@ -70,7 +70,6 @@ export async function discoverBooks(filters: GBFilters): Promise<GBItem[]> {
     params.set('q', query);
     params.set('maxResults', '20');
     params.set('orderBy', 'relevance');
-    params.set('langRestrict', 'pt');
     params.set('printType', filters.type === 'Artigo' ? 'magazines' : 'books');
 
     const res = await fetch(`${GB_BASE}/volumes?${params.toString()}`);

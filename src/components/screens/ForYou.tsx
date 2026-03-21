@@ -225,6 +225,7 @@ export default function ForYou({
             img = meal?.photoUrl || null;
           } else if (slide.catId === 'read') {
             img = await fetchBookCover(slide.title);
+            if (!img) img = 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=90';
           } else if (slide.catId === 'play' && slide.steamId) {
             img = getSteamImageUrl(slide.steamId);
           }
@@ -255,41 +256,9 @@ export default function ForYou({
     dragStart.current = null;
   };
 
-  // Mouse drag — native DOM events para ignorar overflow do div interior
+  // Mouse drag refs
   const mouseDragRef = useRef<number | null>(null);
   const mouseDraggingRef = useRef(false);
-
-  useEffect(() => {
-    if (!isActive) return;
-    const onDown = (e: MouseEvent) => { mouseDragRef.current = e.clientX; mouseDraggingRef.current = false; };
-    const onMove = (e: MouseEvent) => {
-      if (mouseDragRef.current !== null && Math.abs(e.clientX - mouseDragRef.current) > 5)
-        mouseDraggingRef.current = true;
-    };
-    const onUp = (e: MouseEvent) => {
-      if (mouseDragRef.current === null) return;
-      const dx = e.clientX - mouseDragRef.current;
-      mouseDragRef.current = null;
-      if (Math.abs(dx) > 50) {
-        if (dx < 0) setActiveIdx(i => { const next = Math.min(i + 1, slides.length - 1); if (next !== i) resetTimer(); return next; });
-        if (dx > 0) setActiveIdx(i => { const prev = Math.max(i - 1, 0); if (prev !== i) resetTimer(); return prev; });
-      }
-      mouseDraggingRef.current = false;
-    };
-    const onLeave = () => { mouseDragRef.current = null; mouseDraggingRef.current = false; };
-    const el = document.getElementById('for-you');
-    if (!el) return;
-    el.addEventListener('mousedown', onDown);
-    el.addEventListener('mousemove', onMove);
-    el.addEventListener('mouseup', onUp);
-    el.addEventListener('mouseleave', onLeave);
-    return () => {
-      el.removeEventListener('mousedown', onDown);
-      el.removeEventListener('mousemove', onMove);
-      el.removeEventListener('mouseup', onUp);
-      el.removeEventListener('mouseleave', onLeave);
-    };
-  }, [isActive, slides.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const slide = slides[activeIdx];
   if (!isActive) return null;
@@ -337,7 +306,22 @@ export default function ForYou({
       </div>
 
       {/* Card */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 480, margin: '0 auto', width: '100%', padding: '0 16px', overflowY: 'auto' }}>
+      <div
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 480, margin: '0 auto', width: '100%', padding: '0 16px', overflowY: 'auto', userSelect: 'none' }}
+        onMouseDown={e => { mouseDragRef.current = e.clientX; mouseDraggingRef.current = false; }}
+        onMouseMove={e => { if (mouseDragRef.current === null) return; if (Math.abs(e.clientX - mouseDragRef.current) > 8) mouseDraggingRef.current = true; }}
+        onMouseUp={e => {
+          if (mouseDragRef.current === null) return;
+          const dx = e.clientX - mouseDragRef.current;
+          mouseDragRef.current = null;
+          if (Math.abs(dx) > 50) {
+            if (dx < 0 && activeIdx < slides.length - 1) { setActiveIdx(i => i + 1); resetTimer(); }
+            if (dx > 0 && activeIdx > 0) { setActiveIdx(i => i - 1); resetTimer(); }
+          }
+          mouseDraggingRef.current = false;
+        }}
+        onMouseLeave={() => { mouseDragRef.current = null; }}
+      >
         <div key={activeIdx} style={{ transition: 'opacity 0.3s ease', opacity: 1 }}>
           <div
             className="cin-card"
@@ -353,7 +337,7 @@ export default function ForYou({
                   className="cin-poster-img"
                   src={img}
                   alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', position: 'absolute', inset: 0 }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center center', position: 'absolute', inset: 0, display: 'block' }}
                   onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
               )}

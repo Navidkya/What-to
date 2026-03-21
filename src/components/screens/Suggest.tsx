@@ -497,10 +497,11 @@ export default function Suggest({
       }
 
       if (cat.id === 'read') {
+        const readFallback = 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=90';
         fetchBookCover(item.title).then(url => {
-          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: url || SUGGEST_FALLBACKS.read } }));
+          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: url || readFallback } }));
         }).catch(() => {
-          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: SUGGEST_FALLBACKS.read } }));
+          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], cover: readFallback } }));
         });
       }
 
@@ -720,7 +721,7 @@ export default function Suggest({
                     className="cin-poster-img"
                     src={displayImg}
                     alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', position: 'absolute', inset: 0 }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center center', position: 'absolute', inset: 0, display: 'block' }}
                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 )}

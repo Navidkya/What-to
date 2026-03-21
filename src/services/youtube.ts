@@ -87,6 +87,7 @@ export async function discoverYouTube(filters: YTFilters): Promise<YTItem[]> {
             standard?: { url: string };
             high?: { url: string };
             medium?: { url: string };
+            default?: { url: string };
           };
         };
       }>;
@@ -99,6 +100,7 @@ export async function discoverYouTube(filters: YTFilters): Promise<YTItem[]> {
         || r.snippet.thumbnails.standard?.url
         || r.snippet.thumbnails.high?.url
         || r.snippet.thumbnails.medium?.url
+        || r.snippet.thumbnails.default?.url
         || null,
       channelName: r.snippet.channelTitle,
       duration: null, // precisaria de outro call para obter duração exacta

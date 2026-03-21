@@ -82,9 +82,7 @@ export async function discoverDeezer(filters: DeezerFilters): Promise<DeezerItem
         ? `${DEEZER_BASE}/genre/${genreId}/artists`
         : `${DEEZER_BASE}/chart/0/albums`;
 
-      // Nota: Deezer tem CORS — usa proxy público
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-      const res = await fetch(proxyUrl);
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json() as {
           data?: Array<{
@@ -118,8 +116,7 @@ export async function discoverDeezer(filters: DeezerFilters): Promise<DeezerItem
         ? GENRE_SEARCH_MAP[filters.genres[0]] || filters.genres[0]
         : 'podcast popular';
       const searchUrl = `${DEEZER_BASE}/search/podcast?q=${encodeURIComponent(query)}&limit=10`;
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
-      const res = await fetch(proxyUrl);
+      const res = await fetch(searchUrl);
       if (res.ok) {
         const data = await res.json() as {
           data?: Array<{
