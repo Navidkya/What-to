@@ -56,6 +56,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const userTypeCheckedRef = useRef(false);
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -296,14 +297,18 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const influencerProfile = await loadInfluencerProfile(session.user.id);
-        if (influencerProfile) {
-          setAuthUser({ id: session.user.id, email: session.user.email });
-          setIsCreator(true);
-          setAuthLoading(false);
-          return;
-        }
+        try {
+          const influencerProfile = await loadInfluencerProfile(session.user.id);
+          if (influencerProfile) {
+            setAuthUser({ id: session.user.id, email: session.user.email });
+            setIsCreator(true);
+            setAuthLoading(false);
+            userTypeCheckedRef.current = true;
+            return;
+          }
+        } catch { /* não é influencer */ }
         setAuthUser({ id: session.user.id, email: session.user.email });
+        userTypeCheckedRef.current = true;
         handleLogin(
           session.user.id,
           session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
@@ -314,13 +319,17 @@ export default function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const influencerProfile = await loadInfluencerProfile(session.user.id);
-        if (influencerProfile) {
-          setAuthUser({ id: session.user.id, email: session.user.email });
-          setIsCreator(true);
-          setAuthLoading(false);
-          return;
-        }
+        // Se já verificou o tipo (vem do getSession), ignora
+        if (userTypeCheckedRef.current) return;
+        try {
+          const influencerProfile = await loadInfluencerProfile(session.user.id);
+          if (influencerProfile) {
+            setAuthUser({ id: session.user.id, email: session.user.email });
+            setIsCreator(true);
+            setAuthLoading(false);
+            return;
+          }
+        } catch { /* não é influencer */ }
         setAuthUser({ id: session.user.id, email: session.user.email });
         await handleLogin(
           session.user.id,
@@ -445,7 +454,7 @@ export default function App() {
   if (isCreator) {
     return (
       <>
-        <CreatorDashboard isActive={true} onBack={() => { setIsCreator(false); }} onToast={toast} userId={authUser?.id || ''} />
+        <CreatorDashboard isActive={true} onBack={() => { setIsCreator(false); setAuthUser(null); userTypeCheckedRef.current = false; signOut(); }} onToast={toast} userId={authUser?.id || ''} />
         <Toast message={msg} visible={visible} />
       </>
     );
