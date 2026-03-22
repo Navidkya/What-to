@@ -11,7 +11,7 @@ interface HomeProps {
   tracking: TrackingMap;
   schedules: ScheduleEntry[];
   onOpenCat: (id: string, item?: DataItem) => void;
-  onSurprise: () => void;
+  onOpenPlan: () => void;
   onOpenLive: (title: string, emoji: string, catId: string) => void;
   onNav: (screen: Screen) => void;
   isActive: boolean;
@@ -215,7 +215,7 @@ const CAT_IMAGES: Record<string, string> = {
 };
 
 
-export default function Home({ profile, history, tracking, schedules, onOpenCat, onSurprise, onOpenLive, onNav, isActive: _isActive, onHideTracking, onRemoveTracking, onClearTracking }: HomeProps) {
+export default function Home({ profile, history, tracking, schedules, onOpenCat, onOpenPlan, onOpenLive, onNav, isActive: _isActive, onHideTracking, onRemoveTracking, onClearTracking }: HomeProps) {
   const [confirmClear, setConfirmClear] = useState(false);
   const greeting = getGreeting(profile.name);
   const avatarLetter = profile.name ? profile.name[0].toUpperCase() : '◉';
@@ -443,6 +443,32 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           </div>
         )}
 
+        {/* Criar Plano */}
+        <div style={{ padding: '0 16px', marginBottom: 12 }}>
+          <button
+            onClick={onOpenPlan}
+            style={{ width: '100%', padding: '14px 20px', background: 'rgba(200,155,60,0.08)', border: '1px solid rgba(200,155,60,0.25)', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', textAlign: 'left' }}
+          >
+            <span style={{ fontSize: 24 }}>📋</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 14, fontWeight: 600, color: 'var(--ac)' }}>Criar Plano</div>
+              <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 1 }}>Planeia a tua noite ou dia</div>
+            </div>
+            <span style={{ color: 'var(--mu)', fontSize: 18 }}>›</span>
+          </button>
+        </div>
+
+        {/* Modo sexta/sábado */}
+        {(() => { const today = new Date().getDay(); const isWeekend = today === 5 || today === 6; return isWeekend ? (
+          <div style={{ margin: '0 16px 12px', padding: '12px 16px', background: 'linear-gradient(135deg, rgba(200,155,60,0.15), rgba(168,117,53,0.08))', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🔥</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ac)', fontFamily: "'Outfit',sans-serif" }}>{today === 5 ? 'Sexta à noite' : 'Sábado'} — decide já!</div>
+              <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 1 }}>Sugestões especiais para esta noite</div>
+            </div>
+          </div>
+        ) : null; })()}
+
         {/* Categories */}
         <div className="section-lbl" style={{ marginTop: 12 }}>What to...</div>
 
@@ -463,14 +489,6 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
               </div>
             </button>
           ))}
-        </div>
-
-        {/* Actions — só Surpreende-me */}
-        <div className="home-actions-solo">
-          <button className="btn-surprise" onClick={onSurprise}>
-            <span className="surprise-star">✦</span>
-            Surpreende-me
-          </button>
         </div>
 
         {/* Match de hoje */}

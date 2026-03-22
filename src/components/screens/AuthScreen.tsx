@@ -266,6 +266,13 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
                 <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Entrar no painel de criador</div>
               </div>
             </button>
+            {/* Login directo sem código */}
+            <button
+              onClick={() => { setSubmode('creator-login'); setCreatorStep('login'); }}
+              style={{ background: 'none', border: 'none', color: 'rgba(156,165,185,0.5)', fontSize: 11, fontFamily: "'Outfit',sans-serif", cursor: 'pointer', padding: '4px 0', textAlign: 'center', width: '100%', marginTop: -4 }}
+            >
+              Já tens conta? Entrar directamente →
+            </button>
             <button
               onClick={() => setSubmode('creator-apply')}
               style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 16, cursor: 'pointer', textAlign: 'left' }}

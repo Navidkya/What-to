@@ -38,6 +38,7 @@ import WrappedOverlay from './components/panels/WrappedOverlay';
 import SchedulePanel from './components/panels/SchedulePanel';
 import AddToListPanel from './components/panels/AddToListPanel';
 import AuthScreen from './components/screens/AuthScreen';
+import PlanScreen from './components/screens/PlanScreen';
 import CreatorDashboard from './components/screens/CreatorDashboard';
 import AdminPanel from './components/screens/AdminPanel';
 import { supabase } from './lib/supabase';
@@ -132,10 +133,6 @@ export default function App() {
     if (id === 'visit')  setVisitObOpen(true);
     if (id === 'do')     setDoObOpen(true);
   }, []);
-
-  const surpriseMe = useCallback(() => {
-    openCat(CATS[Math.floor(Math.random() * CATS.length)].id);
-  }, [openCat]);
 
   const openReact = useCallback(() => setReactOpen(true), []);
 
@@ -501,7 +498,7 @@ export default function App() {
                 tracking={store.tracking}
                 schedules={store.schedules}
                 onOpenCat={openCat}
-                onSurprise={surpriseMe}
+                onOpenPlan={() => navTo('plan')}
                 onOpenLive={openLive}
                 onNav={navTo}
                 isActive={true}
@@ -604,6 +601,15 @@ export default function App() {
               const updated = store.history.filter((_, idx) => idx !== i);
               store.updateHistory(updated);
             }}
+          />
+
+          <PlanScreen
+            profile={store.profile}
+            plans={store.plans}
+            onUpdatePlans={store.updatePlans}
+            onOpenCat={openCat}
+            isActive={screen === 'plan'}
+            onToast={toast}
           />
 
           <Metrics

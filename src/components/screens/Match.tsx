@@ -100,6 +100,9 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
   const addInputRef = useRef<HTMLInputElement>(null);
 
   const [introWho, setIntroWho] = useState<string | null>(null);
+  const [groupHistory, setGroupHistory] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('wt_group_nights') || '0'); } catch { return 0; }
+  });
 
   const myName = profile.name || 'Eu';
 
@@ -215,6 +218,12 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
       <p style={{ fontFamily: '"Outfit", sans-serif', fontSize: 15, color: 'rgba(245,241,235,0.6)', maxWidth: 280, margin: '0 0 40px', lineHeight: 1.5 }}>
         Descubram o que o grupo quer fazer hoje, sem discussões. Magia pura.
       </p>
+
+      {groupHistory > 0 && (
+        <div style={{ textAlign: 'center', padding: '8px 16px', background: 'rgba(200,155,60,0.06)', border: '1px solid rgba(200,155,60,0.15)', borderRadius: 12, marginBottom: 12, fontSize: 12, color: 'var(--mu)' }}>
+          ⚡ {groupHistory} {groupHistory === 1 ? 'noite decidida' : 'noites decididas'} em grupo
+        </div>
+      )}
 
       <button
         className="btn-primary"
@@ -507,7 +516,14 @@ export default function Match({ profile, isActive, onBack, onToast }: MatchProps
           </>
         )}
 
-        <button className="mv-confirm" onClick={reset} style={{ background: 'var(--ac)', border: 'none', marginTop: 4 }}>
+        <button className="mv-confirm" onClick={() => {
+          if (matches.length > 0) {
+            const newCount = groupHistory + 1;
+            localStorage.setItem('wt_group_nights', String(newCount));
+            setGroupHistory(newCount);
+          }
+          reset();
+        }} style={{ background: 'var(--ac)', border: 'none', marginTop: 4 }}>
           🔄 Jogar outra vez
         </button>
         <div style={{ height: 16 }} />

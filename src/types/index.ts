@@ -184,7 +184,8 @@ export type Screen =
   | 'b2b'
   | 'friends'
   | 'feed'
-  | 'creator-dashboard';
+  | 'creator-dashboard'
+  | 'plan';
 
 export type OverlayId =
   | 'reactOv'
@@ -239,4 +240,25 @@ export interface PermanentPrefs {
   alwaysGenres: Record<string, string[]>;
   neverGenres: Record<string, string[]>;
   preferredLanguage: 'pt' | 'en' | 'any';
+}
+
+export interface PlanItem {
+  id: string;
+  title: string;
+  emoji: string;
+  catId: string;
+  cat: string;
+  type: string;
+  desc?: string;
+  img?: string | null;
+}
+
+export interface NightPlan {
+  id: string;
+  name: string;
+  emoji: string;
+  items: PlanItem[];
+  participants: string[];
+  createdAt: string;
+  isAuto: boolean; // gerado pelo Surpreende-me
 }

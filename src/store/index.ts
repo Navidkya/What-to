@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Profile, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, ScheduleEntry, EatPrefs, WatchPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs, UserList, PermanentPrefs } from '../types';
+import type { Profile, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, ScheduleEntry, EatPrefs, WatchPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs, UserList, PermanentPrefs, NightPlan } from '../types';
 
 // ══════════════════════════════════════
 // localStorage helpers
@@ -67,6 +67,9 @@ export function useAppStore() {
       neverGenres: {},
       preferredLanguage: 'any',
     })
+  );
+  const [plans, setPlansRaw] = useState<NightPlan[]>(() =>
+    load('wt6_plans', [])
   );
 
   const updateProfile = useCallback((p: Profile) => {
@@ -154,6 +157,11 @@ export function useAppStore() {
     save('wt6_permprefs', p);
   }, []);
 
+  const updatePlans = useCallback((p: NightPlan[]) => {
+    setPlansRaw(p);
+    save('wt6_plans', p);
+  }, []);
+
   const clearAll = useCallback(() => {
     const empty: HistoryEntry[] = [];
     const emptyWL: WishlistEntry[] = [];
@@ -183,6 +191,7 @@ export function useAppStore() {
     doPrefs, updateDoPrefs,
     userLists, updateUserLists,
     permanentPrefs, updatePermanentPrefs,
+    plans, updatePlans,
     clearAll,
   };
 }
