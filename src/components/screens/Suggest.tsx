@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Category, DataItem, Profile, TrackingMap, PrefsMap, WatchPrefs, EatPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs } from '../../types';
 import { DATA, GRAD, GENRES, TSTATE, TCOLOR, getPlatformId } from '../../data';
-import { fetchTMDB, discoverTMDB, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
+import { fetchTMDB, discoverTMDB, discoverTMDBMultiPage, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
 import { fetchMeal, discoverMeals, type MealResult, type MealDiscoverItem } from '../../services/mealdb';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
 import { discoverRAWG, type RAWGItem } from '../../services/rawg';
 import { discoverYouTube, type YTItem } from '../../services/youtube';
 import { discoverDeezer, type DeezerItem } from '../../services/deezer';
 import { discoverFSQ, type FSQItem } from '../../services/foursquare';
-import { discoverBooks, type GBItem } from '../../services/googleBooks';
+import { discoverBooks, discoverBooksMultiPage, type GBItem } from '../../services/googleBooks';
 import { loadActiveSuggestions } from '../../services/influencers';
 import type { InfluencerSuggestion } from '../../services/influencers';
 
@@ -371,7 +371,7 @@ export default function Suggest({
       try {
         if (cat.id === 'watch' && watchPrefs) {
           const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
-          const baseFilters = {
+          const baseFilters: DiscoverFilters = {
             type: typeMap[watchPrefs.type] || 'both',
             genres: watchPrefs.genres || [],
             duration: (watchPrefs.duration || 'normal') as DiscoverFilters['duration'],
@@ -382,21 +382,16 @@ export default function Suggest({
             epoca: (watchPrefs as any).epoca || 'qualquer',
             minRating: parseFloat((watchPrefs as any).minRating) || 0,
           };
-          const items = await discoverTMDB(baseFilters);
-          let allItems = [...items];
-          if (items.length < 15) {
-            const [p2, p3] = await Promise.all([
-              discoverTMDB({ ...baseFilters, page: 2 }),
-              discoverTMDB({ ...baseFilters, page: 3 }),
-            ]);
-            allItems = [...items, ...p2, ...p3];
-          }
+          // Busca 3 páginas em paralelo = até 60 resultados
+          const allItems = await discoverTMDBMultiPage(baseFilters, [1, 2, 3]);
+          // Prioriza géneros escolhidos
           if (watchPrefs.genres && watchPrefs.genres.length > 0) {
-            const matching = allItems.filter(i => watchPrefs.genres.includes((i as DiscoverItem).genre));
-            const rest = allItems.filter(i => !watchPrefs.genres.includes((i as DiscoverItem).genre));
-            allItems = [...matching, ...rest];
+            const matching = allItems.filter(i => (watchPrefs.genres || []).includes(i.genre));
+            const rest = allItems.filter(i => !(watchPrefs.genres || []).includes(i.genre));
+            setApiItems([...matching, ...rest]);
+          } else {
+            setApiItems(allItems);
           }
-          setApiItems(allItems);
         } else if (cat.id === 'eat' && eatPrefs) {
           const items = await discoverMeals({
             local: eatPrefs.local || [],
@@ -431,17 +426,12 @@ export default function Suggest({
           });
           setApiItems(items);
         } else if (cat.id === 'read' && readPrefs) {
-          const filters = {
+          const items = await discoverBooksMultiPage({
             genres: readPrefs.genres || [],
             type: readPrefs.type || 'Ambos',
             peso: readPrefs.peso || 'mistura',
-          };
-          const [p1, p2, p3] = await Promise.all([
-            discoverBooks(filters),
-            discoverBooks({ ...filters, page: 2 } as any),
-            discoverBooks({ ...filters, page: 3 } as any),
-          ]);
-          setApiItems([...p1, ...p2, ...p3].filter((v, i, a) => a.findIndex(t => t.title === v.title) === i));
+          });
+          setApiItems(items);
         } else if (cat.id === 'visit' && visitPrefs && profile.location) {
           const items = await discoverFSQ({
             lat: profile.location.lat,
@@ -627,7 +617,7 @@ export default function Suggest({
       let newItems: APIItem[] = [];
       if (cat.id === 'watch' && watchPrefs) {
         const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
-        newItems = await discoverTMDB({
+        const baseFilters: DiscoverFilters = {
           type: typeMap[watchPrefs.type] || 'both',
           genres: watchPrefs.genres || [],
           duration: (watchPrefs.duration || 'normal') as DiscoverFilters['duration'],
@@ -637,8 +627,14 @@ export default function Suggest({
           lingua: (watchPrefs as any).lingua || 'Qualquer',
           epoca: (watchPrefs as any).epoca || 'qualquer',
           minRating: parseFloat((watchPrefs as any).minRating) || 0,
-          page: nextPage,
+        };
+        const moreItems = await discoverTMDB({ ...baseFilters, page: nextPage });
+        setApiItems(prev => {
+          const seen = new Set(prev.map(i => i.title));
+          return [...prev, ...moreItems.filter(i => !seen.has(i.title))];
         });
+        setCurrentPage(nextPage);
+        newItems = [];
       } else if (cat.id === 'play' && playPrefs) {
         newItems = await discoverRAWG({
           genres: playPrefs.genres || [],

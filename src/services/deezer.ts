@@ -51,49 +51,40 @@ export async function discoverDeezer(filters: DeezerFilters): Promise<DeezerItem
 
   try {
     if (filters.type === 'Álbum' || filters.type === 'Ambos') {
-      // Usa géneros se definidos, senão top charts
-      const genreId = filters.genres.length > 0
-        ? DEEZER_GENRE_IDS[filters.genres[0]]
-        : null;
-
-      const url = genreId
-        ? `${DEEZER_BASE}/genre/${genreId}/artists`
-        : `${DEEZER_BASE}/chart/0/albums`;
-
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json() as {
-          data?: Array<{
-            id: number;
-            name?: string;
-            title?: string;
-            artist?: { name: string };
-            cover_xl?: string;
-            cover_big?: string;
-            nb_fan?: number;
-            link?: string;
-          }>;
-        };
-        const albums = (data.data || []).slice(0, 15).map(r => ({
-          id: r.id,
-          title: r.title || r.name || 'Sem título',
-          artist: r.artist?.name || '',
-          coverUrl: r.cover_xl || r.cover_big || null,
-          previewUrl: null,
-          type: 'Álbum' as const,
-          genre: filters.genres[0] || 'Música',
-          fans: r.nb_fan || null,
-          url: r.link || `https://www.deezer.com/album/${r.id}`,
-        }));
-        items.push(...albums);
-      }
+      const genreIds = filters.genres.length > 0
+        ? filters.genres.map(g => DEEZER_GENRE_IDS[g]).filter(Boolean)
+        : [null]; // null = chart geral
+      const albumResults = await Promise.all(
+        genreIds.map(async genreId => {
+          try {
+            const url = genreId
+              ? `${DEEZER_BASE}/genre/${genreId}/artists`
+              : `${DEEZER_BASE}/chart/0/albums`;
+            const res = await fetch(url);
+            if (!res.ok) return [];
+            const data = await res.json() as { data?: Array<Record<string, unknown>> };
+            return (data.data || []).slice(0, 20).map(r => ({
+              id: r.id as number,
+              title: (r.title || r.name || 'Sem título') as string,
+              artist: (r as any).artist?.name || '',
+              coverUrl: ((r.cover_xl || r.cover_big) as string) || null,
+              previewUrl: null,
+              type: 'Álbum' as const,
+              genre: filters.genres[0] || 'Música',
+              fans: (r.nb_fan as number) || null,
+              url: (r.link as string) || `https://www.deezer.com/album/${r.id}`,
+            }));
+          } catch { return []; }
+        })
+      );
+      items.push(...albumResults.flat());
     }
 
     if (filters.type === 'Podcast' || filters.type === 'Ambos') {
       const query = filters.genres.length > 0
         ? GENRE_SEARCH_MAP[filters.genres[0]] || filters.genres[0]
         : 'podcast popular';
-      const searchUrl = `${DEEZER_BASE}/search/podcast?q=${encodeURIComponent(query)}&limit=10`;
+      const searchUrl = `${DEEZER_BASE}/search/podcast?q=${encodeURIComponent(query)}&limit=25`;
       const res = await fetch(searchUrl);
       if (res.ok) {
         const data = await res.json() as {

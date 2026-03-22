@@ -176,50 +176,67 @@ export default function PlanScreen({ profile, plans, onUpdatePlans, onOpenCat, i
   // ── SHARE OVERLAY ──
   if (showShare && activePlan) {
     return (
-      <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24,
-      }}>
-        <div id="plan-share-card" style={{
-          background: '#0B0D12', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 20,
-          padding: 24, maxWidth: 340, margin: '0 auto', width: '100%',
-        }}>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 11, letterSpacing: 3, color: 'rgba(200,155,60,0.6)', marginBottom: 16, textTransform: 'uppercase' }}>
-            what to · plano
+      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'20px', zIndex:600 }}>
+        {/* Card partilhável */}
+        <div id="share-card" style={{ width:'100%', maxWidth:360, background:'linear-gradient(135deg, #0d1020, #0B0D12)', border:'1px solid rgba(200,155,60,0.3)', borderRadius:24, padding:'28px 24px 24px', boxShadow:'0 0 60px rgba(200,155,60,0.1)' }}>
+          {/* Header */}
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:20, paddingBottom:16, borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#C89B3C" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span style={{ fontFamily:"'Outfit',sans-serif", fontSize:11, letterSpacing:3, color:'rgba(200,155,60,0.7)', textTransform:'uppercase' }}>what to · plano</span>
           </div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 28, fontWeight: 700, fontStyle: 'italic', color: '#f5f1eb', marginBottom: 8 }}>
-            {activePlan.emoji} {activePlan.name}
+          {/* Nome do plano */}
+          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:30, fontWeight:700, fontStyle:'italic', color:'#f5f1eb', lineHeight:1.15, marginBottom:6 }}>
+            {activePlan.name}
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.7)', marginBottom: 20 }}>
-            {fmtDate(activePlan.createdAt)}
+          <div style={{ fontSize:11, color:'rgba(156,165,185,0.5)', marginBottom:20 }}>
+            {new Date(activePlan.createdAt).toLocaleDateString('pt-PT', { weekday:'long', day:'numeric', month:'long' })}
           </div>
-          {activePlan.items.map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <span style={{ fontSize: 20 }}>{item.emoji}</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#f5f1eb' }}>{item.title}</div>
-                <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.6)' }}>{item.cat}</div>
+          {/* Itens */}
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
+            {activePlan.items.map((item, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12 }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:'rgba(200,155,60,0.1)', border:'1px solid rgba(200,155,60,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <span style={{ fontSize:16 }}>{item.emoji}</span>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:'#f5f1eb', fontFamily:"'Outfit',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.title}</div>
+                  <div style={{ fontSize:10, color:'rgba(156,165,185,0.4)', marginTop:1 }}>{item.cat}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          {/* Participantes */}
           {activePlan.participants.length > 1 && (
-            <div style={{ marginTop: 16, fontSize: 11, color: 'rgba(156,165,185,0.6)' }}>
+            <div style={{ fontSize:11, color:'rgba(156,165,185,0.4)', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:12 }}>
               com {activePlan.participants.join(', ')}
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 20, width: '100%', maxWidth: 340 }}>
+        {/* Botões */}
+        <div style={{ display:'flex', flexDirection:'column', gap:10, width:'100%', maxWidth:360, marginTop:16 }}>
           <button
             onClick={handleShare}
-            style={{ flex: 1, padding: '13px', borderRadius: 14, background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', color: '#0B0D12', fontFamily: "'Outfit',sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-          >
+            style={{ width:'100%', padding:'14px', borderRadius:14, background:'linear-gradient(135deg,#C89B3C,#a87535)', border:'none', color:'#0B0D12', fontFamily:"'Outfit',sans-serif", fontSize:14, fontWeight:700, cursor:'pointer' }}>
             Partilhar
           </button>
           <button
-            onClick={() => setShowShare(false)}
-            style={{ flex: 1, padding: '13px', borderRadius: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#f5f1eb', fontFamily: "'Outfit',sans-serif", fontSize: 14, cursor: 'pointer' }}
-          >
-            Fechar
+            onClick={() => {
+              try {
+                navigator.clipboard.writeText(
+                  `✦ ${activePlan.name}\n\n` +
+                  activePlan.items.map(i => `${i.emoji} ${i.title} (${i.cat})`).join('\n') +
+                  (activePlan.participants.length > 1 ? `\n\ncom ${activePlan.participants.join(', ')}` : '') +
+                  '\n\n— what to · decide less. live more.'
+                );
+                onToast('Copiado!');
+              } catch { onToast('Não foi possível copiar'); }
+            }}
+            style={{ width:'100%', padding:'13px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(245,241,235,0.7)', fontFamily:"'Outfit',sans-serif", fontSize:13, cursor:'pointer' }}>
+            Copiar texto
+          </button>
+          <button onClick={() => setShowShare(false)}
+            style={{ width:'100%', padding:'11px', borderRadius:14, background:'transparent', border:'1px solid rgba(255,255,255,0.07)', color:'rgba(156,165,185,0.5)', fontFamily:"'Outfit',sans-serif", fontSize:12, cursor:'pointer' }}>
+            ← fechar
           </button>
         </div>
       </div>
@@ -409,7 +426,7 @@ export default function PlanScreen({ profile, plans, onUpdatePlans, onOpenCat, i
 
         {plans.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(245,241,235,0.2)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
             <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontStyle: 'italic', color: 'rgba(245,241,235,0.5)' }}>Ainda sem planos</div>
             <div style={{ fontSize: 13, color: 'rgba(156,165,185,0.4)', marginTop: 8 }}>Cria o teu primeiro plano de noite</div>
           </div>

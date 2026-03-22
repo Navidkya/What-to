@@ -310,3 +310,20 @@ export async function discoverTMDB(filters: DiscoverFilters): Promise<DiscoverIt
 
   return shuffled;
 }
+
+export async function discoverTMDBMultiPage(
+  filters: DiscoverFilters,
+  pages: number[] = [1, 2, 3]
+): Promise<DiscoverItem[]> {
+  const results = await Promise.all(
+    pages.map(page => discoverTMDB({ ...filters, page }))
+  );
+  const all = results.flat();
+  // Deduplica por id
+  const seen = new Set<number>();
+  return all.filter(item => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
