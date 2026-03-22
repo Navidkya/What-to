@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Profile as ProfileType, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, PermanentPrefs } from '../../types';
 import { ALL_PLATFORMS, PLATFORM_SECTIONS, CATS } from '../../data';
+import { setFeedPrivacy } from '../../services/feedEvents';
 
 interface ProfileProps {
   profile: ProfileType;
@@ -25,18 +26,30 @@ interface ProfileProps {
   onUpdatePermanentPrefs: (p: PermanentPrefs) => void;
   onLogout?: () => void;
   onToast: (msg: string) => void;
+  userId?: string;
 }
 
 export default function Profile({
   profile, history, tracking, prefs, wishlist, isActive: _isActive,
   onBack, onUpdateProfile, onUpdatePrefs, onClearAll, onResetEatPrefs, onResetWatchPrefs,
   onResetListenPrefs, onResetReadPrefs, onResetPlayPrefs, onResetLearnPrefs, onResetVisitPrefs, onResetDoPrefs,
-  permanentPrefs, onUpdatePermanentPrefs, onLogout, onToast
+  permanentPrefs, onUpdatePermanentPrefs, onLogout, onToast, userId,
 }: ProfileProps) {
   const [nameVal, setNameVal] = useState(profile.name || '');
   const [selectedPlats, setSelectedPlats] = useState<string[]>(profile.platforms || []);
   const [locationRadius, setLocationRadius] = useState(profile.location?.radius || 5);
   const [locLoading, setLocLoading] = useState(false);
+  const [feedPublic, setFeedPublicState] = useState(() => {
+    try { return localStorage.getItem('wt_feed_public') !== 'false'; } catch { return true; }
+  });
+
+  const handleFeedPrivacyToggle = async () => {
+    const newVal = !feedPublic;
+    setFeedPublicState(newVal);
+    try { localStorage.setItem('wt_feed_public', String(newVal)); } catch { /* */ }
+    if (userId) await setFeedPrivacy(userId, newVal);
+    onToast(newVal ? '✦ Feed público activado' : '○ Feed privado — as tuas acções não aparecem a outros');
+  };
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) { onToast('GPS não disponível'); return; }
@@ -230,6 +243,37 @@ export default function Profile({
           <div className="prof-row">
             <span className="prof-row-l">Guardados</span>
             <span className="prof-row-r">{wishlist.length} itens</span>
+          </div>
+        </div>
+
+        <div className="prof-section fade-in">
+          <div className="prof-sec-lbl">Feed Social</div>
+          <div style={{ fontSize: 11, color: 'var(--mu)', marginBottom: 14, lineHeight: 1.6 }}>
+            Quando activo, as tuas acções (começar a ver, marcar para hoje) aparecem no feed de outros utilizadores.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx)', fontFamily: "'Outfit', sans-serif" }}>
+                {feedPublic ? 'Feed público' : 'Feed privado'}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>
+                {feedPublic ? 'As tuas acções são visíveis a outros' : 'As tuas acções são privadas'}
+              </div>
+            </div>
+            <button
+              onClick={handleFeedPrivacyToggle}
+              style={{
+                width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
+                background: feedPublic ? 'rgba(200,155,60,0.6)' : 'rgba(156,165,185,0.2)',
+                position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 3, left: feedPublic ? 25 : 3, width: 20, height: 20,
+                borderRadius: '50%', background: feedPublic ? '#C89B3C' : 'rgba(156,165,185,0.5)',
+                transition: 'left 0.2s, background 0.2s',
+              }} />
+            </button>
           </div>
         </div>
 

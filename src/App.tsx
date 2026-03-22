@@ -46,6 +46,7 @@ import { supabase } from './lib/supabase';
 import { signOut } from './services/auth';
 import { loadInfluencerProfile } from './services/influencers';
 import { loadAllFromSupabase, syncProfileToSupabase, syncHistoryToSupabase, syncTrackingToSupabase, syncListsToSupabase, syncPrefsToSupabase } from './services/sync';
+import { publishFeedEvent } from './services/feedEvents';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -168,6 +169,19 @@ export default function App() {
       [key]: { state: 'watching', title: curSugg.title, emoji: curSugg.emoji, cat: curCat.name, catId: curCat.id },
     });
 
+    if (authUser && store.profile.name) {
+      publishFeedEvent({
+        userId: authUser.id,
+        displayName: store.profile.name,
+        catId: curCat.id,
+        catName: curCat.name,
+        title: curSugg.title,
+        emoji: curSugg.emoji,
+        actionType: 'started',
+        img: curSuggImg || null,
+      });
+    }
+
     // For recipes: open the recipe panel instead of a platform link
     if (curCat.id === 'eat' && curSugg.type === 'Receita') {
       setRecipeOpen(true);
@@ -196,6 +210,17 @@ export default function App() {
     if (type === 'hoje') {
       store.updateHistory([{ ...base, action: 'hoje' }, ...store.history]);
       toast('✅ Marcado para hoje!');
+      if (authUser && store.profile.name) {
+        publishFeedEvent({
+          userId: authUser.id,
+          displayName: store.profile.name,
+          catId: curCat.id,
+          catName: curCat.name,
+          title: curSugg.title,
+          emoji: curSugg.emoji,
+          actionType: 'marked_today',
+        });
+      }
     } else if (type === 'save') {
       if (!store.wishlist.find(w => w.key === key)) {
         const wEntry: WishlistEntry = { key, ...base, action: 'save' };
@@ -549,6 +574,7 @@ export default function App() {
                 onUpdatePermanentPrefs={store.updatePermanentPrefs}
                 onLogout={handleLogout}
                 onToast={toast}
+                userId={authUser?.id}
               />
             </div>
           </div>
@@ -669,6 +695,8 @@ export default function App() {
             history={store.history}
             isActive={screen === 'feed'}
             onToast={toast}
+            userId={authUser?.id}
+            userName={store.profile.name}
           />
 
           <ForYou
