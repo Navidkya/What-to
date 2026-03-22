@@ -34,6 +34,17 @@ const RAWG_GENRE_MAP: Record<string, string> = {
   'Aventura': 'adventure',
   'Simulação': 'simulation',
   'Indie': 'indie',
+  'Corrida': 'racing',
+  'Terror': 'action',
+  'Luta': 'fighting',
+  'Stealth': 'action',
+  'Metroidvania': 'platformer',
+  'Party': 'family',
+  'Cartas': 'card',
+  'Deck-building': 'card',
+  'Arcade': 'arcade',
+  'Sports': 'sports',
+  'Desporto': 'sports',
 };
 
 // Mapa de plataformas para RAWG IDs

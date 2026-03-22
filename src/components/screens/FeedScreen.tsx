@@ -48,14 +48,12 @@ interface Props {
   userName?: string;
 }
 
-const MOCK_FRIENDS = [
+const SIDEBAR_FRIENDS = [
   { name: 'Pedro', initial: 'P', color: '#6ab4e0' },
   { name: 'Maria', initial: 'M', color: '#e07b9a' },
   { name: 'João', initial: 'J', color: '#7be0a0' },
   { name: 'Ana', initial: 'A', color: '#e0c47b' },
 ];
-
-const MOCK_ACTIONS = ['está a ver', 'acabou', 'começou', 'recomenda'];
 
 const ACTION_LABEL: Record<string, string> = {
   started: 'começou',
@@ -157,34 +155,6 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
           catName: ev.catName,
           timestamp: timeAgo(ev.createdAt),
           rating: ev.rating ?? undefined,
-        });
-      });
-    } else {
-      // Fallback: mock friends
-      MOCK_FRIENDS.forEach((friend, i) => {
-        const action = MOCK_ACTIONS[i % MOCK_ACTIONS.length];
-        const titles = ['Severance', 'The Bear', 'Balatro', 'Dune: Part Two', 'Silo'];
-        const imgs: (string | null)[] = [
-          'https://image.tmdb.org/t/p/w780/HnE7z8dwLM6hNmBHD1JdVXbqSvL.jpg',
-          'https://image.tmdb.org/t/p/w780/sJbJsEZ5SM5LFxCIAJoRS3pqxA.jpg',
-          null,
-          'https://image.tmdb.org/t/p/w780/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
-          null,
-        ];
-        feedCards.push({
-          id: `friend-${i}`,
-          type: 'friend_activity',
-          friendName: friend.name,
-          friendInitial: friend.initial,
-          friendColor: friend.color,
-          action,
-          title: titles[i] || 'Severance',
-          subtitle: action === 'recomenda' ? 'Recomenda vivamente' : action === 'acabou' ? 'Acabou de ver' : 'A ver agora',
-          img: imgs[i] || null,
-          catId: 'watch',
-          catName: 'Ver',
-          timestamp: `${i + 1}h`,
-          rating: action === 'recomenda' ? 9.1 : undefined,
         });
       });
     }
@@ -364,7 +334,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
           onMouseLeave={() => setFriendsBarExpanded(false)}
           onClick={() => setFriendsBarExpanded(v => !v)}
         >
-          {MOCK_FRIENDS.map((f, i) => (
+          {SIDEBAR_FRIENDS.map((f, i) => (
             <div key={i} style={{ display:'flex', alignItems:'center', gap:friendsBarExpanded ? 10 : 0, overflow:'hidden', transition:'all 0.25s', width: friendsBarExpanded ? 'auto' : 28 }}>
               <div style={{ width:28, height:28, borderRadius:'50%', background:f.color+'22', border:`1.5px solid ${f.color}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:f.color, flexShrink:0, position:'relative' }}>
                 {f.initial}

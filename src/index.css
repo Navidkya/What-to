@@ -70,6 +70,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 body::before {
@@ -1317,4 +1319,29 @@ body::after {
   background: rgba(11,13,18,0.7);
   border: 1px solid rgba(200,155,60,0.3);
   color: rgba(200,155,60,0.9);
+}
+
+/* ── Loading spinner ── */
+@keyframes logoPulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+@keyframes spinRing {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.logo-spinner {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 48px;
+  font-weight: 700;
+  color: #C89B3C;
+  animation: logoPulse 1.8s ease-in-out infinite;
+}
+.logo-spinner-ring {
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(200,155,60,0.18);
+  border-top-color: #C89B3C;
+  border-radius: 50%;
+  animation: spinRing 0.9s linear infinite;
 }

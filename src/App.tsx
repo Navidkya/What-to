@@ -330,7 +330,7 @@ export default function App() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       setAuthLoading(false);
-    }, 12000);
+    }, 8000);
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       clearTimeout(timeout);
       if (session?.user && !restoringRef.current) {
@@ -392,6 +392,25 @@ export default function App() {
       subscription.unsubscribe();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Restaura sessão quando a app volta ao foreground (PWA mobile)
+  useEffect(() => {
+    const handleVisibility = async () => {
+      if (document.visibilityState === 'visible' && !authUser) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && !restoringRef.current) {
+          restoringRef.current = true;
+          setAuthUser({ id: session.user.id, email: session.user.email });
+          handleLogin(
+            session.user.id,
+            session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
+          );
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [authUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 6d — Sync automático
   useEffect(() => {
@@ -490,10 +509,9 @@ export default function App() {
   // Auth guards
   if (authLoading) {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#0B0D12', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 48, fontWeight: 700, color: '#C89B3C', opacity: 0.8 }}>
-          what<em>to</em>
-        </div>
+      <div style={{ position: 'fixed', inset: 0, background: '#0B0D12', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24 }}>
+        <div className="logo-spinner">what<em>to</em></div>
+        <div className="logo-spinner-ring" />
       </div>
     );
   }
@@ -644,6 +662,17 @@ export default function App() {
             permanentPrefs={store.permanentPrefs}
             prefsVersion={prefsVersion}
             userId={authUser?.id}
+            onReopenOnboard={() => {
+              const id = curCat?.id;
+              if (id === 'eat')    setEatObOpen(true);
+              if (id === 'watch')  setWatchObOpen(true);
+              if (id === 'listen') setListenObOpen(true);
+              if (id === 'read')   setReadObOpen(true);
+              if (id === 'play')   setPlayObOpen(true);
+              if (id === 'learn')  setLearnObOpen(true);
+              if (id === 'visit')  setVisitObOpen(true);
+              if (id === 'do')     setDoObOpen(true);
+            }}
           />
 
           {/* Overlay screens */}

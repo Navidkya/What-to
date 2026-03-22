@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { trackAsync } from '../../services/analytics';
 import type { Category, DataItem, Profile, TrackingMap, PrefsMap, WatchPrefs, EatPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs } from '../../types';
 import { DATA, GRAD, GENRES, TSTATE, TCOLOR, getPlatformId } from '../../data';
-import { fetchTMDB, discoverTMDB, discoverTMDBMultiPage, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
+import { fetchTMDB, discoverTMDB, discoverTMDBMultiPage, TMDB_GENRE_MAP, TMDB_TV_GENRE_MAP, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
 import { fetchMeal, discoverMeals, type MealResult, type MealDiscoverItem } from '../../services/mealdb';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
 import { discoverRAWG, type RAWGItem } from '../../services/rawg';
@@ -108,6 +108,7 @@ interface SuggestProps {
   permanentPrefs?: import('../../types').PermanentPrefs;
   prefsVersion?: number;
   userId?: string;
+  onReopenOnboard?: () => void;
 }
 
 function hasPlatform(item: DataItem, profile: Profile): boolean {
@@ -253,6 +254,7 @@ export default function Suggest({
   watchPrefs, eatPrefs, listenPrefs, readPrefs, playPrefs, learnPrefs, visitPrefs, permanentPrefs,
   prefsVersion = 0,
   userId,
+  onReopenOnboard,
 }: SuggestProps) {
   const [curMood, setCurMood] = useState('Tudo');
   const [cbarOn, setCbarOn] = useState(false);
@@ -284,6 +286,7 @@ export default function Suggest({
   // Analytics: track cards skipped and whether user accepted anything
   const skipCountRef = useRef(0);
   const acceptedRef = useRef(false);
+  const lastPrefsVersionRef = useRef(0);
 
   const getPool = useCallback((gf?: string, moodOverride?: string) => {
     const mood = moodOverride ?? curMood;
@@ -396,6 +399,7 @@ export default function Suggest({
   // Unified API discover for all categories
   useEffect(() => {
     if (!isActive) return;
+    lastPrefsVersionRef.current = prefsVersion ?? 0;
     setApiLoading(true);
     setApiItems([]);
     setCurrentPage(1);
@@ -429,10 +433,21 @@ export default function Suggest({
             };
             // Busca 3 páginas em paralelo = até 60 resultados
             const allItems = await discoverTMDBMultiPage(baseFilters, [1, 2, 3]);
-            // Prioriza géneros escolhidos
+            // Prioriza géneros escolhidos — usa IDs para comparação fiável
             if (watchPrefs!.genres && watchPrefs!.genres.length > 0) {
-              const matching = allItems.filter(i => (watchPrefs!.genres || []).includes(i.genre));
-              const rest = allItems.filter(i => !(watchPrefs!.genres || []).includes(i.genre));
+              const selectedIds = new Set<number>(
+                (watchPrefs!.genres || []).flatMap(g => {
+                  const movieId = TMDB_GENRE_MAP[g];
+                  const tvId = TMDB_TV_GENRE_MAP[g];
+                  return [movieId, tvId].filter(Boolean) as number[];
+                })
+              );
+              const matching = allItems.filter(i =>
+                (i as DiscoverItem).genreIds?.some(id => selectedIds.has(id))
+              );
+              const rest = allItems.filter(i =>
+                !(i as DiscoverItem).genreIds?.some(id => selectedIds.has(id))
+              );
               setApiItems([...matching, ...rest]);
             } else {
               setApiItems(allItems);
@@ -440,14 +455,33 @@ export default function Suggest({
           }
         } else if (cat.id === 'eat') {
           const isDone = eatPrefs?.done === true;
-          const items = await discoverMeals({
-            local: isDone ? (eatPrefs!.local || []) : [],
+          const localPref = isDone ? (eatPrefs!.local || []) : [];
+          const querSair = localPref.includes('sair');
+          const querCasa = localPref.includes('casa') || localPref.includes('takeaway') || localPref.length === 0;
+
+          const mealItems = (querCasa || !isDone) ? await discoverMeals({
+            local: localPref,
             fome: isDone ? (eatPrefs!.fome || 'normal') : 'normal',
             budget: isDone ? (eatPrefs!.budget || 'medio') : 'medio',
             restrictions: isDone ? (eatPrefs!.restrictions || []) : [],
             tempo: isDone ? (eatPrefs!.tempo || 'normal') : 'normal',
-          });
-          setApiItems(isDone ? items : apply7030(items));
+          }) : [];
+
+          const fsqItems = (querSair && profile.location) ? await discoverFSQ({
+            lat: profile.location.lat,
+            lng: profile.location.lng,
+            radius: profile.location.radius || 5,
+            tipo: [],
+            custo: isDone ? (eatPrefs!.budget === 'barato' ? 'baixo' : 'qualquer') : 'qualquer',
+          }) : [];
+
+          const combined = querSair && !querCasa
+            ? [...fsqItems, ...mealItems]
+            : querSair && querCasa
+              ? [...fsqItems.slice(0, Math.ceil(fsqItems.length / 2)), ...mealItems]
+              : mealItems;
+
+          setApiItems(isDone ? combined : apply7030(combined));
         } else if (cat.id === 'play') {
           const isDone = playPrefs?.done === true;
           const filters = {
@@ -745,7 +779,12 @@ export default function Suggest({
   return (
     <div className={`screen${isActive ? ' active' : ''}`} id="suggest">
       <div className="tb">
-        <button className="tbi" onClick={onBack}>←</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button className="tbi" onClick={onBack}>←</button>
+          {onReopenOnboard && (
+            <button className="tbi" style={{ fontSize: 11, padding: '4px 8px', opacity: 0.75 }} onClick={onReopenOnboard}>Filtros</button>
+          )}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 15 }}>{cat.icon}</span>
           <span className="tb-lbl">What to {cat.name}</span>

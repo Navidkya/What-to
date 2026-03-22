@@ -177,6 +177,7 @@ export interface DiscoverItem {
   year: string | null;
   type: 'Filme' | 'Série';
   genre: string;
+  genreIds: number[];
   platforms: Array<{ n: string; url: string; c: string }>;
 }
 
@@ -296,6 +297,7 @@ export async function discoverTMDB(filters: DiscoverFilters): Promise<DiscoverIt
           year: (r.release_date || r.first_air_date || '').substring(0, 4) || null,
           type: mediaType === 'movie' ? 'Filme' as const : 'Série' as const,
           genre: genreName,
+          genreIds: r.genre_ids || [],
           platforms: [] as Array<{ n: string; url: string; c: string }>,
         };
       });
