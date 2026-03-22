@@ -48,12 +48,6 @@ interface Props {
   userName?: string;
 }
 
-const SIDEBAR_FRIENDS = [
-  { name: 'Pedro', initial: 'P', color: '#6ab4e0' },
-  { name: 'Maria', initial: 'M', color: '#e07b9a' },
-  { name: 'João', initial: 'J', color: '#7be0a0' },
-  { name: 'Ana', initial: 'A', color: '#e0c47b' },
-];
 
 const ACTION_LABEL: Record<string, string> = {
   started: 'começou',
@@ -112,7 +106,6 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
     isInfluencer: boolean; userId?: string; isMuted?: boolean;
   } | null>(null);
   const [suggPopup, setSuggPopup] = useState<FeedCard | null>(null);
-  const [friendsBarExpanded, setFriendsBarExpanded] = useState(false);
   const [following, setFollowing] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -326,27 +319,6 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
         <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:700, fontStyle:'italic', color:'#f5f1eb', letterSpacing:-0.3 }}>Feed</div>
       </div>
 
-      {/* Barra lateral de amigos */}
-      <div style={{ position:'fixed', left:0, top:'50%', transform:'translateY(-50%)', zIndex:50, display:'flex', flexDirection:'column', alignItems:'flex-start' }}>
-        <div
-          style={{ background:'rgba(10,12,20,0.92)', backdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.08)', borderLeft:'none', borderRadius:'0 16px 16px 0', padding:'10px 8px', display:'flex', flexDirection:'column', gap:8, cursor:'pointer', transition:'all 0.25s' }}
-          onMouseEnter={() => setFriendsBarExpanded(true)}
-          onMouseLeave={() => setFriendsBarExpanded(false)}
-          onClick={() => setFriendsBarExpanded(v => !v)}
-        >
-          {SIDEBAR_FRIENDS.map((f, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:friendsBarExpanded ? 10 : 0, overflow:'hidden', transition:'all 0.25s', width: friendsBarExpanded ? 'auto' : 28 }}>
-              <div style={{ width:28, height:28, borderRadius:'50%', background:f.color+'22', border:`1.5px solid ${f.color}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:f.color, flexShrink:0, position:'relative' }}>
-                {f.initial}
-                <div style={{ position:'absolute', bottom:0, right:0, width:7, height:7, borderRadius:'50%', background:'#4ade80', border:'1.5px solid #060810' }} />
-              </div>
-              {friendsBarExpanded && (
-                <span style={{ fontSize:11, color:'rgba(245,241,235,0.7)', fontFamily:"'Outfit',sans-serif", whiteSpace:'nowrap' }}>{f.name}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Cards */}
       <div style={{ padding:'12px 16px 100px' }}>

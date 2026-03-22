@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../../services/auth';
 import { verifyInviteCode, activateInviteCode } from '../../services/influencers';
 import { supabase } from '../../lib/supabase';
+import { APP_VERSION } from '../../version';
 
 interface Props {
   onSuccess: () => void;
@@ -188,6 +189,9 @@ export default function AuthScreen({ onSuccess: _onSuccess, onToast, onCreatorLo
         </div>
         <div style={{ fontSize: 11, letterSpacing: 4, textTransform: 'uppercase', color: 'rgba(156,165,185,0.7)', marginTop: 8 }}>
           decide less. live more.
+        </div>
+        <div style={{ fontSize: 10, letterSpacing: 2, color: 'rgba(200,155,60,0.4)', marginTop: 6, fontFamily: "'Outfit',sans-serif" }}>
+          · {APP_VERSION} ·
         </div>
       </div>
 

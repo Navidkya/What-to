@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { APP_VERSION } from './version';
 import type { Screen, Category, DataItem, HistoryEntry, WishlistEntry, WhyReason, ScheduleEntry } from './types';
 import { CATS, getPlatformId } from './data';
 import { useAppStore } from './store';
@@ -60,8 +61,6 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
-  const userTypeCheckedRef = useRef(false);
-  const restoringRef = useRef(false);
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -327,66 +326,65 @@ export default function App() {
     setScreen('onboard');
   };
 
+  // Processa utilizador autenticado — carrega perfil de influencer ou faz login normal
+  const processUser = useCallback(async (user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) => {
+    try {
+      const influencerProfile = await loadInfluencerProfile(user.id);
+      if (influencerProfile) {
+        setAuthUser({ id: user.id, email: user.email });
+        setIsCreator(true);
+        setAuthLoading(false);
+        return;
+      }
+    } catch { /* não é influencer */ }
+    setAuthUser({ id: user.id, email: user.email });
+    await handleLogin(
+      user.id,
+      (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || ''
+    );
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
+    // Timeout de segurança — se ao fim de 8s ainda não há resposta, mostra login
     const timeout = setTimeout(() => {
       setAuthLoading(false);
     }, 8000);
+
+    // Tenta restaurar sessão existente
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       clearTimeout(timeout);
-      if (session?.user && !restoringRef.current) {
-        restoringRef.current = true;
-        try {
-          const influencerProfile = await loadInfluencerProfile(session.user.id);
-          if (influencerProfile) {
-            setAuthUser({ id: session.user.id, email: session.user.email });
-            setIsCreator(true);
-            setAuthLoading(false);
-            userTypeCheckedRef.current = true;
-            return;
-          }
-        } catch { /* não é influencer */ }
-        setAuthUser({ id: session.user.id, email: session.user.email });
-        userTypeCheckedRef.current = true;
-        handleLogin(
-          session.user.id,
-          session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
-        );
+      if (session?.user) {
+        await processUser(session.user);
       } else {
-        // Não fazer logout imediato — o onAuthStateChange trata do SIGNED_IN
-        // quando a sessão for restaurada pelo Supabase. O timeout de 12s é o fallback.
+        setAuthLoading(false);
       }
     });
+
+    // Listener para mudanças de auth (login novo, token refresh, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        if (restoringRef.current) {
-          // Sessão já foi tratada pelo getSession — ignora
-          return;
+        // Só processa se ainda não está autenticado (evita duplicação com getSession)
+        if (!authUser) {
+          await processUser(session.user);
         }
-        try {
-          const influencerProfile = await loadInfluencerProfile(session.user.id);
-          if (influencerProfile) {
-            setAuthUser({ id: session.user.id, email: session.user.email });
-            setIsCreator(true);
-            setAuthLoading(false);
-            return;
-          }
-        } catch { /* não é influencer */ }
-        setAuthUser({ id: session.user.id, email: session.user.email });
-        await handleLogin(
-          session.user.id,
-          session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
-        );
       } else if (event === 'SIGNED_OUT') {
+        // Aguarda 800ms para ver se é apenas refresh de token
         setTimeout(async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (!currentSession) {
             setAuthUser(null);
             setIsCreator(false);
             setAuthLoading(false);
           }
         }, 800);
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        // Token renovado — actualiza authUser se necessário
+        if (!authUser) {
+          setAuthUser({ id: session.user.id, email: session.user.email });
+        }
       }
     });
+
     return () => {
       clearTimeout(timeout);
       subscription.unsubscribe();
@@ -398,19 +396,14 @@ export default function App() {
     const handleVisibility = async () => {
       if (document.visibilityState === 'visible' && !authUser) {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && !restoringRef.current) {
-          restoringRef.current = true;
-          setAuthUser({ id: session.user.id, email: session.user.email });
-          handleLogin(
-            session.user.id,
-            session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
-          );
+        if (session?.user) {
+          await processUser(session.user);
         }
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [authUser]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authUser, processUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 6d — Sync automático
   useEffect(() => {
@@ -509,9 +502,10 @@ export default function App() {
   // Auth guards
   if (authLoading) {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#0B0D12', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24 }}>
+      <div style={{ position: 'fixed', inset: 0, background: '#0B0D12', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
         <div className="logo-spinner">what<em>to</em></div>
         <div className="logo-spinner-ring" />
+        <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.35)', fontFamily: "'Outfit',sans-serif", letterSpacing: 2, marginTop: 8 }}>{APP_VERSION}</div>
       </div>
     );
   }
@@ -528,7 +522,7 @@ export default function App() {
   if (isCreator) {
     return (
       <>
-        <CreatorDashboard isActive={true} onBack={() => { setIsCreator(false); setAuthUser(null); userTypeCheckedRef.current = false; signOut(); }} onToast={toast} userId={authUser?.id || ''} />
+        <CreatorDashboard isActive={true} onBack={() => { setIsCreator(false); setAuthUser(null); signOut(); }} onToast={toast} userId={authUser?.id || ''} />
         <Toast message={msg} visible={visible} />
       </>
     );
