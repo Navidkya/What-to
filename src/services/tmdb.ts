@@ -110,36 +110,21 @@ export async function fetchTMDB(title: string, type: 'movie' | 'tv'): Promise<TM
 // ── TMDB Discover ──────────────────────────────────────────────────────────
 
 export const TMDB_GENRE_MAP: Record<string, number> = {
-  'Ação': 28,
-  'Aventura': 12,
-  'Animação': 16,
-  'Comédia': 35,
-  'Crime': 80,
-  'Documentário': 99,
-  'Drama': 18,
-  'Fantasia': 14,
-  'Terror': 27,
-  'Mistério': 9648,
-  'Romance': 10749,
-  'Sci-Fi': 878,
-  'Suspense': 53,
-  'Thriller': 53,
-  'Anime': 16,
+  'Ação': 28, 'Aventura': 12, 'Animação': 16, 'Comédia': 35,
+  'Crime': 80, 'Documentário': 99, 'Drama': 18, 'Fantasia': 14,
+  'Terror': 27, 'Mistério': 9648, 'Romance': 10749, 'Sci-Fi': 878,
+  'Suspense': 53, 'Thriller': 53, 'Anime': 16, 'Família': 10751,
+  'História': 36, 'Música': 10402, 'Guerra': 10752, 'Faroeste': 37,
+  'Musical': 10402, 'Biográfico': 36,
 };
 
 export const TMDB_TV_GENRE_MAP: Record<string, number> = {
-  'Ação': 10759,
-  'Animação': 16,
-  'Comédia': 35,
-  'Crime': 80,
-  'Documentário': 99,
-  'Drama': 18,
-  'Fantasia': 10765,
-  'Mistério': 9648,
-  'Romance': 10749,
-  'Sci-Fi': 10765,
-  'Suspense': 9648,
-  'Anime': 16,
+  'Ação': 10759, 'Animação': 16, 'Comédia': 35, 'Crime': 80,
+  'Documentário': 99, 'Drama': 18, 'Fantasia': 10765, 'Mistério': 9648,
+  'Romance': 10749, 'Sci-Fi': 10765, 'Suspense': 9648, 'Anime': 16,
+  'Família': 10762, 'Natureza': 99, 'Ciência': 99, 'Tecnologia': 99,
+  'Desporto': 99, 'Arte': 99, 'Sociedade': 99, 'Histórico': 36,
+  'Culinária': 99, 'Viagens': 99,
 };
 
 export const TMDB_PROVIDER_MAP: Record<string, number> = {

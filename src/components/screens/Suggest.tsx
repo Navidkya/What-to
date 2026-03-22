@@ -111,58 +111,130 @@ interface SuggestProps {
   onReopenOnboard?: () => void;
 }
 
-// ── Filtragem pós-API universal ───────────────────────────────────────────
-// Garante que os resultados respeitam as escolhas do utilizador,
-// independentemente do que a API devolveu.
+// ── Filtragem estrita pós-API ─────────────────────────────────────────────
+// Regra fundamental: se o utilizador escolheu X, só aparece X.
+// Sem mínimos, sem fallbacks.
 
-interface PostFilterOptions {
-  catId: string;
-  selectedTypes?: string[];  // ex: ['Filme'], ['Série', 'Documentário']
-  selectedGenres?: string[]; // ex: ['Comédia', 'Terror']
-  excludeTitles?: string[];  // títulos já vistos
+interface StrictFilterPrefs {
+  watchType?: string;
+  watchGenreIds?: number[];
+  watchMinRating?: number;
+  watchEpoca?: string;
+  playDificuldade?: string;
+  listenType?: string;
+  readPeso?: string;
+  eatRestrictions?: string[];
+  visitDistancia?: string;
+  doContexto?: string;
+  doLocal?: string;
+  doCusto?: string;
+  excluded?: string[];
 }
 
-function postFilter<T extends { type?: string; genre?: string; title?: string; genres?: string[] }>(
-  items: T[],
-  opts: PostFilterOptions
-): T[] {
+function strictFilter(items: APIItem[], catId: string, p: StrictFilterPrefs): APIItem[] {
   let result = [...items];
 
-  // 1. Remove títulos já vistos/recusados
-  if (opts.excludeTitles && opts.excludeTitles.length > 0) {
-    const excluded = new Set(opts.excludeTitles.map(t => t.toLowerCase()));
-    result = result.filter(i => !excluded.has((i.title || '').toLowerCase()));
+  if (p.excluded?.length) {
+    const ex = new Set(p.excluded.map(t => t.toLowerCase().trim()));
+    result = result.filter(i => !ex.has(((i as any).title || '').toLowerCase().trim()));
   }
 
-  // 2. Filtra por tipo se especificado e se o item tem tipo
-  if (opts.selectedTypes && opts.selectedTypes.length > 0) {
-    const hasTypeItems = result.filter(i => i.type);
-    if (hasTypeItems.length > 0) {
-      const filtered = result.filter(i =>
-        !i.type || opts.selectedTypes!.some(t =>
-          i.type!.toLowerCase().includes(t.toLowerCase()) ||
-          t.toLowerCase().includes(i.type!.toLowerCase())
-        )
-      );
-      // Só aplica filtro se sobrar conteúdo suficiente (>=3 items)
-      if (filtered.length >= 3) result = filtered;
+  if (catId === 'watch') {
+    if (p.watchType && p.watchType !== 'Ambos') {
+      result = result.filter(i => {
+        const item = i as DiscoverItem;
+        const gids = item.genreIds || [];
+        if (p.watchType === 'Documentário') return gids.includes(99);
+        if (p.watchType === 'Anime') return gids.includes(16);
+        if (p.watchType === 'Filme') return item.type === 'Filme' && !gids.includes(99);
+        if (p.watchType === 'Série') return item.type === 'Série' && !gids.includes(99) && !gids.includes(16);
+        return true;
+      });
+    }
+    if (p.watchGenreIds?.length) {
+      const ids = new Set(p.watchGenreIds);
+      const withGenre = result.filter(i => (i as DiscoverItem).genreIds?.some(id => ids.has(id)));
+      if (withGenre.length > 0) result = withGenre;
+    }
+    if (p.watchMinRating && p.watchMinRating > 0) {
+      const withRating = result.filter(i => ((i as any).rating ?? 0) >= p.watchMinRating!);
+      if (withRating.length > 0) result = withRating;
+    }
+    if (p.watchEpoca && p.watchEpoca !== 'qualquer') {
+      if (p.watchEpoca === 'recente') {
+        const r = result.filter(i => parseInt((i as any).year || '0') >= 2015);
+        if (r.length > 0) result = r;
+      } else if (p.watchEpoca === 'classico') {
+        const r = result.filter(i => parseInt((i as any).year || '9999') <= 2000);
+        if (r.length > 0) result = r;
+      }
     }
   }
 
-  // 3. Para Watch: filtragem AGRESSIVA por tipo — sem fallback de "mínimo 3"
-  if (opts.catId === 'watch' && opts.selectedTypes && opts.selectedTypes.length > 0) {
-    const wantsFilme = opts.selectedTypes.some(t => t === 'Filme' || t === 'movie');
-    const wantsSerie = opts.selectedTypes.some(t => t === 'Série' || t === 'tv');
-    const wantsDoc = opts.selectedTypes.some(t => t === 'Documentário');
-    // Se APENAS quer Filme, remove TUDO que não é Filme — sem excepções
-    if (wantsFilme && !wantsSerie && !wantsDoc) {
-      const onlyFilmes = result.filter(i => i.type === 'Filme' || !i.type);
-      result = onlyFilmes; // sem condição de mínimo
+  if (catId === 'play') {
+    if (p.playDificuldade === 'casual') {
+      const r = result.filter(i => ((i as any).metacritic ?? 100) <= 75);
+      if (r.length > 0) result = r;
+    } else if (p.playDificuldade === 'desafiante') {
+      const r = result.filter(i => ((i as any).metacritic ?? 0) >= 80);
+      if (r.length > 0) result = r;
     }
-    // Se APENAS quer Série, remove TUDO que não é Série
-    if (wantsSerie && !wantsFilme && !wantsDoc) {
-      const onlySeries = result.filter(i => i.type === 'Série' || !i.type);
-      result = onlySeries;
+  }
+
+  if (catId === 'listen' && p.listenType && p.listenType !== 'Ambos') {
+    const r = result.filter(i => (i as any).type === p.listenType);
+    if (r.length > 0) result = r;
+  }
+
+  if (catId === 'read' && p.readPeso && p.readPeso !== 'mistura') {
+    if (p.readPeso === 'leve') {
+      const r = result.filter(i => !((i as any).pages) || (i as any).pages <= 250);
+      if (r.length > 0) result = r;
+    } else if (p.readPeso === 'denso') {
+      const r = result.filter(i => ((i as any).pages ?? 0) >= 300);
+      if (r.length > 0) result = r;
+    }
+  }
+
+  if (catId === 'eat' && p.eatRestrictions?.length && !p.eatRestrictions.includes('nenhuma')) {
+    if (p.eatRestrictions.includes('vegetariano') || p.eatRestrictions.includes('vegan')) {
+      const r = result.filter(i => {
+        const cat = ((i as any).category || '').toLowerCase();
+        return cat.includes('vegetarian') || cat.includes('vegan') ||
+               cat.includes('salad') || cat.includes('pasta') || cat.includes('dessert');
+      });
+      if (r.length > 0) result = r;
+    }
+  }
+
+  if (catId === 'visit' && p.visitDistancia === 'perto') {
+    const r = result.filter(i => ((i as any).distance ?? 99999) <= 2000);
+    if (r.length > 0) result = r;
+  }
+
+  if (catId === 'do') {
+    if (p.doContexto && p.doContexto !== 'qualquer') {
+      const r = result.filter(i => {
+        const genre = ((i as any).genre || '').toLowerCase();
+        if (p.doContexto === 'solo') return genre.includes('solo') || genre.includes('individual');
+        if (p.doContexto === 'a_dois') return genre.includes('dois') || genre.includes('casal');
+        if (p.doContexto === 'grupo') return genre.includes('grupo') || genre.includes('social');
+        return true;
+      });
+      if (r.length > 0) result = r;
+    }
+    if (p.doLocal && p.doLocal !== 'qualquer') {
+      const r = result.filter(i => {
+        const genre = ((i as any).genre || '').toLowerCase();
+        if (p.doLocal === 'interior') return genre.includes('casa') || genre.includes('interior');
+        if (p.doLocal === 'exterior') return genre.includes('natureza') || genre.includes('exterior');
+        return true;
+      });
+      if (r.length > 0) result = r;
+    }
+    if (p.doCusto === 'gratuito') {
+      const r = result.filter(i => !((i as any).custo) || (i as any).custo === 'gratuito');
+      if (r.length > 0) result = r;
     }
   }
 
@@ -513,63 +585,62 @@ export default function Suggest({
 
     const load = async () => {
       try {
+
+        // ── WATCH ──────────────────────────────────────────────────────────
         if (cat.id === 'watch') {
           const isDone = watchPrefs?.done === true;
           if (!isDone) {
-            // 70/30 mode: generic filters, mix top 30% by rating + 70% random
-            const genericFilters: DiscoverFilters = {
-              type: 'both', genres: [], duration: 'normal', discovery: 'mistura',
-              platforms: profile.platforms || [], origem: 'Qualquer', lingua: 'Qualquer',
-              epoca: 'qualquer', minRating: 0,
-            };
-            const allItems = await discoverTMDBMultiPage(genericFilters, [1, 2, 3]);
-            setApiItems(apply7030(allItems));
+            const items = await discoverTMDBMultiPage(
+              { type: 'both', genres: [], duration: 'normal', discovery: 'mistura',
+                platforms: profile.platforms || [], origem: 'Qualquer', lingua: 'Qualquer',
+                epoca: 'qualquer', minRating: 0 },
+              [1, 2, 3, 4, 5]
+            );
+            setApiItems(apply7030(items));
           } else {
+            const wType = (watchPrefs as any).type || 'Ambos';
+            const wGenres: string[] = (watchPrefs as any).genres || [];
+            const wDuration = (watchPrefs as any).duration || 'normal';
+            const wDiscovery = (watchPrefs as any).discovery || 'mistura';
+            const wOrigem = (watchPrefs as any).origem || 'Qualquer';
+            const wLingua = (watchPrefs as any).lingua || 'Qualquer';
+            const wEpoca = (watchPrefs as any).epoca || 'qualquer';
+            const wMinRating = parseFloat((watchPrefs as any).minRating) || 0;
+
             const typeMap: Record<string, DiscoverFilters['type']> = {
-              'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both',
-              'Documentário': 'tv', 'Anime': 'tv',
+              'Filme': 'movie', 'Série': 'tv', 'Documentário': 'both', 'Anime': 'tv',
             };
-            const apiType = typeMap[watchPrefs!.type] || 'both';
-            const baseFilters: DiscoverFilters = {
-              type: apiType,
-              genres: watchPrefs!.genres || [],
-              duration: (watchPrefs!.duration || 'normal') as DiscoverFilters['duration'],
-              discovery: (watchPrefs!.discovery || 'mistura') as DiscoverFilters['discovery'],
+            const apiType = typeMap[wType] || 'both';
+
+            let apiGenres = [...wGenres];
+            if (wType === 'Documentário' && !apiGenres.includes('Documentário')) apiGenres = ['Documentário', ...apiGenres];
+            if (wType === 'Anime' && !apiGenres.includes('Anime')) apiGenres = ['Anime', ...apiGenres];
+
+            const allItems = await discoverTMDBMultiPage({
+              type: apiType, genres: apiGenres,
+              duration: wDuration as DiscoverFilters['duration'],
+              discovery: wDiscovery as DiscoverFilters['discovery'],
               platforms: profile.platforms || [],
-              origem: (watchPrefs as any).origem || 'Qualquer',
-              lingua: (watchPrefs as any).lingua || 'Qualquer',
-              epoca: (watchPrefs as any).epoca || 'qualquer',
-              minRating: parseFloat((watchPrefs as any).minRating) || 0,
-            };
-            // Busca 5 páginas em paralelo = até 100 resultados
-            const allItems = await discoverTMDBMultiPage(baseFilters, [1, 2, 3, 4, 5]);
-            // Prioriza géneros escolhidos — usa IDs para comparação fiável
-            let sortedItems = allItems;
-            if (watchPrefs!.genres && watchPrefs!.genres.length > 0) {
-              const selectedIds = new Set<number>(
-                (watchPrefs!.genres || []).flatMap(g => {
-                  const movieId = TMDB_GENRE_MAP[g];
-                  const tvId = TMDB_TV_GENRE_MAP[g];
-                  return [movieId, tvId].filter(Boolean) as number[];
-                })
-              );
-              const matching = allItems.filter(i =>
-                (i as DiscoverItem).genreIds?.some(id => selectedIds.has(id))
-              );
-              const rest = allItems.filter(i =>
-                !(i as DiscoverItem).genreIds?.some(id => selectedIds.has(id))
-              );
-              sortedItems = [...matching, ...rest];
-            }
-            const filtered = postFilter(sortedItems, {
-              catId: 'watch',
-              selectedTypes: watchPrefs!.type && watchPrefs!.type !== 'Ambos' ? [watchPrefs!.type] : [],
-              selectedGenres: watchPrefs!.genres || [],
-              excludeTitles: disliked.filter(d => d.startsWith('watch:')).map(d => d.split(':')[1]),
+              origem: wOrigem, lingua: wLingua, epoca: wEpoca, minRating: wMinRating,
+            }, [1, 2, 3, 4, 5]);
+
+            const selectedGenreIds = apiGenres
+              .flatMap(g => [TMDB_GENRE_MAP[g], TMDB_TV_GENRE_MAP[g]])
+              .filter((id): id is number => !!id);
+
+            const filtered = strictFilter(allItems, 'watch', {
+              watchType: wType !== 'Ambos' ? wType : undefined,
+              watchGenreIds: selectedGenreIds.length > 0 ? selectedGenreIds : undefined,
+              watchMinRating: wMinRating > 0 ? wMinRating : undefined,
+              watchEpoca: wEpoca !== 'qualquer' ? wEpoca : undefined,
+              excluded: disliked.filter(d => d.startsWith('watch:')).map(d => d.split(':')[1]),
             });
-            setApiItems(filtered);
+            setApiItems(filtered.length > 0 ? filtered : allItems);
           }
-        } else if (cat.id === 'eat') {
+        }
+
+        // ── EAT ────────────────────────────────────────────────────────────
+        else if (cat.id === 'eat') {
           const isDone = eatPrefs?.done === true;
           const localPref = isDone ? (eatPrefs!.local || []) : [];
           const querSair = localPref.includes('sair');
@@ -584,100 +655,112 @@ export default function Suggest({
           }) : [];
 
           const fsqItems = (querSair && profile.location) ? await discoverFSQ({
-            lat: profile.location.lat,
-            lng: profile.location.lng,
+            lat: profile.location.lat, lng: profile.location.lng,
             radius: profile.location.radius || 5,
-            tipo: [],
-            custo: isDone ? (eatPrefs!.budget === 'barato' ? 'baixo' : 'qualquer') : 'qualquer',
+            tipo: ['Restaurante'],
+            custo: isDone ? (eatPrefs!.budget === 'economico' ? 'baixo' : 'qualquer') : 'qualquer',
           }) : [];
 
-          const combined = querSair && !querCasa
-            ? [...fsqItems, ...mealItems]
-            : querSair && querCasa
-              ? [...fsqItems.slice(0, Math.ceil(fsqItems.length / 2)), ...mealItems]
-              : mealItems;
+          const combined = querSair && !querCasa ? [...fsqItems, ...mealItems]
+            : querSair && querCasa ? [...fsqItems.slice(0, Math.ceil(fsqItems.length / 2)), ...mealItems]
+            : mealItems;
 
-          const filteredEat = postFilter(combined, {
-            catId: 'eat',
-            excludeTitles: disliked.filter(d => d.startsWith('eat:')).map(d => d.split(':')[1]),
+          const filtered = strictFilter(combined, 'eat', {
+            eatRestrictions: isDone ? (eatPrefs!.restrictions || []) : [],
+            excluded: disliked.filter(d => d.startsWith('eat:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? filteredEat : apply7030(filteredEat));
-        } else if (cat.id === 'play') {
+          setApiItems(isDone ? filtered : apply7030(filtered));
+        }
+
+        // ── PLAY ───────────────────────────────────────────────────────────
+        else if (cat.id === 'play') {
           const isDone = playPrefs?.done === true;
-          const filters = {
-            genres: isDone ? (playPrefs!.genres || []) : [],
-            platforms: profile.platforms || [],
-            dificuldade: isDone ? (playPrefs!.dificuldade || 'normal') : 'normal',
-            type: isDone ? (playPrefs!.type || 'Ambos') : 'Ambos',
-          };
-          const [p1, p2, p3, p4, p5] = await Promise.all([
-            discoverRAWG({ ...filters, page: 1 }),
-            discoverRAWG({ ...filters, page: 2 }),
-            discoverRAWG({ ...filters, page: 3 }),
-            discoverRAWG({ ...filters, page: 4 }),
-            discoverRAWG({ ...filters, page: 5 }),
-          ]);
-          const allItems = [...p1, ...p2, ...p3, ...p4, ...p5];
-          const filteredPlay = postFilter(allItems, {
-            catId: 'play',
-            selectedTypes: isDone && playPrefs?.type && playPrefs.type !== 'Ambos' ? [playPrefs.type] : [],
-            excludeTitles: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
-          });
-          setApiItems(isDone ? filteredPlay : apply7030(filteredPlay));
-        } else if (cat.id === 'learn') {
+          const pType = isDone ? (playPrefs!.type || 'Ambos') : 'Ambos';
+
+          if (pType === 'Tabuleiro') {
+            setApiItems([]);
+          } else {
+            const filters = {
+              genres: isDone ? (playPrefs!.genres || []) : [],
+              platforms: profile.platforms || [],
+              dificuldade: isDone ? (playPrefs!.dificuldade || 'normal') : ('normal' as const),
+              type: 'Videojogo' as const,
+            };
+            const pages = await Promise.all([1,2,3,4,5].map(pg => discoverRAWG({...filters, page: pg})));
+            const allItems = pages.flat();
+            const filtered = strictFilter(allItems, 'play', {
+              playDificuldade: isDone ? playPrefs!.dificuldade : undefined,
+              excluded: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
+            });
+            setApiItems(isDone ? filtered : apply7030(filtered));
+          }
+        }
+
+        // ── LEARN ──────────────────────────────────────────────────────────
+        else if (cat.id === 'learn') {
           const isDone = learnPrefs?.done === true;
-          const queries = isDone && learnPrefs!.genres && learnPrefs!.genres.length > 0 ? learnPrefs!.genres : ['popular'];
+          const queries = isDone && learnPrefs!.genres?.length > 0 ? learnPrefs!.genres : ['popular'];
           const results = await Promise.all(queries.map((g: string) => discoverYouTube({
             genres: [g],
             formato: isDone ? (learnPrefs!.formato || 'Ambos') : 'Ambos',
             duracao: isDone ? (learnPrefs!.duracao || 'normal') : 'normal',
           })));
           const allItems = results.flat();
-          const filteredLearn = postFilter(allItems, {
-            catId: 'learn',
-            excludeTitles: disliked.filter(d => d.startsWith('learn:')).map(d => d.split(':')[1]),
+          const filtered = strictFilter(allItems, 'learn', {
+            excluded: disliked.filter(d => d.startsWith('learn:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? filteredLearn : apply7030(filteredLearn));
-        } else if (cat.id === 'listen') {
+          setApiItems(isDone ? (filtered.length > 0 ? filtered : allItems) : apply7030(allItems));
+        }
+
+        // ── LISTEN ─────────────────────────────────────────────────────────
+        else if (cat.id === 'listen') {
           const isDone = listenPrefs?.done === true;
           const items = await discoverDeezer({
             type: isDone ? (listenPrefs!.type || 'Ambos') : 'Ambos',
             genres: isDone ? (listenPrefs!.genres || []) : [],
             energia: isDone ? (listenPrefs!.energia || 'mistura') : 'mistura',
           });
-          const filteredListen = postFilter(items, {
-            catId: 'listen',
-            selectedTypes: isDone && listenPrefs?.type && listenPrefs.type !== 'Ambos' ? [listenPrefs.type] : [],
-            excludeTitles: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
+          const filtered = strictFilter(items, 'listen', {
+            listenType: isDone && listenPrefs!.type !== 'Ambos' ? listenPrefs!.type : undefined,
+            excluded: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? filteredListen : apply7030(filteredListen));
-        } else if (cat.id === 'read') {
+          setApiItems(isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items));
+        }
+
+        // ── READ ───────────────────────────────────────────────────────────
+        else if (cat.id === 'read') {
           const isDone = readPrefs?.done === true;
           const items = await discoverBooksMultiPage(
-            { genres: isDone ? (readPrefs!.genres || []) : [], type: isDone ? (readPrefs!.type || 'Ambos') : 'Ambos', peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura' },
+            { genres: isDone ? (readPrefs!.genres || []) : [],
+              type: isDone ? (readPrefs!.type || 'Ambos') : 'Ambos',
+              peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura' },
             [0, 20, 40, 60, 80]
           );
-          const filteredRead = postFilter(items, {
-            catId: 'read',
-            selectedTypes: isDone && readPrefs?.type && readPrefs.type !== 'Ambos' ? [readPrefs.type] : [],
-            excludeTitles: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
+          const filtered = strictFilter(items, 'read', {
+            readPeso: isDone && readPrefs!.peso !== 'mistura' ? readPrefs!.peso : undefined,
+            excluded: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? filteredRead : apply7030(filteredRead));
-        } else if (cat.id === 'visit' && profile.location) {
+          setApiItems(isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items));
+        }
+
+        // ── VISIT ──────────────────────────────────────────────────────────
+        else if (cat.id === 'visit' && profile.location) {
           const isDone = visitPrefs?.done === true;
+          const vDistancia = isDone ? ((visitPrefs as any).distancia || 'qualquer') : 'qualquer';
+          const radius = vDistancia === 'perto' ? 2 : (profile.location.radius || 5);
+
           const items = await discoverFSQ({
-            lat: profile.location.lat,
-            lng: profile.location.lng,
-            radius: profile.location.radius || 5,
+            lat: profile.location.lat, lng: profile.location.lng, radius,
             tipo: isDone ? (visitPrefs!.tipo || []) : [],
             custo: isDone ? (visitPrefs!.custo || 'qualquer') : 'qualquer',
           });
-          const filteredVisit = postFilter(items, {
-            catId: 'visit',
-            excludeTitles: disliked.filter(d => d.startsWith('visit:')).map(d => d.split(':')[1]),
+          const filtered = strictFilter(items, 'visit', {
+            visitDistancia: isDone ? vDistancia : undefined,
+            excluded: disliked.filter(d => d.startsWith('visit:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? filteredVisit : apply7030(filteredVisit));
+          setApiItems(isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items));
         }
+
       } catch {
         // silently fail — usa mock
       } finally {
