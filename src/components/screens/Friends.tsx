@@ -7,12 +7,6 @@ interface FriendsProps {
   onToast: (msg: string) => void;
 }
 
-const MOCK_FRIENDS = [
-  { initials: 'P', name: 'Pedro Santos', last: 'Ontem: The Bear', online: true, color: '#6ab4e0' },
-  { initials: 'M', name: 'Maria Costa', last: 'Anteontem: Balatro', online: false, color: '#e87ac4' },
-  { initials: 'J', name: 'João Ferreira', last: 'Há 3 dias: Severance', online: false, color: '#5ec97a' },
-];
-
 const IMPORT_BUTTONS = [
   {
     name: 'Instagram',
@@ -71,19 +65,9 @@ const IMPORT_BUTTONS = [
   },
 ];
 
-const MOCK_FEED = [
-  { initials: 'P', name: 'Pedro', action: 'acabou The Bear', detail: '⭐ Recomenda', color: '#6ab4e0', time: '14m' },
-  { initials: 'M', name: 'Maria', action: 'marcou Balatro para hoje', detail: '📅 Hoje à noite', color: '#e87ac4', time: '2h' },
-  { initials: 'J', name: 'João', action: 'começou Severance', detail: '▶ A ver', color: '#5ec97a', time: '3h' },
-];
-
 export default function Friends({ isActive: _isActive, onNav, onToast }: FriendsProps) {
   const [search, setSearch] = useState('');
   const [importOpen, setImportOpen] = useState(false);
-
-  const filteredFriends = MOCK_FRIENDS.filter(f =>
-    f.name.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="h-screen-content" id="friends" style={{ paddingBottom: 80 }}>
@@ -92,7 +76,7 @@ export default function Friends({ isActive: _isActive, onNav, onToast }: Friends
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontStyle: 'italic', fontWeight: 600, color: '#f5f1eb', lineHeight: 1.1 }}>Amigos</div>
-              <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 3 }}>{MOCK_FRIENDS.length} amigos · Feed ao vivo</div>
+              <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 3 }}>0 amigos</div>
             </div>
             <button className="tbi" onClick={() => onNav('home')} style={{ marginTop: 4 }}>←</button>
           </div>
@@ -108,22 +92,25 @@ export default function Friends({ isActive: _isActive, onNav, onToast }: Friends
         </div>
 
         <div className="friends-section-lbl">Os meus amigos</div>
-        <div className="friend-list">
-          {filteredFriends.map((f, i) => (
-            <div key={i} className="friend-item card-base">
-              <div className="friend-avatar" style={{ background: f.color + '22', borderColor: f.color, color: f.color, width: 48, height: 48, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, flexShrink: 0, border: `1.5px solid ${f.color}` }}>
-                {f.initials}
-              </div>
-              <div className="friend-info">
-                <div className="friend-name">{f.name}</div>
-                <div className="friend-last">{f.last}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {f.online && <span className="friend-online" />}
-                <span className="friend-chevron">›</span>
-              </div>
-            </div>
-          ))}
+
+        {/* Empty state */}
+        <div style={{
+          textAlign: 'center', padding: '32px 20px',
+          color: 'rgba(156,165,185,0.5)', fontSize: 13,
+          fontFamily: "'Outfit', sans-serif", lineHeight: 1.6,
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.4 }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'rgba(200,155,60,0.4)' }}>
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div style={{ color: 'rgba(245,241,235,0.6)', fontSize: 15, fontWeight: 500, marginBottom: 6 }}>
+            Ainda não tens amigos na app
+          </div>
+          <div>Convida alguém para começar a partilhar o que estás a ver, jogar ou ouvir.</div>
         </div>
 
         <button
@@ -159,25 +146,6 @@ export default function Friends({ isActive: _isActive, onNav, onToast }: Friends
             ))}
           </div>
         )}
-
-        <div className="friends-section-lbl" style={{ marginTop: 20 }}>Feed dos Amigos</div>
-        <div className="friends-feed">
-          {MOCK_FEED.map((post, i) => (
-            <div key={i} className="friend-feed-item card-base">
-              <div className="feed-av-small" style={{ background: post.color + '22', borderColor: post.color, color: post.color }}>
-                {post.initials}
-              </div>
-              <div className="friend-feed-info" style={{ flex: 1, minWidth: 0 }}>
-                <div className="friend-feed-main">
-                  <strong style={{ color: '#f5f1eb' }}>{post.name}</strong>{' '}
-                  <span style={{ color: 'var(--mu)' }}>{post.action}</span>
-                </div>
-                <div className="friend-feed-detail">{post.detail}</div>
-              </div>
-              <span style={{ fontSize: 10, color: 'var(--mu)', flexShrink: 0, alignSelf: 'flex-start', paddingTop: 2 }}>{post.time}</span>
-            </div>
-          ))}
-        </div>
 
         <div style={{ height: 80 }} />
       </div>

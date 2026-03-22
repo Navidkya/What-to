@@ -107,6 +107,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
   } | null>(null);
   const [suggPopup, setSuggPopup] = useState<FeedCard | null>(null);
   const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!isActive) return;
@@ -314,6 +315,55 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
 
   return (
     <div style={{ position:'fixed', inset:0, background:'#060810', overflowY:'auto', zIndex:10 }}>
+
+      {/* Barra lateral de contactos */}
+      <div style={{
+        position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)',
+        zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'center',
+        gap: 8, padding: '12px 6px',
+        background: 'rgba(6,8,16,0.7)', backdropFilter: 'blur(12px)',
+        borderRadius: '0 12px 12px 0',
+        border: '1px solid rgba(255,255,255,0.06)', borderLeft: 'none',
+      }}>
+        {/* Ícone de toggle */}
+        <button
+          onClick={() => setSidebarOpen(o => !o)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer',
+            color: 'rgba(200,155,60,0.6)', padding: 4 }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </button>
+
+        {/* Estado vazio — sem amigos ainda */}
+        {sidebarOpen && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+            padding: '8px 4px',
+          }}>
+            <div style={{ fontSize: 10, color: 'rgba(156,165,185,0.4)',
+              fontFamily: "'Outfit',sans-serif", textAlign: 'center', maxWidth: 48 }}>
+              Sem amigos ainda
+            </div>
+            <button
+              onClick={() => onToast('✦ Convida amigos no teu perfil')}
+              style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'rgba(200,155,60,0.1)',
+                border: '1px dashed rgba(200,155,60,0.3)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', color: 'rgba(200,155,60,0.5)',
+                fontSize: 18,
+              }}
+            >+</button>
+          </div>
+        )}
+      </div>
+
       {/* Header */}
       <div style={{ position:'sticky', top:0, zIndex:20, background:'rgba(6,8,16,0.9)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', padding:'52px 20px 12px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:700, fontStyle:'italic', color:'#f5f1eb', letterSpacing:-0.3 }}>Feed</div>

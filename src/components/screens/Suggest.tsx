@@ -401,7 +401,9 @@ export default function Suggest({
     if (!isActive) return;
     lastPrefsVersionRef.current = prefsVersion ?? 0;
     setApiLoading(true);
+    // Reset de estado ao re-correr (garante que não mostra resultados antigos)
     setApiItems([]);
+    setActiveIdx(0);
     setCurrentPage(1);
     setIsLoadingMore(false);
 
@@ -574,19 +576,6 @@ export default function Suggest({
 
     loadWithInfluencers();
   }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms, prefsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Forçar re-discover quando inquérito é completado (prefsVersion incrementou)
-  const prevPrefsVersionRef = useRef(prefsVersion ?? 0);
-  useEffect(() => {
-    const current = prefsVersion ?? 0;
-    if (current > 0 && current !== prevPrefsVersionRef.current) {
-      prevPrefsVersionRef.current = current;
-      // Reset completo — força o useEffect de discovery a re-correr com as novas prefs
-      setApiItems([]);
-      setActiveIdx(0);
-      setCurrentPage(1);
-    }
-  }, [prefsVersion]);
 
   // After ReactPanel/WhyPanel action → advance carousel
   useEffect(() => {

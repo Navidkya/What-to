@@ -52,6 +52,8 @@
 
 html {
   height: 100%;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 body {
