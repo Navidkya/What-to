@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { trackAsync } from '../../services/analytics';
 import type { Category, DataItem, Profile, TrackingMap, PrefsMap, WatchPrefs, EatPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs } from '../../types';
 import { DATA, GRAD, GENRES, TSTATE, TCOLOR, getPlatformId } from '../../data';
 import { fetchTMDB, discoverTMDB, discoverTMDBMultiPage, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
@@ -106,6 +107,7 @@ interface SuggestProps {
   doPrefs?: DoPrefs;
   permanentPrefs?: import('../../types').PermanentPrefs;
   prefsVersion?: number;
+  userId?: string;
 }
 
 function hasPlatform(item: DataItem, profile: Profile): boolean {
@@ -250,6 +252,7 @@ export default function Suggest({
   curSugg, setCurSugg,
   watchPrefs, eatPrefs, listenPrefs, readPrefs, playPrefs, learnPrefs, visitPrefs, permanentPrefs,
   prefsVersion = 0,
+  userId,
 }: SuggestProps) {
   const [curMood, setCurMood] = useState('Tudo');
   const [cbarOn, setCbarOn] = useState(false);
@@ -277,6 +280,10 @@ export default function Suggest({
 
   // Track which titles we've already initiated fetches for
   const fetchedRef = useRef(new Set<string>());
+
+  // Analytics: track cards skipped and whether user accepted anything
+  const skipCountRef = useRef(0);
+  const acceptedRef = useRef(false);
 
   const getPool = useCallback((gf?: string, moodOverride?: string) => {
     const mood = moodOverride ?? curMood;
@@ -321,6 +328,7 @@ export default function Suggest({
   }, [getPool, setCurSugg]);
 
   const doAdvance = useCallback(() => {
+    skipCountRef.current++;
     const currentApiItems = apiItemsRef.current;
     const isAPIMode = currentApiItems.length > 0;
     const currentIdx = activeIdxRef.current;
@@ -369,6 +377,21 @@ export default function Suggest({
       }
     }
   }, [cat.id, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Analytics: session-end tracking (saiu sem aceitar nada)
+  useEffect(() => {
+    if (!isActive) return;
+    skipCountRef.current = 0;
+    acceptedRef.current = false;
+    return () => {
+      if (!acceptedRef.current && skipCountRef.current > 0) {
+        trackAsync({ userId, eventType: 'suggest_session_end', catId: cat.id,
+          value: { cards_seen: skipCountRef.current } });
+      }
+      acceptedRef.current = false;
+      skipCountRef.current = 0;
+    };
+  }, [isActive, cat.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Unified API discover for all categories
   useEffect(() => {
@@ -962,7 +985,7 @@ export default function Suggest({
                 <span>{qyTitle}</span>
               </div>
 
-              <button className="qy-btn qy-now" onClick={() => { onOpenReact(); setQuickYesOpen(false); }}>
+              <button className="qy-btn qy-now" onClick={() => { acceptedRef.current = true; trackAsync({ userId, eventType: 'suggest_accept', catId: cat.id, value: { cards_skipped: skipCountRef.current, action: 'agora' } }); skipCountRef.current = 0; onOpenReact(); setQuickYesOpen(false); }}>
                 <span>▶</span>
                 <div>
                   <div className="qy-btn-title">Sim, agora!</div>
@@ -980,7 +1003,7 @@ export default function Suggest({
                 </button>
               )}
 
-              <button className="qy-btn qy-later" onClick={() => { if (_onSwipeYes) _onSwipeYes(); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
+              <button className="qy-btn qy-later" onClick={() => { acceptedRef.current = true; trackAsync({ userId, eventType: 'suggest_accept', catId: cat.id, value: { cards_skipped: skipCountRef.current, action: 'mais_tarde' } }); skipCountRef.current = 0; if (_onSwipeYes) _onSwipeYes(); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
                 <span>✅</span>
                 <div>
                   <div className="qy-btn-title">Sim, mais tarde</div>

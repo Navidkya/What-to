@@ -47,6 +47,7 @@ import { signOut } from './services/auth';
 import { loadInfluencerProfile } from './services/influencers';
 import { loadAllFromSupabase, syncProfileToSupabase, syncHistoryToSupabase, syncTrackingToSupabase, syncListsToSupabase, syncPrefsToSupabase } from './services/sync';
 import { publishFeedEvent } from './services/feedEvents';
+import { trackAsync } from './services/analytics';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -127,6 +128,7 @@ export default function App() {
     setCurSugg(item || null);
     setPrevScreen('home');
     setScreen('suggest');
+    trackAsync({ userId: authUser?.id, eventType: 'suggest_open', catId: id });
     if (id === 'eat')    setEatObOpen(true);
     if (id === 'watch')  setWatchObOpen(true);
     if (id === 'listen') setListenObOpen(true);
@@ -181,6 +183,8 @@ export default function App() {
         img: curSuggImg || null,
       });
     }
+    trackAsync({ userId: authUser?.id, eventType: 'suggest_accept', catId: curCat.id,
+      value: { title: curSugg.title, type: curSugg.type, genre: curSugg.genre, action: 'agora' } });
 
     // For recipes: open the recipe panel instead of a platform link
     if (curCat.id === 'eat' && curSugg.type === 'Receita') {
@@ -221,6 +225,8 @@ export default function App() {
           actionType: 'marked_today',
         });
       }
+      trackAsync({ userId: authUser?.id, eventType: 'suggest_accept', catId: curCat.id,
+        value: { title: curSugg.title, type: curSugg.type, genre: curSugg.genre, action: 'hoje' } });
     } else if (type === 'save') {
       if (!store.wishlist.find(w => w.key === key)) {
         const wEntry: WishlistEntry = { key, ...base, action: 'save' };
@@ -258,6 +264,8 @@ export default function App() {
       newPrefs[curCat.id][reason.p] = reason.v;
     }
     store.updatePrefs(newPrefs);
+    trackAsync({ userId: authUser?.id, eventType: 'suggest_why', catId: curCat?.id,
+      value: { reason: reason.s, title: curSugg?.title } });
     // Se mudou o tipo de conteúdo, actualiza também watchPrefs para forçar re-discover imediato
     if (reason.p === 'type' && curCat?.id === 'watch' && typeof reason.v === 'string') {
       store.updateWatchPrefs({ ...store.watchPrefs, type: reason.v as 'Filme' | 'Série' | 'Ambos' });
@@ -425,6 +433,13 @@ export default function App() {
     }, 2000);
     return () => clearTimeout(timer);
   }, [store.eatPrefs, store.watchPrefs, store.listenPrefs, store.readPrefs, store.playPrefs, store.learnPrefs, store.visitPrefs, store.doPrefs, authUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Track feed_open
+  useEffect(() => {
+    if (screen === 'feed') {
+      trackAsync({ userId: authUser?.id, eventType: 'feed_open' });
+    }
+  }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Swipe gesture handlers (for screen-level navigation on home/friends/feed)
   const handleGestureStart = useCallback((e: React.TouchEvent) => {
@@ -623,6 +638,7 @@ export default function App() {
             doPrefs={store.doPrefs}
             permanentPrefs={store.permanentPrefs}
             prefsVersion={prefsVersion}
+            userId={authUser?.id}
           />
 
           {/* Overlay screens */}
@@ -863,43 +879,43 @@ export default function App() {
           <EatOnboard
             isOpen={eatObOpen}
             currentPrefs={store.eatPrefs}
-            onClose={(prefs) => { store.updateEatPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setEatObOpen(false); }}
+            onClose={(prefs) => { store.updateEatPrefs(prefs); if (prefs.done) { setPrefsVersion(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'eat' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'eat' }); } setEatObOpen(false); }}
           />
 
           <WatchOnboard
             isOpen={watchObOpen}
             currentPrefs={store.watchPrefs}
-            onClose={(prefs) => { store.updateWatchPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setWatchObOpen(false); }}
+            onClose={(prefs) => { store.updateWatchPrefs(prefs); if (prefs.done) { setPrefsVersion(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'watch' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'watch' }); } setWatchObOpen(false); }}
           />
           <ListenOnboard
             isOpen={listenObOpen}
             currentPrefs={store.listenPrefs}
-            onClose={(prefs) => { store.updateListenPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setListenObOpen(false); }}
+            onClose={(prefs) => { store.updateListenPrefs(prefs); if (prefs.done) { setPrefsVersion(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'listen' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'listen' }); } setListenObOpen(false); }}
           />
           <ReadOnboard
             isOpen={readObOpen}
             currentPrefs={store.readPrefs}
-            onClose={(prefs) => { store.updateReadPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setReadObOpen(false); }}
+            onClose={(prefs) => { store.updateReadPrefs(prefs); if (prefs.done) { setPrefsVersion(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'read' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'read' }); } setReadObOpen(false); }}
           />
           <PlayOnboard
             isOpen={playObOpen}
             currentPrefs={store.playPrefs}
-            onClose={(prefs) => { store.updatePlayPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setPlayObOpen(false); }}
+            onClose={(prefs) => { store.updatePlayPrefs(prefs); if (prefs.done) { setPrefsVersion(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'play' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'play' }); } setPlayObOpen(false); }}
           />
           <LearnOnboard
             isOpen={learnObOpen}
             currentPrefs={store.learnPrefs}
-            onClose={(prefs) => { store.updateLearnPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setLearnObOpen(false); }}
+            onClose={(prefs) => { store.updateLearnPrefs(prefs); if (prefs.done) { setPrefsVersion(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'learn' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'learn' }); } setLearnObOpen(false); }}
           />
           <VisitOnboard
             isOpen={visitObOpen}
             currentPrefs={store.visitPrefs}
-            onClose={(prefs) => { store.updateVisitPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setVisitObOpen(false); }}
+            onClose={(prefs) => { store.updateVisitPrefs(prefs); if (prefs.done) { setPrefsVersion(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'visit' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'visit' }); } setVisitObOpen(false); }}
           />
           <DoOnboard
             isOpen={doObOpen}
             currentPrefs={store.doPrefs}
-            onClose={(prefs) => { store.updateDoPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setDoObOpen(false); }}
+            onClose={(prefs) => { store.updateDoPrefs(prefs); if (prefs.done) { setPrefsVersion(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'do' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'do' }); } setDoObOpen(false); }}
           />
 
           <RecipePanel
