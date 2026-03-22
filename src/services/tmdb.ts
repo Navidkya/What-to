@@ -178,6 +178,7 @@ export interface DiscoverItem {
   type: 'Filme' | 'Série';
   genre: string;
   genreIds: number[];
+  allGenres: string[]; // todos os géneros do item, não só o primeiro
   platforms: Array<{ n: string; url: string; c: string }>;
 }
 
@@ -282,10 +283,11 @@ export async function discoverTMDB(filters: DiscoverFilters): Promise<DiscoverIt
 
       const items = (data.results || []).map(r => {
         const reverseMap = mediaType === 'movie' ? TMDB_GENRE_MAP : TMDB_TV_GENRE_MAP;
-        const firstGenreId = r.genre_ids?.[0];
-        const genreName = firstGenreId
-          ? Object.entries(reverseMap).find(([, id]) => id === firstGenreId)?.[0] || 'Drama'
-          : 'Drama';
+        // Mapeia TODOS os genre_ids para nomes portugueses
+        const allGenreNames = (r.genre_ids || [])
+          .map(gid => Object.entries(reverseMap).find(([, id]) => id === gid)?.[0])
+          .filter((name): name is string => !!name);
+        const genreName = allGenreNames[0] || 'Drama';
 
         return {
           id: r.id,
@@ -298,6 +300,7 @@ export async function discoverTMDB(filters: DiscoverFilters): Promise<DiscoverIt
           type: mediaType === 'movie' ? 'Filme' as const : 'Série' as const,
           genre: genreName,
           genreIds: r.genre_ids || [],
+          allGenres: allGenreNames, // todos os géneros
           platforms: [] as Array<{ n: string; url: string; c: string }>,
         };
       });
