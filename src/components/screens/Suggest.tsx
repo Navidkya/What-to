@@ -105,6 +105,7 @@ interface SuggestProps {
   visitPrefs?: VisitPrefs;
   doPrefs?: DoPrefs;
   permanentPrefs?: import('../../types').PermanentPrefs;
+  prefsVersion?: number;
 }
 
 function hasPlatform(item: DataItem, profile: Profile): boolean {
@@ -232,6 +233,15 @@ function getDisplayData(item: APIItem, catId: string): DisplayData | null {
   return null;
 }
 
+function apply7030(items: APIItem[]): APIItem[] {
+  if (items.length === 0) return items;
+  const topCount = Math.ceil(items.length * 0.3);
+  const sorted = [...items].sort((a, b) => (((b as any).rating ?? 0) as number) - (((a as any).rating ?? 0) as number));
+  const top = sorted.slice(0, topCount);
+  const rest = sorted.slice(topCount).sort(() => Math.random() - 0.5);
+  return [...top, ...rest];
+}
+
 export default function Suggest({
   cat, profile, tracking, prefs, disliked, isActive,
   afterReactTrigger, afterReactGenre,
@@ -239,6 +249,7 @@ export default function Suggest({
   onSwipeYes: _onSwipeYes, onSwipeNo: _onSwipeNo,
   curSugg, setCurSugg,
   watchPrefs, eatPrefs, listenPrefs, readPrefs, playPrefs, learnPrefs, visitPrefs, permanentPrefs,
+  prefsVersion = 0,
 }: SuggestProps) {
   const [curMood, setCurMood] = useState('Tudo');
   const [cbarOn, setCbarOn] = useState(false);
@@ -369,78 +380,102 @@ export default function Suggest({
 
     const load = async () => {
       try {
-        if (cat.id === 'watch' && watchPrefs) {
-          const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
-          const baseFilters: DiscoverFilters = {
-            type: typeMap[watchPrefs.type] || 'both',
-            genres: watchPrefs.genres || [],
-            duration: (watchPrefs.duration || 'normal') as DiscoverFilters['duration'],
-            discovery: (watchPrefs.discovery || 'mistura') as DiscoverFilters['discovery'],
-            platforms: profile.platforms || [],
-            origem: (watchPrefs as any).origem || 'Qualquer',
-            lingua: (watchPrefs as any).lingua || 'Qualquer',
-            epoca: (watchPrefs as any).epoca || 'qualquer',
-            minRating: parseFloat((watchPrefs as any).minRating) || 0,
-          };
-          // Busca 3 páginas em paralelo = até 60 resultados
-          const allItems = await discoverTMDBMultiPage(baseFilters, [1, 2, 3]);
-          // Prioriza géneros escolhidos
-          if (watchPrefs.genres && watchPrefs.genres.length > 0) {
-            const matching = allItems.filter(i => (watchPrefs.genres || []).includes(i.genre));
-            const rest = allItems.filter(i => !(watchPrefs.genres || []).includes(i.genre));
-            setApiItems([...matching, ...rest]);
+        if (cat.id === 'watch') {
+          const isDone = watchPrefs?.done === true;
+          if (!isDone) {
+            // 70/30 mode: generic filters, mix top 30% by rating + 70% random
+            const genericFilters: DiscoverFilters = {
+              type: 'both', genres: [], duration: 'normal', discovery: 'mistura',
+              platforms: profile.platforms || [], origem: 'Qualquer', lingua: 'Qualquer',
+              epoca: 'qualquer', minRating: 0,
+            };
+            const allItems = await discoverTMDBMultiPage(genericFilters, [1, 2, 3]);
+            setApiItems(apply7030(allItems));
           } else {
-            setApiItems(allItems);
+            const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
+            const baseFilters: DiscoverFilters = {
+              type: typeMap[watchPrefs!.type] || 'both',
+              genres: watchPrefs!.genres || [],
+              duration: (watchPrefs!.duration || 'normal') as DiscoverFilters['duration'],
+              discovery: (watchPrefs!.discovery || 'mistura') as DiscoverFilters['discovery'],
+              platforms: profile.platforms || [],
+              origem: (watchPrefs as any).origem || 'Qualquer',
+              lingua: (watchPrefs as any).lingua || 'Qualquer',
+              epoca: (watchPrefs as any).epoca || 'qualquer',
+              minRating: parseFloat((watchPrefs as any).minRating) || 0,
+            };
+            // Busca 3 páginas em paralelo = até 60 resultados
+            const allItems = await discoverTMDBMultiPage(baseFilters, [1, 2, 3]);
+            // Prioriza géneros escolhidos
+            if (watchPrefs!.genres && watchPrefs!.genres.length > 0) {
+              const matching = allItems.filter(i => (watchPrefs!.genres || []).includes(i.genre));
+              const rest = allItems.filter(i => !(watchPrefs!.genres || []).includes(i.genre));
+              setApiItems([...matching, ...rest]);
+            } else {
+              setApiItems(allItems);
+            }
           }
-        } else if (cat.id === 'eat' && eatPrefs) {
+        } else if (cat.id === 'eat') {
+          const isDone = eatPrefs?.done === true;
           const items = await discoverMeals({
-            local: eatPrefs.local || [],
-            fome: eatPrefs.fome || 'normal',
-            budget: eatPrefs.budget || 'medio',
-            restrictions: eatPrefs.restrictions || [],
-            tempo: eatPrefs.tempo || 'normal',
+            local: isDone ? (eatPrefs!.local || []) : [],
+            fome: isDone ? (eatPrefs!.fome || 'normal') : 'normal',
+            budget: isDone ? (eatPrefs!.budget || 'medio') : 'medio',
+            restrictions: isDone ? (eatPrefs!.restrictions || []) : [],
+            tempo: isDone ? (eatPrefs!.tempo || 'normal') : 'normal',
           });
-          setApiItems(items);
-        } else if (cat.id === 'play' && playPrefs) {
+          setApiItems(isDone ? items : apply7030(items));
+        } else if (cat.id === 'play') {
+          const isDone = playPrefs?.done === true;
           const filters = {
-            genres: playPrefs.genres || [],
+            genres: isDone ? (playPrefs!.genres || []) : [],
             platforms: profile.platforms || [],
-            dificuldade: playPrefs.dificuldade || 'normal',
-            type: playPrefs.type || 'Ambos',
+            dificuldade: isDone ? (playPrefs!.dificuldade || 'normal') : 'normal',
+            type: isDone ? (playPrefs!.type || 'Ambos') : 'Ambos',
           };
           const [p1, p2, p3] = await Promise.all([
             discoverRAWG({ ...filters, page: 1 }),
             discoverRAWG({ ...filters, page: 2 }),
             discoverRAWG({ ...filters, page: 3 }),
           ]);
-          setApiItems([...p1, ...p2, ...p3]);
-        } else if (cat.id === 'learn' && learnPrefs) {
-          const queries = learnPrefs.genres && learnPrefs.genres.length > 0 ? learnPrefs.genres : ['popular'];
-          const results = await Promise.all(queries.map((g: string) => discoverYouTube({ genres: [g], formato: learnPrefs.formato || 'Ambos', duracao: learnPrefs.duracao || 'normal' })));
-          setApiItems(results.flat());
-        } else if (cat.id === 'listen' && listenPrefs) {
+          const allItems = [...p1, ...p2, ...p3];
+          setApiItems(isDone ? allItems : apply7030(allItems));
+        } else if (cat.id === 'learn') {
+          const isDone = learnPrefs?.done === true;
+          const queries = isDone && learnPrefs!.genres && learnPrefs!.genres.length > 0 ? learnPrefs!.genres : ['popular'];
+          const results = await Promise.all(queries.map((g: string) => discoverYouTube({
+            genres: [g],
+            formato: isDone ? (learnPrefs!.formato || 'Ambos') : 'Ambos',
+            duracao: isDone ? (learnPrefs!.duracao || 'normal') : 'normal',
+          })));
+          const allItems = results.flat();
+          setApiItems(isDone ? allItems : apply7030(allItems));
+        } else if (cat.id === 'listen') {
+          const isDone = listenPrefs?.done === true;
           const items = await discoverDeezer({
-            type: listenPrefs.type || 'Ambos',
-            genres: listenPrefs.genres || [],
-            energia: listenPrefs.energia || 'mistura',
+            type: isDone ? (listenPrefs!.type || 'Ambos') : 'Ambos',
+            genres: isDone ? (listenPrefs!.genres || []) : [],
+            energia: isDone ? (listenPrefs!.energia || 'mistura') : 'mistura',
           });
-          setApiItems(items);
-        } else if (cat.id === 'read' && readPrefs) {
+          setApiItems(isDone ? items : apply7030(items));
+        } else if (cat.id === 'read') {
+          const isDone = readPrefs?.done === true;
           const items = await discoverBooksMultiPage({
-            genres: readPrefs.genres || [],
-            type: readPrefs.type || 'Ambos',
-            peso: readPrefs.peso || 'mistura',
+            genres: isDone ? (readPrefs!.genres || []) : [],
+            type: isDone ? (readPrefs!.type || 'Ambos') : 'Ambos',
+            peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura',
           });
-          setApiItems(items);
-        } else if (cat.id === 'visit' && visitPrefs && profile.location) {
+          setApiItems(isDone ? items : apply7030(items));
+        } else if (cat.id === 'visit' && profile.location) {
+          const isDone = visitPrefs?.done === true;
           const items = await discoverFSQ({
             lat: profile.location.lat,
             lng: profile.location.lng,
             radius: profile.location.radius || 5,
-            tipo: visitPrefs.tipo || [],
-            custo: visitPrefs.custo || 'qualquer',
+            tipo: isDone ? (visitPrefs!.tipo || []) : [],
+            custo: isDone ? (visitPrefs!.custo || 'qualquer') : 'qualquer',
           });
-          setApiItems(items);
+          setApiItems(isDone ? items : apply7030(items));
         }
       } catch {
         // silently fail — usa mock
@@ -481,7 +516,7 @@ export default function Suggest({
     };
 
     loadWithInfluencers();
-  }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms, prefsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // After ReactPanel/WhyPanel action → advance carousel
   useEffect(() => {

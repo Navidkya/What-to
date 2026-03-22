@@ -95,6 +95,7 @@ export default function App() {
   const [trackOpen, setTrackOpen] = useState(false);
   const [wrappedOpen, setWrappedOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [prefsVersion, setPrefsVersion] = useState(0);
 
   // Link panel data
   const [linkData, setLinkData] = useState({ title: '', name: '', url: '', color: '' });
@@ -595,6 +596,7 @@ export default function App() {
             visitPrefs={store.visitPrefs}
             doPrefs={store.doPrefs}
             permanentPrefs={store.permanentPrefs}
+            prefsVersion={prefsVersion}
           />
 
           {/* Overlay screens */}
@@ -833,43 +835,43 @@ export default function App() {
           <EatOnboard
             isOpen={eatObOpen}
             currentPrefs={store.eatPrefs}
-            onClose={(prefs) => { store.updateEatPrefs(prefs); setEatObOpen(false); }}
+            onClose={(prefs) => { store.updateEatPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setEatObOpen(false); }}
           />
 
           <WatchOnboard
             isOpen={watchObOpen}
             currentPrefs={store.watchPrefs}
-            onClose={(prefs) => { store.updateWatchPrefs(prefs); setWatchObOpen(false); }}
+            onClose={(prefs) => { store.updateWatchPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setWatchObOpen(false); }}
           />
           <ListenOnboard
             isOpen={listenObOpen}
             currentPrefs={store.listenPrefs}
-            onClose={(prefs) => { store.updateListenPrefs(prefs); setListenObOpen(false); }}
+            onClose={(prefs) => { store.updateListenPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setListenObOpen(false); }}
           />
           <ReadOnboard
             isOpen={readObOpen}
             currentPrefs={store.readPrefs}
-            onClose={(prefs) => { store.updateReadPrefs(prefs); setReadObOpen(false); }}
+            onClose={(prefs) => { store.updateReadPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setReadObOpen(false); }}
           />
           <PlayOnboard
             isOpen={playObOpen}
             currentPrefs={store.playPrefs}
-            onClose={(prefs) => { store.updatePlayPrefs(prefs); setPlayObOpen(false); }}
+            onClose={(prefs) => { store.updatePlayPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setPlayObOpen(false); }}
           />
           <LearnOnboard
             isOpen={learnObOpen}
             currentPrefs={store.learnPrefs}
-            onClose={(prefs) => { store.updateLearnPrefs(prefs); setLearnObOpen(false); }}
+            onClose={(prefs) => { store.updateLearnPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setLearnObOpen(false); }}
           />
           <VisitOnboard
             isOpen={visitObOpen}
             currentPrefs={store.visitPrefs}
-            onClose={(prefs) => { store.updateVisitPrefs(prefs); setVisitObOpen(false); }}
+            onClose={(prefs) => { store.updateVisitPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setVisitObOpen(false); }}
           />
           <DoOnboard
             isOpen={doObOpen}
             currentPrefs={store.doPrefs}
-            onClose={(prefs) => { store.updateDoPrefs(prefs); setDoObOpen(false); }}
+            onClose={(prefs) => { store.updateDoPrefs(prefs); if (prefs.done) setPrefsVersion(v => v + 1); setDoObOpen(false); }}
           />
 
           <RecipePanel
