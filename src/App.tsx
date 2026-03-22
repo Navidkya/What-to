@@ -338,9 +338,14 @@ export default function App() {
           session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
         );
       } else if (event === 'SIGNED_OUT') {
-        setAuthUser(null);
-        setIsCreator(false);
-        setAuthLoading(false);
+        setTimeout(async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            setAuthUser(null);
+            setIsCreator(false);
+            setAuthLoading(false);
+          }
+        }, 800);
       }
     });
     return () => {
