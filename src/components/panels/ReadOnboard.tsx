@@ -51,7 +51,7 @@ export default function ReadOnboard({ isOpen, currentPrefs, onClose }: Props) {
 
   const handleSave = (skip = false) => onClose(skip
     ? { done: false, type: 'Ambos', genres: [], peso: 'mistura' }
-    : { done: false, type, genres, peso }
+    : { done: true, type, genres, peso }
   );
 
   if (!isOpen) return null;

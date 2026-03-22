@@ -25,7 +25,7 @@ export default function LearnOnboard({ isOpen, currentPrefs, onClose }: Props) {
   const toggle = (g: string) => setGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
   const handleSave = (skip = false) => onClose(skip
     ? { done: false, formato: 'Ambos', genres: [], duracao: 'normal' }
-    : { done: false, formato, genres, duracao }
+    : { done: true, formato, genres, duracao }
   );
 
   if (!isOpen) return null;

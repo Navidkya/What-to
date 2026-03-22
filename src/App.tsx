@@ -61,6 +61,7 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
   const userTypeCheckedRef = useRef(false);
+  const restoringRef = useRef(false);
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -329,10 +330,11 @@ export default function App() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       setAuthLoading(false);
-    }, 5000);
+    }, 12000);
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       clearTimeout(timeout);
-      if (session?.user) {
+      if (session?.user && !restoringRef.current) {
+        restoringRef.current = true;
         try {
           const influencerProfile = await loadInfluencerProfile(session.user.id);
           if (influencerProfile) {
@@ -350,13 +352,16 @@ export default function App() {
           session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
         );
       } else {
-        setAuthLoading(false);
+        // Não fazer logout imediato — o onAuthStateChange trata do SIGNED_IN
+        // quando a sessão for restaurada pelo Supabase. O timeout de 12s é o fallback.
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        // Se já verificou o tipo (vem do getSession), ignora
-        if (userTypeCheckedRef.current) return;
+        if (restoringRef.current) {
+          // Sessão já foi tratada pelo getSession — ignora
+          return;
+        }
         try {
           const influencerProfile = await loadInfluencerProfile(session.user.id);
           if (influencerProfile) {

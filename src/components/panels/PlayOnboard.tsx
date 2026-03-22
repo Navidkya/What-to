@@ -51,7 +51,7 @@ export default function PlayOnboard({ isOpen, currentPrefs, onClose }: Props) {
 
   const handleSave = (skip = false) => onClose(skip
     ? { done: false, type: 'Ambos', genres: [], dificuldade: 'normal' }
-    : { done: false, type, genres, dificuldade }
+    : { done: true, type, genres, dificuldade }
   );
 
   if (!isOpen) return null;

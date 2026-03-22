@@ -5,18 +5,25 @@ import type { InfluencerSuggestion } from '../../services/influencers';
 import { loadFeedEvents, loadTrending } from '../../services/feedEvents';
 import type { FeedEvent } from '../../services/feedEvents';
 import { supabase } from '../../lib/supabase';
+import { buildTrendingFeedCards } from '../../services/trendingFeed';
+import type { TrendingFeedCard } from '../../services/trendingFeed';
 
 interface FeedCard {
   id: string;
-  type: 'friend_activity' | 'influencer_post' | 'social_moment' | 'trending';
-  // friend_activity / real event
+  type: 'friend_activity' | 'influencer_post' | 'social_moment' | 'trending' | 'community' | 'individual';
+  // friend_activity / real event / individual trending
   friendName?: string;
   friendInitial?: string;
   friendColor?: string;
   action?: string;
   userId?: string;
-  // trending
+  // trending (Supabase)
   trendCount?: number;
+  // community / individual trending (API)
+  count?: number;
+  period?: string;
+  verb?: string;
+  badge?: string;
   // influencer_post
   influencer?: { name: string; handle: string; tier: 'gold' | 'silver' | 'base'; platform?: string };
   // social_moment
@@ -119,10 +126,11 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
     const muted = getMuted();
 
     // Fetch real events + trending in parallel
-    const [realEvents, trending, infSuggs] = await Promise.all([
+    const [realEvents, trending, infSuggs, trendingApiRaw] = await Promise.all([
       loadFeedEvents(30),
       loadTrending(undefined, 5),
       loadActiveSuggestions().catch(() => [] as InfluencerSuggestion[]),
+      buildTrendingFeedCards(0).catch(() => [] as TrendingFeedCard[]),
     ]);
 
     // Filter muted users from real events
@@ -181,7 +189,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
       });
     }
 
-    // Build trending cards
+    // Build Supabase trending cards (fallback)
     const trendCards: FeedCard[] = trending.map((t, i) => ({
       id: `trend-${i}`,
       type: 'trending' as const,
@@ -193,6 +201,29 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
       catName: t.catName,
       timestamp: 'Tendência',
     }));
+
+    // Convert API trending cards
+    const convertTrending = (tc: TrendingFeedCard): FeedCard => ({
+      id: tc.id,
+      type: tc.type,
+      friendName: tc.type === 'individual' ? tc.personName : undefined,
+      friendInitial: tc.type === 'individual' && tc.personName ? tc.personName[0].toUpperCase() : undefined,
+      friendColor: tc.type === 'individual' && tc.personName ? colorForName(tc.personName) : undefined,
+      action: tc.type === 'individual' ? tc.action : undefined,
+      count: tc.type === 'community' ? tc.count : undefined,
+      period: tc.type === 'community' ? tc.period : undefined,
+      verb: tc.type === 'community' ? tc.verb : undefined,
+      badge: tc.badge,
+      title: tc.title,
+      img: tc.img,
+      catId: tc.catId,
+      catName: tc.catName,
+      timestamp: tc.type === 'individual' ? 'agora' : tc.period || 'semana',
+    });
+
+    const apiTrending = trendingApiRaw.map(convertTrending);
+    const indCards = apiTrending.filter(c => c.type === 'individual');
+    const commCards = apiTrending.filter(c => c.type === 'community');
 
     // Build influencer cards
     const goldCards: FeedCard[] = infSuggs
@@ -211,25 +242,6 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
         rating: s.rating || undefined,
       }));
 
-    // Compose final feed order
-    const result: FeedCard[] = [];
-    let ei = 0; // event index
-    let ti = 0; // trending index
-    let gi = 0; // gold influencer index
-
-    // pos 0: first real event (or mock)
-    if (feedCards[ei]) result.push(feedCards[ei++]);
-    // pos 1: trending #1
-    if (trendCards[ti]) result.push(trendCards[ti++]);
-    // pos 2-3: events
-    if (feedCards[ei]) result.push(feedCards[ei++]);
-    if (feedCards[ei]) result.push(feedCards[ei++]);
-    // pos 4: gold influencer
-    if (goldCards[gi]) result.push(goldCards[gi++]);
-    // pos 5: trending #2
-    if (trendCards[ti]) result.push(trendCards[ti++]);
-    // rest: remaining events + remaining gold/silver influencers interleaved
-    const remaining = feedCards.slice(ei);
     const silverCards = infSuggs
       .filter((s: InfluencerSuggestion) => (s.influencerTier === 'silver' || s.influencerTier === 'base') && s.active)
       .slice(0, 4)
@@ -246,16 +258,60 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
         rating: s.rating || undefined,
       }));
 
-    remaining.forEach((card, i) => {
+    // Pick specific positions from API trending pools
+    let iiWatchPlay = indCards.find(c => c.catId === 'watch' || c.catId === 'play');
+    const iiReadListen = indCards.find(c => (c.catId === 'read' || c.catId === 'listen') && c !== iiWatchPlay);
+    if (!iiWatchPlay) iiWatchPlay = indCards[0];
+    const ccWatch = commCards.find(c => c.catId === 'watch') || commCards[0];
+    const ccEatVisit = commCards.find(c => (c.catId === 'eat' || c.catId === 'visit') && c !== ccWatch);
+    const ccPlayLearn = commCards.find(c => (c.catId === 'play' || c.catId === 'learn') && c !== ccWatch && c !== ccEatVisit);
+    const usedIds = new Set([iiWatchPlay?.id, iiReadListen?.id, ccWatch?.id, ccEatVisit?.id, ccPlayLearn?.id].filter(Boolean) as string[]);
+    const remainingApiTrending = apiTrending.filter(c => !usedIds.has(c.id));
+
+    // Compose final feed
+    const result: FeedCard[] = [];
+    let ei = 0;
+    let gi = 0;
+    let rti = 0; // remaining api trending index
+
+    // pos 0: individual trending (watch/play)
+    const p0 = iiWatchPlay || feedCards[ei];
+    if (p0) { result.push(p0); if (p0 === feedCards[ei]) ei++; }
+    // pos 1: community trending (watch) or Supabase trending
+    if (ccWatch) result.push(ccWatch);
+    else if (trendCards[0]) result.push(trendCards[0]);
+    // pos 2-3: real events / mocks
+    if (feedCards[ei]) result.push(feedCards[ei++]);
+    if (feedCards[ei]) result.push(feedCards[ei++]);
+    // pos 3: individual trending (read/listen)
+    if (iiReadListen) result.push(iiReadListen);
+    else if (trendCards[1]) result.push(trendCards[1]);
+    // pos 4: gold influencer
+    if (goldCards[gi]) result.push(goldCards[gi++]);
+    // pos 5: community trending (eat/visit)
+    if (ccEatVisit) result.push(ccEatVisit);
+    else if (trendCards[2]) result.push(trendCards[2]);
+    // pos 6-7: events
+    if (feedCards[ei]) result.push(feedCards[ei++]);
+    if (feedCards[ei]) result.push(feedCards[ei++]);
+    // pos 8: community trending (play/learn)
+    if (ccPlayLearn) result.push(ccPlayLearn);
+    else if (trendCards[3]) result.push(trendCards[3]);
+
+    // Rest: mix remaining events + api trending + silver influencers
+    const remainingEvents = feedCards.slice(ei);
+    remainingEvents.forEach((card, i) => {
       result.push(card);
-      // interleave remaining gold + silver every 3 cards
+      // interleave api trending every 2 cards
+      if (i % 2 === 0 && remainingApiTrending[rti]) result.push(remainingApiTrending[rti++]);
+      // interleave gold + silver every 3 cards
       if (i % 3 === 1) {
-        const inf = goldCards[gi] || silverCards[i % silverCards.length];
+        const inf = goldCards[gi] || silverCards[i % Math.max(silverCards.length, 1)];
         if (inf) { result.push(inf); if (goldCards[gi]) gi++; }
       }
-      // interleave remaining trending
-      if (i % 4 === 2 && trendCards[ti]) result.push(trendCards[ti++]);
     });
+    // Append any remaining api trending not yet used
+    while (rti < remainingApiTrending.length) result.push(remainingApiTrending[rti++]);
 
     setCards(result);
   };
@@ -325,18 +381,18 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
       {/* Cards */}
       <div style={{ padding:'12px 16px 100px' }}>
         {cards.map(card => (
-          <div key={card.id} style={{ marginBottom:16, borderRadius:20, overflow:'hidden', background: card.type === 'trending' ? 'rgba(200,155,60,0.04)' : 'rgba(255,255,255,0.03)', border: card.type === 'trending' ? '1px solid rgba(200,155,60,0.15)' : '1px solid rgba(255,255,255,0.07)' }}>
+          <div key={card.id} style={{ marginBottom:16, borderRadius:20, overflow:'hidden', background: (card.type === 'trending' || card.type === 'community') ? 'rgba(200,155,60,0.04)' : card.type === 'individual' ? 'rgba(200,155,60,0.02)' : 'rgba(255,255,255,0.03)', border: (card.type === 'trending' || card.type === 'community') ? '1px solid rgba(200,155,60,0.15)' : card.type === 'individual' ? '1px solid rgba(200,155,60,0.08)' : '1px solid rgba(255,255,255,0.07)' }}>
             {/* Card header */}
             <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px 0' }}>
-              {card.type === 'friend_activity' && (
+              {(card.type === 'friend_activity' || card.type === 'individual') && (
                 <>
-                  <div onClick={() => setPersonPopup({ name: card.friendName!, isInfluencer: false, userId: card.userId, isMuted: getMuted().includes(card.userId || '') })}
+                  <div onClick={() => card.type === 'friend_activity' && setPersonPopup({ name: card.friendName!, isInfluencer: false, userId: card.userId, isMuted: getMuted().includes(card.userId || '') })}
                     style={{ width:32, height:32, borderRadius:'50%', background:(card.friendColor||'#C89B3C')+'22', border:`1.5px solid ${card.friendColor||'#C89B3C'}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:card.friendColor||'#C89B3C', cursor:'pointer', flexShrink:0 }}>
                     {card.friendInitial}
                   </div>
                   <div style={{ flex:1 }}>
-                    <button onClick={() => setPersonPopup({ name: card.friendName!, isInfluencer: false, userId: card.userId, isMuted: getMuted().includes(card.userId || '') })}
-                      style={{ background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:"'Outfit',sans-serif", fontSize:13, fontWeight:600, color:'#f5f1eb' }}>
+                    <button onClick={() => card.type === 'friend_activity' && setPersonPopup({ name: card.friendName!, isInfluencer: false, userId: card.userId, isMuted: getMuted().includes(card.userId || '') })}
+                      style={{ background:'none', border:'none', padding:0, cursor: card.type === 'friend_activity' ? 'pointer' : 'default', fontFamily:"'Outfit',sans-serif", fontSize:13, fontWeight:600, color:'#f5f1eb' }}>
                       {card.friendName}
                     </button>
                     <span style={{ fontSize:12, color:'rgba(156,165,185,0.6)', marginLeft:6 }}>{card.action}</span>
@@ -344,15 +400,22 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                   <span style={{ fontSize:10, color:'rgba(156,165,185,0.35)' }}>{card.timestamp}</span>
                 </>
               )}
-              {card.type === 'trending' && (
+              {(card.type === 'trending' || card.type === 'community') && (
                 <>
                   <div style={{ width:32, height:32, borderRadius:'50%', background:'rgba(200,155,60,0.12)', border:'1.5px solid rgba(200,155,60,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="#C89B3C" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                   </div>
                   <div style={{ flex:1 }}>
-                    <span style={{ fontFamily:"'Outfit',sans-serif", fontSize:12, fontWeight:600, color:'rgba(200,155,60,0.8)', letterSpacing:0.3 }}>✦ Tendência esta semana</span>
+                    <span style={{ fontFamily:"'Outfit',sans-serif", fontSize:12, fontWeight:600, color:'rgba(200,155,60,0.8)', letterSpacing:0.3 }}>
+                      {card.type === 'community' ? '✦ What to' : '✦ Tendência esta semana'}
+                    </span>
+                    {card.type === 'community' && card.count && card.verb && (
+                      <div style={{ fontSize:11, color:'rgba(156,165,185,0.5)', marginTop:1 }}>{card.count} utilizadores {card.verb}</div>
+                    )}
                   </div>
-                  <span style={{ fontSize:10, color:'rgba(156,165,185,0.35)' }}>{card.trendCount} <span style={{ opacity:0.6 }}>pessoas</span></span>
+                  <span style={{ fontSize:10, color:'rgba(156,165,185,0.35)' }}>
+                    {card.type === 'community' ? card.period : <>{card.trendCount} <span style={{ opacity:0.6 }}>pessoas</span></>}
+                  </span>
                 </>
               )}
               {card.type === 'influencer_post' && card.influencer && (
@@ -396,8 +459,12 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                   {card.type === 'social_moment' && card.planItems && (
                     <div style={{ fontSize:11, color:'rgba(245,241,235,0.6)', marginTop:2 }}>{card.planItems.join(' · ')}</div>
                   )}
-                  {card.type === 'trending' && card.subtitle && (
-                    <div style={{ fontSize:11, color:'rgba(200,155,60,0.7)', marginTop:2 }}>{card.subtitle}</div>
+                  {(card.type === 'trending' || card.type === 'community') && (
+                    <div style={{ fontSize:11, color:'rgba(200,155,60,0.7)', marginTop:2 }}>
+                      {card.type === 'community' && card.count && card.verb
+                        ? `${card.count} utilizadores ${card.verb}`
+                        : card.subtitle}
+                    </div>
                   )}
                 </div>
               </div>
@@ -410,7 +477,11 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                   onClick={() => card.type !== 'social_moment' && setSuggPopup(card)}>
                   {card.title}
                 </div>
-                {card.subtitle && <div style={{ fontSize:11, color: card.type === 'trending' ? 'rgba(200,155,60,0.65)' : 'rgba(156,165,185,0.5)', marginTop:3 }}>{card.subtitle}</div>}
+                {(card.subtitle || (card.type === 'community' && card.count && card.verb)) && (
+                  <div style={{ fontSize:11, color: (card.type === 'trending' || card.type === 'community') ? 'rgba(200,155,60,0.65)' : 'rgba(156,165,185,0.5)', marginTop:3 }}>
+                    {card.type === 'community' && card.count && card.verb ? `${card.count} utilizadores ${card.verb}` : card.subtitle}
+                  </div>
+                )}
               </div>
             )}
 
@@ -429,9 +500,17 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                   Criar plano igual
                 </button>
               )}
-              {(card.type === 'influencer_post' || card.type === 'trending') && (
+              {card.type === 'individual' && card.badge && (
+                <span style={{ fontSize:10, color:'rgba(200,155,60,0.6)', fontFamily:"'Outfit',sans-serif" }}>{card.badge}</span>
+              )}
+              {(card.type === 'influencer_post' || card.type === 'trending' || card.type === 'community') && (
                 <button onClick={() => setSuggPopup(card)} style={{ fontSize:11, color:'#C89B3C', background:'rgba(200,155,60,0.08)', border:'1px solid rgba(200,155,60,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
-                  {card.type === 'trending' ? 'Ver sugestões' : 'Aceitar sugestão'}
+                  {card.type === 'trending' ? 'Ver sugestões' : card.type === 'community' ? 'Explorar' : 'Aceitar sugestão'}
+                </button>
+              )}
+              {card.type === 'individual' && (
+                <button onClick={() => onToast('✦ ' + card.title)} style={{ fontSize:11, color:'#C89B3C', background:'rgba(200,155,60,0.08)', border:'1px solid rgba(200,155,60,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                  Ver também
                 </button>
               )}
             </div>

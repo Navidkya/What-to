@@ -59,7 +59,7 @@ export default function EatOnboard({ isOpen, currentPrefs, onClose }: EatOnboard
 
   const handleSave = (skip = false) => {
     onClose({
-      done: false,
+      done: !skip,
       local: skip ? [] : local,
       fome: skip ? 'normal' : fome,
       budget: skip ? 'medio' : budget,

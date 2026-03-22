@@ -22,7 +22,7 @@ export default function DoOnboard({ isOpen, currentPrefs, onClose }: Props) {
 
   const handleSave = (skip = false) => onClose(skip
     ? { done: false, contexto: 'qualquer', local: 'qualquer', custo: 'qualquer' }
-    : { done: false, contexto, local, custo }
+    : { done: true, contexto, local, custo }
   );
 
   if (!isOpen) return null;

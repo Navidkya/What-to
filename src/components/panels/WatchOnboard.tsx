@@ -95,7 +95,7 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: WatchOnb
 
   const handleSave = (skip = false) => {
     onClose({
-      done: false,
+      done: !skip,
       genres: skip ? [] : genres,
       duration: skip ? 'normal' : duration,
       type: skip ? 'Ambos' : type,

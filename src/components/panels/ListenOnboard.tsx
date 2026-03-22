@@ -51,7 +51,7 @@ export default function ListenOnboard({ isOpen, currentPrefs, onClose }: Props) 
 
   const handleSave = (skip = false) => onClose(skip
     ? { done: false, type: 'Ambos', genres: [], energia: 'mistura' }
-    : { done: false, type, genres, energia }
+    : { done: true, type, genres, energia }
   );
 
   if (!isOpen) return null;
