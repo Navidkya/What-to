@@ -111,6 +111,64 @@ interface SuggestProps {
   onReopenOnboard?: () => void;
 }
 
+// ── Filtragem pós-API universal ───────────────────────────────────────────
+// Garante que os resultados respeitam as escolhas do utilizador,
+// independentemente do que a API devolveu.
+
+interface PostFilterOptions {
+  catId: string;
+  selectedTypes?: string[];  // ex: ['Filme'], ['Série', 'Documentário']
+  selectedGenres?: string[]; // ex: ['Comédia', 'Terror']
+  excludeTitles?: string[];  // títulos já vistos
+}
+
+function postFilter<T extends { type?: string; genre?: string; title?: string; genres?: string[] }>(
+  items: T[],
+  opts: PostFilterOptions
+): T[] {
+  let result = [...items];
+
+  // 1. Remove títulos já vistos/recusados
+  if (opts.excludeTitles && opts.excludeTitles.length > 0) {
+    const excluded = new Set(opts.excludeTitles.map(t => t.toLowerCase()));
+    result = result.filter(i => !excluded.has((i.title || '').toLowerCase()));
+  }
+
+  // 2. Filtra por tipo se especificado e se o item tem tipo
+  if (opts.selectedTypes && opts.selectedTypes.length > 0) {
+    const hasTypeItems = result.filter(i => i.type);
+    if (hasTypeItems.length > 0) {
+      const filtered = result.filter(i =>
+        !i.type || opts.selectedTypes!.some(t =>
+          i.type!.toLowerCase().includes(t.toLowerCase()) ||
+          t.toLowerCase().includes(i.type!.toLowerCase())
+        )
+      );
+      // Só aplica filtro se sobrar conteúdo suficiente (>=3 items)
+      if (filtered.length >= 3) result = filtered;
+    }
+  }
+
+  // 3. Para Watch: se selectedTypes inclui só 'Filme', remove séries e vice-versa
+  if (opts.catId === 'watch' && opts.selectedTypes && opts.selectedTypes.length > 0) {
+    const wantsFilme = opts.selectedTypes.includes('Filme');
+    const wantsSerie = opts.selectedTypes.includes('Série');
+    const wantsDoc = opts.selectedTypes.includes('Documentário');
+    // Se só quer Filme, remove Série
+    if (wantsFilme && !wantsSerie && !wantsDoc) {
+      const onlyFilmes = result.filter(i => i.type === 'Filme' || !i.type);
+      if (onlyFilmes.length >= 3) result = onlyFilmes;
+    }
+    // Se só quer Série, remove Filme
+    if (wantsSerie && !wantsFilme && !wantsDoc) {
+      const onlySeries = result.filter(i => i.type === 'Série' || !i.type);
+      if (onlySeries.length >= 3) result = onlySeries;
+    }
+  }
+
+  return result;
+}
+
 function hasPlatform(item: DataItem, profile: Profile): boolean {
   const myPlats = profile.platforms || [];
   const blocked = profile.blockedPlatforms || [];
@@ -421,9 +479,13 @@ export default function Suggest({
             const allItems = await discoverTMDBMultiPage(genericFilters, [1, 2, 3]);
             setApiItems(apply7030(allItems));
           } else {
-            const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
+            const typeMap: Record<string, DiscoverFilters['type']> = {
+              'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both',
+              'Documentário': 'tv', 'Anime': 'tv',
+            };
+            const apiType = typeMap[watchPrefs!.type] || 'both';
             const baseFilters: DiscoverFilters = {
-              type: typeMap[watchPrefs!.type] || 'both',
+              type: apiType,
               genres: watchPrefs!.genres || [],
               duration: (watchPrefs!.duration || 'normal') as DiscoverFilters['duration'],
               discovery: (watchPrefs!.discovery || 'mistura') as DiscoverFilters['discovery'],
@@ -436,6 +498,7 @@ export default function Suggest({
             // Busca 3 páginas em paralelo = até 60 resultados
             const allItems = await discoverTMDBMultiPage(baseFilters, [1, 2, 3]);
             // Prioriza géneros escolhidos — usa IDs para comparação fiável
+            let sortedItems = allItems;
             if (watchPrefs!.genres && watchPrefs!.genres.length > 0) {
               const selectedIds = new Set<number>(
                 (watchPrefs!.genres || []).flatMap(g => {
@@ -450,10 +513,15 @@ export default function Suggest({
               const rest = allItems.filter(i =>
                 !(i as DiscoverItem).genreIds?.some(id => selectedIds.has(id))
               );
-              setApiItems([...matching, ...rest]);
-            } else {
-              setApiItems(allItems);
+              sortedItems = [...matching, ...rest];
             }
+            const filtered = postFilter(sortedItems, {
+              catId: 'watch',
+              selectedTypes: watchPrefs!.type && watchPrefs!.type !== 'Ambos' ? [watchPrefs!.type] : [],
+              selectedGenres: watchPrefs!.genres || [],
+              excludeTitles: disliked.filter(d => d.startsWith('watch:')).map(d => d.split(':')[1]),
+            });
+            setApiItems(filtered);
           }
         } else if (cat.id === 'eat') {
           const isDone = eatPrefs?.done === true;
@@ -483,7 +551,11 @@ export default function Suggest({
               ? [...fsqItems.slice(0, Math.ceil(fsqItems.length / 2)), ...mealItems]
               : mealItems;
 
-          setApiItems(isDone ? combined : apply7030(combined));
+          const filteredEat = postFilter(combined, {
+            catId: 'eat',
+            excludeTitles: disliked.filter(d => d.startsWith('eat:')).map(d => d.split(':')[1]),
+          });
+          setApiItems(isDone ? filteredEat : apply7030(filteredEat));
         } else if (cat.id === 'play') {
           const isDone = playPrefs?.done === true;
           const filters = {
@@ -498,7 +570,12 @@ export default function Suggest({
             discoverRAWG({ ...filters, page: 3 }),
           ]);
           const allItems = [...p1, ...p2, ...p3];
-          setApiItems(isDone ? allItems : apply7030(allItems));
+          const filteredPlay = postFilter(allItems, {
+            catId: 'play',
+            selectedTypes: isDone && playPrefs?.type && playPrefs.type !== 'Ambos' ? [playPrefs.type] : [],
+            excludeTitles: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
+          });
+          setApiItems(isDone ? filteredPlay : apply7030(filteredPlay));
         } else if (cat.id === 'learn') {
           const isDone = learnPrefs?.done === true;
           const queries = isDone && learnPrefs!.genres && learnPrefs!.genres.length > 0 ? learnPrefs!.genres : ['popular'];
@@ -508,7 +585,11 @@ export default function Suggest({
             duracao: isDone ? (learnPrefs!.duracao || 'normal') : 'normal',
           })));
           const allItems = results.flat();
-          setApiItems(isDone ? allItems : apply7030(allItems));
+          const filteredLearn = postFilter(allItems, {
+            catId: 'learn',
+            excludeTitles: disliked.filter(d => d.startsWith('learn:')).map(d => d.split(':')[1]),
+          });
+          setApiItems(isDone ? filteredLearn : apply7030(filteredLearn));
         } else if (cat.id === 'listen') {
           const isDone = listenPrefs?.done === true;
           const items = await discoverDeezer({
@@ -516,7 +597,12 @@ export default function Suggest({
             genres: isDone ? (listenPrefs!.genres || []) : [],
             energia: isDone ? (listenPrefs!.energia || 'mistura') : 'mistura',
           });
-          setApiItems(isDone ? items : apply7030(items));
+          const filteredListen = postFilter(items, {
+            catId: 'listen',
+            selectedTypes: isDone && listenPrefs?.type && listenPrefs.type !== 'Ambos' ? [listenPrefs.type] : [],
+            excludeTitles: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
+          });
+          setApiItems(isDone ? filteredListen : apply7030(filteredListen));
         } else if (cat.id === 'read') {
           const isDone = readPrefs?.done === true;
           const items = await discoverBooksMultiPage({
@@ -524,7 +610,12 @@ export default function Suggest({
             type: isDone ? (readPrefs!.type || 'Ambos') : 'Ambos',
             peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura',
           });
-          setApiItems(isDone ? items : apply7030(items));
+          const filteredRead = postFilter(items, {
+            catId: 'read',
+            selectedTypes: isDone && readPrefs?.type && readPrefs.type !== 'Ambos' ? [readPrefs.type] : [],
+            excludeTitles: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
+          });
+          setApiItems(isDone ? filteredRead : apply7030(filteredRead));
         } else if (cat.id === 'visit' && profile.location) {
           const isDone = visitPrefs?.done === true;
           const items = await discoverFSQ({
@@ -534,7 +625,11 @@ export default function Suggest({
             tipo: isDone ? (visitPrefs!.tipo || []) : [],
             custo: isDone ? (visitPrefs!.custo || 'qualquer') : 'qualquer',
           });
-          setApiItems(isDone ? items : apply7030(items));
+          const filteredVisit = postFilter(items, {
+            catId: 'visit',
+            excludeTitles: disliked.filter(d => d.startsWith('visit:')).map(d => d.split(':')[1]),
+          });
+          setApiItems(isDone ? filteredVisit : apply7030(filteredVisit));
         }
       } catch {
         // silently fail — usa mock
@@ -575,7 +670,7 @@ export default function Suggest({
     };
 
     loadWithInfluencers();
-  }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms, prefsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // After ReactPanel/WhyPanel action → advance carousel
   useEffect(() => {
