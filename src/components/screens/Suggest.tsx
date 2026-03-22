@@ -149,20 +149,20 @@ function postFilter<T extends { type?: string; genre?: string; title?: string; g
     }
   }
 
-  // 3. Para Watch: se selectedTypes inclui só 'Filme', remove séries e vice-versa
+  // 3. Para Watch: filtragem AGRESSIVA por tipo — sem fallback de "mínimo 3"
   if (opts.catId === 'watch' && opts.selectedTypes && opts.selectedTypes.length > 0) {
-    const wantsFilme = opts.selectedTypes.includes('Filme');
-    const wantsSerie = opts.selectedTypes.includes('Série');
-    const wantsDoc = opts.selectedTypes.includes('Documentário');
-    // Se só quer Filme, remove Série
+    const wantsFilme = opts.selectedTypes.some(t => t === 'Filme' || t === 'movie');
+    const wantsSerie = opts.selectedTypes.some(t => t === 'Série' || t === 'tv');
+    const wantsDoc = opts.selectedTypes.some(t => t === 'Documentário');
+    // Se APENAS quer Filme, remove TUDO que não é Filme — sem excepções
     if (wantsFilme && !wantsSerie && !wantsDoc) {
       const onlyFilmes = result.filter(i => i.type === 'Filme' || !i.type);
-      if (onlyFilmes.length >= 3) result = onlyFilmes;
+      result = onlyFilmes; // sem condição de mínimo
     }
-    // Se só quer Série, remove Filme
+    // Se APENAS quer Série, remove TUDO que não é Série
     if (wantsSerie && !wantsFilme && !wantsDoc) {
       const onlySeries = result.filter(i => i.type === 'Série' || !i.type);
-      if (onlySeries.length >= 3) result = onlySeries;
+      result = onlySeries;
     }
   }
 
@@ -239,7 +239,8 @@ interface DisplayData {
   rating: number | null;
   year: string | null;
   type: string;
-  genre: string;
+  genre: string;        // mantém para compatibilidade
+  genres: string[];     // todos os géneros
   url: string | null;
   emoji: string;
   influencer?: { name: string; handle: string; tier: string };
@@ -251,45 +252,83 @@ function getDisplayData(item: APIItem, catId: string): DisplayData | null {
     const i = item as InfluencerSuggestion;
     return {
       title: i.title, desc: i.desc, img: i.img, rating: i.rating, year: i.year,
-      type: i.type, genre: i.genre, url: null, emoji: i.emoji,
+      type: i.type, genre: i.genre, genres: [i.genre].filter(Boolean), url: null, emoji: i.emoji,
       influencer: { name: i.influencerName, handle: i.influencerHandle, tier: i.influencerTier },
     };
   }
   // TMDB DiscoverItem (watch)
   if (catId === 'watch' && 'backdropUrl' in item) {
     const i = item as DiscoverItem;
-    return { title: i.title, desc: i.overview || '', img: i.backdropUrl || i.posterUrl, rating: i.rating, year: i.year, type: i.type, genre: i.genre, url: null, emoji: i.type === 'Filme' ? '🎬' : '📺' };
+    return {
+      title: i.title, desc: i.overview || '', img: i.backdropUrl || i.posterUrl,
+      rating: i.rating, year: i.year, type: i.type, genre: i.genre,
+      genres: i.allGenres && i.allGenres.length > 0 ? i.allGenres : [i.genre].filter(Boolean),
+      url: null, emoji: i.type === 'Filme' ? '🎬' : '📺',
+    };
   }
   // RAWG (play)
   if (catId === 'play' && 'metacritic' in item) {
     const i = item as RAWGItem;
-    return { title: i.title, desc: i.description, img: i.coverUrl, rating: i.rating, year: i.year, type: 'Videojogo', genre: i.genres[0] || 'Jogo', url: null, emoji: '🎮' };
+    return {
+      title: i.title, desc: i.description, img: i.coverUrl, rating: i.rating, year: i.year,
+      type: 'Videojogo', genre: i.genres[0] || 'Jogo',
+      genres: i.genres.length > 0 ? i.genres : ['Jogo'],
+      url: null, emoji: '🎮',
+    };
   }
   // YouTube (learn)
   if (catId === 'learn' && 'channelName' in item) {
     const i = item as YTItem;
-    return { title: i.title, desc: `${i.channelName} · ${i.publishedAt || ''}`, img: i.thumbnailUrl, rating: null, year: i.publishedAt, type: 'Vídeo', genre: 'Aprender', url: `https://youtube.com/watch?v=${i.id}`, emoji: '🧠' };
+    return {
+      title: i.title, desc: `${i.channelName} · ${i.publishedAt || ''}`, img: i.thumbnailUrl,
+      rating: null, year: i.publishedAt, type: 'Vídeo', genre: 'Aprender',
+      genres: ['Vídeo', ...(i.channelName ? [i.channelName] : [])],
+      url: `https://youtube.com/watch?v=${i.id}`, emoji: '🧠',
+    };
   }
   // Deezer (listen)
   if (catId === 'listen' && 'artist' in item) {
     const i = item as DeezerItem;
-    return { title: i.title, desc: i.artist, img: i.coverUrl, rating: null, year: null, type: i.type, genre: i.genre, url: i.url, emoji: '🎵' };
+    return {
+      title: i.title, desc: i.artist, img: i.coverUrl, rating: null, year: null,
+      type: i.type, genre: i.genre,
+      genres: [i.genre, i.type].filter(Boolean),
+      url: i.url, emoji: '🎵',
+    };
   }
   // Google Books (read)
   if (catId === 'read' && 'authors' in item) {
     const i = item as GBItem;
-    return { title: i.title, desc: `${i.authors.join(', ')} · ${i.pages ? i.pages + ' págs' : ''}`, img: i.coverUrl, rating: i.rating, year: i.year, type: 'Livro', genre: i.genre, url: i.previewUrl, emoji: '📚' };
+    const rawGenre = i.genre || '';
+    const genreList = rawGenre.split(/[\/,]/).map((g: string) => g.trim()).filter(Boolean);
+    return {
+      title: i.title, desc: `${i.authors.join(', ')} · ${i.pages ? i.pages + ' págs' : ''}`,
+      img: i.coverUrl, rating: i.rating, year: i.year, type: 'Livro',
+      genre: genreList[0] || 'Livro',
+      genres: genreList.length > 0 ? genreList : ['Livro'],
+      url: i.previewUrl, emoji: '📚',
+    };
   }
   // Foursquare (visit)
   if (catId === 'visit' && 'address' in item) {
     const i = item as FSQItem;
     const dist = i.distance ? (i.distance < 1000 ? `${i.distance}m` : `${(i.distance / 1000).toFixed(1)}km`) : '';
-    return { title: i.title, desc: `${i.category} · ${dist} · ${i.address}`.replace(/\s·\s$/, ''), img: i.coverUrl, rating: i.rating, year: null, type: i.category, genre: 'Local', url: i.mapsUrl, emoji: '📍' };
+    return {
+      title: i.title, desc: `${i.category} · ${dist} · ${i.address}`.replace(/\s·\s$/, ''),
+      img: i.coverUrl, rating: i.rating, year: null, type: i.category, genre: 'Local',
+      genres: [i.category].filter(Boolean),
+      url: i.mapsUrl, emoji: '📍',
+    };
   }
   // MealDB (eat)
   if (catId === 'eat' && 'category' in item && 'type' in item && (item as MealDiscoverItem).type === 'Receita') {
     const i = item as MealDiscoverItem;
-    return { title: i.title, desc: i.category, img: i.coverUrl, rating: null, year: null, type: 'Receita', genre: i.category, url: null, emoji: '🍽️' };
+    return {
+      title: i.title, desc: i.category, img: i.coverUrl, rating: null, year: null,
+      type: 'Receita', genre: i.category,
+      genres: [i.category, (i as any).area].filter(Boolean),
+      url: null, emoji: '🍽️',
+    };
   }
   return null;
 }
@@ -396,12 +435,19 @@ export default function Suggest({
     const nextIdx = currentIdx + 1;
 
     if (isAPIMode) {
-      if (nextIdx >= currentApiItems.length - 2) {
+      // Pré-carrega quando está a 20% do fim ou quando restam menos de 10 items
+      if (nextIdx >= Math.max(currentApiItems.length - 10, currentApiItems.length * 0.8)) {
         handleLoadMore();
       }
       if (nextIdx >= currentApiItems.length) {
-        setApiItems(prev => [...prev].sort(() => Math.random() - 0.5));
+        // Embaralha e recomeça — loop infinito de sugestões
+        setApiItems(prev => {
+          const reshuffled = [...prev].sort(() => Math.random() - 0.5);
+          return reshuffled;
+        });
         setActiveIdx(0);
+        // Tenta também carregar mais items novos em background
+        handleLoadMore();
       } else {
         setActiveIdx(nextIdx);
       }
@@ -495,8 +541,8 @@ export default function Suggest({
               epoca: (watchPrefs as any).epoca || 'qualquer',
               minRating: parseFloat((watchPrefs as any).minRating) || 0,
             };
-            // Busca 3 páginas em paralelo = até 60 resultados
-            const allItems = await discoverTMDBMultiPage(baseFilters, [1, 2, 3]);
+            // Busca 5 páginas em paralelo = até 100 resultados
+            const allItems = await discoverTMDBMultiPage(baseFilters, [1, 2, 3, 4, 5]);
             // Prioriza géneros escolhidos — usa IDs para comparação fiável
             let sortedItems = allItems;
             if (watchPrefs!.genres && watchPrefs!.genres.length > 0) {
@@ -564,12 +610,14 @@ export default function Suggest({
             dificuldade: isDone ? (playPrefs!.dificuldade || 'normal') : 'normal',
             type: isDone ? (playPrefs!.type || 'Ambos') : 'Ambos',
           };
-          const [p1, p2, p3] = await Promise.all([
+          const [p1, p2, p3, p4, p5] = await Promise.all([
             discoverRAWG({ ...filters, page: 1 }),
             discoverRAWG({ ...filters, page: 2 }),
             discoverRAWG({ ...filters, page: 3 }),
+            discoverRAWG({ ...filters, page: 4 }),
+            discoverRAWG({ ...filters, page: 5 }),
           ]);
-          const allItems = [...p1, ...p2, ...p3];
+          const allItems = [...p1, ...p2, ...p3, ...p4, ...p5];
           const filteredPlay = postFilter(allItems, {
             catId: 'play',
             selectedTypes: isDone && playPrefs?.type && playPrefs.type !== 'Ambos' ? [playPrefs.type] : [],
@@ -605,11 +653,10 @@ export default function Suggest({
           setApiItems(isDone ? filteredListen : apply7030(filteredListen));
         } else if (cat.id === 'read') {
           const isDone = readPrefs?.done === true;
-          const items = await discoverBooksMultiPage({
-            genres: isDone ? (readPrefs!.genres || []) : [],
-            type: isDone ? (readPrefs!.type || 'Ambos') : 'Ambos',
-            peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura',
-          });
+          const items = await discoverBooksMultiPage(
+            { genres: isDone ? (readPrefs!.genres || []) : [], type: isDone ? (readPrefs!.type || 'Ambos') : 'Ambos', peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura' },
+            [0, 20, 40, 60, 80]
+          );
           const filteredRead = postFilter(items, {
             catId: 'read',
             selectedTypes: isDone && readPrefs?.type && readPrefs.type !== 'Ambos' ? [readPrefs.type] : [],
@@ -805,7 +852,9 @@ export default function Suggest({
     try {
       let newItems: APIItem[] = [];
       if (cat.id === 'watch' && watchPrefs) {
-        const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
+        const typeMap: Record<string, DiscoverFilters['type']> = {
+          'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both', 'Documentário': 'tv', 'Anime': 'tv',
+        };
         const baseFilters: DiscoverFilters = {
           type: typeMap[watchPrefs.type] || 'both',
           genres: watchPrefs.genres || [],
@@ -817,21 +866,38 @@ export default function Suggest({
           epoca: (watchPrefs as any).epoca || 'qualquer',
           minRating: parseFloat((watchPrefs as any).minRating) || 0,
         };
-        const moreItems = await discoverTMDB({ ...baseFilters, page: nextPage });
+        // Busca 3 páginas de cada vez para ter sempre pool grande
+        const [m1, m2, m3] = await Promise.all([
+          discoverTMDB({ ...baseFilters, page: nextPage }),
+          discoverTMDB({ ...baseFilters, page: nextPage + 1 }),
+          discoverTMDB({ ...baseFilters, page: nextPage + 2 }),
+        ]);
+        const moreItems = [...m1, ...m2, ...m3];
         setApiItems(prev => {
           const seen = new Set(prev.map(i => i.title));
           return [...prev, ...moreItems.filter(i => !seen.has(i.title))];
         });
-        setCurrentPage(nextPage);
+        setCurrentPage(nextPage + 2);
         newItems = [];
       } else if (cat.id === 'play' && playPrefs) {
-        newItems = await discoverRAWG({
+        const playFilters = {
           genres: playPrefs.genres || [],
           platforms: profile.platforms || [],
           dificuldade: playPrefs.dificuldade || 'normal',
           type: playPrefs.type || 'Ambos',
-          page: nextPage,
+        };
+        const [r1, r2, r3] = await Promise.all([
+          discoverRAWG({ ...playFilters, page: nextPage }),
+          discoverRAWG({ ...playFilters, page: nextPage + 1 }),
+          discoverRAWG({ ...playFilters, page: nextPage + 2 }),
+        ]);
+        const morePlay = [...r1, ...r2, ...r3];
+        setApiItems(prev => {
+          const seen = new Set(prev.map(i => i.title));
+          return [...prev, ...morePlay.filter(i => !seen.has(i.title))];
         });
+        setCurrentPage(nextPage + 2);
+        newItems = [];
       } else if (cat.id === 'eat' && eatPrefs) {
         newItems = await discoverMeals({
           local: eatPrefs.local || [],
@@ -971,12 +1037,29 @@ export default function Suggest({
               <div className="cin-body">
                 <div className="cin-title">{displayTitle}</div>
 
-                <div className="cin-meta">
-                  <span>{displayType}</span>
-                  {displayGenre && <><span className="cin-meta-sep"> · </span><span>{displayGenre}</span></>}
-                  {displayYear && <><span className="cin-meta-sep"> · </span><span>{displayYear}</span></>}
-                  {data?.tmdb?.runtime && <><span className="cin-meta-sep"> · </span><span>{data.tmdb.runtime}</span></>}
-                  {displayRating && <><span className="cin-meta-sep"> · </span><span style={{ display:'inline-flex', alignItems:'center', gap:3 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="#C89B3C" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{displayRating}</span></>}
+                {/* Tags row — todos os géneros + ano + duração + rating */}
+                <div className="cin-tags">
+                  {/* Tipo */}
+                  {displayType && (
+                    <span className="cin-tag cin-tag-type">{displayType}</span>
+                  )}
+                  {/* Todos os géneros */}
+                  {(displayData?.genres || (displayGenre ? [displayGenre] : [])).map((g, i) => (
+                    <span key={i} className="cin-tag">{g}</span>
+                  ))}
+                  {/* Ano */}
+                  {displayYear && <span className="cin-tag">{displayYear}</span>}
+                  {/* Duração */}
+                  {data?.tmdb?.runtime && <span className="cin-tag">{data.tmdb.runtime}</span>}
+                  {/* Rating */}
+                  {displayRating && (
+                    <span className="cin-tag cin-tag-rating">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="#C89B3C" stroke="none">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      </svg>
+                      {displayRating}
+                    </span>
+                  )}
                 </div>
 
                 <div className="cin-desc">{displayDesc}</div>
