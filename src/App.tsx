@@ -27,6 +27,7 @@ import Profile from './components/screens/Profile';
 import B2B from './components/screens/B2B';
 import Friends from './components/screens/Friends';
 import FeedSocial from './components/screens/FeedSocial';
+import FeedScreen from './components/screens/FeedScreen';
 import ForYou from './components/screens/ForYou';
 
 import ReactPanel from './components/panels/ReactPanel';
@@ -413,7 +414,7 @@ export default function App() {
     }
 
     if (screen === 'home') {
-      if (dx < -SWIPE_THRESHOLD) navTo('friends');
+      if (dx < -SWIPE_THRESHOLD) navTo('feed');
       else if (dx > SWIPE_THRESHOLD) navTo('profile');
     } else if (screen === 'friends') {
       if (dx > SWIPE_THRESHOLD) navTo('home');
@@ -652,8 +653,15 @@ export default function App() {
           />
 
           <FeedSocial
-            isActive={screen === 'feed'}
+            isActive={false}
             onNav={navTo}
+          />
+
+          <FeedScreen
+            profile={store.profile}
+            history={store.history}
+            isActive={screen === 'feed'}
+            onToast={toast}
           />
 
           <ForYou
