@@ -6,6 +6,7 @@ interface Props {
   isActive: boolean;
   onUpdateLists: (lists: UserList[]) => void;
   onToast: (msg: string) => void;
+  onBack: () => void;
 }
 
 function genId() {
@@ -14,7 +15,7 @@ function genId() {
 
 const LIST_EMOJIS = ['📋', '🎬', '📚', '🎮', '🍽️', '🎵', '📍', '✨', '❤️', '⭐'];
 
-export default function ListsScreen({ lists, isActive, onUpdateLists, onToast }: Props) {
+export default function ListsScreen({ lists, isActive, onUpdateLists, onToast, onBack }: Props) {
   const [activeListId, setActiveListId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<UserListItem | null>(null);
   const [creating, setCreating] = useState(false);
@@ -94,9 +95,12 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast }:
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, fontStyle: 'italic' }}>As minhas listas</div>
-                <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 2 }}>{lists.length} {lists.length === 1 ? 'lista' : 'listas'}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}>←</button>
+                <div>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontWeight: 700, fontStyle: 'italic', letterSpacing: -0.5 }}>As minhas listas</div>
+                  <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 2 }}>{lists.length} {lists.length === 1 ? 'lista' : 'listas'}</div>
+                </div>
               </div>
               <button
                 onClick={() => setCreating(true)}
@@ -165,17 +169,17 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast }:
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 4 }}>
                 {lists.map(list => (
-                  <div
-                    key={list.id}
-                    onClick={() => setActiveListId(list.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, cursor: 'pointer', transition: 'background 0.15s' }}
-                  >
-                    <span style={{ fontSize: 24, flexShrink: 0 }}>{list.emoji}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tx)' }}>{list.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{list.items.length} {list.items.length === 1 ? 'item' : 'itens'}</div>
+                  <div key={list.id} onClick={() => setActiveListId(list.id)}
+                    style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 18px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, cursor:'pointer', transition:'all 0.2s', position:'relative', overflow:'hidden' }}>
+                    <div style={{ position:'absolute', left:0, top:12, bottom:12, width:3, borderRadius:'0 2px 2px 0', background:'linear-gradient(to bottom, #C89B3C, #a87535)' }} />
+                    <div style={{ width:44, height:44, borderRadius:12, background:'rgba(200,155,60,0.08)', border:'1px solid rgba(200,155,60,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>
+                      {list.emoji}
                     </div>
-                    <span style={{ color: 'var(--mu)', fontSize: 18 }}>›</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:16, fontWeight:600, color:'var(--tx)', fontFamily:"'Outfit',sans-serif" }}>{list.name}</div>
+                      <div style={{ fontSize:11, color:'var(--mu)', marginTop:3 }}>{list.items.length} {list.items.length === 1 ? 'item' : 'itens'}</div>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mu)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                   </div>
                 ))}
               </div>

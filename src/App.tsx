@@ -642,6 +642,7 @@ export default function App() {
             isActive={screen === 'lista'}
             onUpdateLists={store.updateUserLists}
             onToast={toast}
+            onBack={goHome}
           />
 
           <B2B

@@ -35,6 +35,21 @@ interface Props {
   onToast: (msg: string) => void;
 }
 
+function getCatIcon(catId: string) {
+  const props = { width:12, height:12, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:"1.5", strokeLinecap:"round" as const, strokeLinejoin:"round" as const };
+  switch(catId) {
+    case 'watch': return <svg {...props}><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 2l-4 5-4-5"/></svg>;
+    case 'eat': return <svg {...props}><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M5 2v20M21 2c0 0-2 2-2 8h4c0-6-2-8-2-8z"/><path d="M19 10v12"/></svg>;
+    case 'read': return <svg {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+    case 'listen': return <svg {...props}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>;
+    case 'play': return <svg {...props}><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/></svg>;
+    case 'learn': return <svg {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+    case 'visit': return <svg {...props}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
+    case 'do': return <svg {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+    default: return <svg {...props}><circle cx="12" cy="12" r="10"/></svg>;
+  }
+}
+
 function getUnsplashFallback(catId: string, genre: string): string {
   if (catId === 'eat') {
     if (genre === 'Restaurante') return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=90';
@@ -198,6 +213,7 @@ export default function ForYou({
   const [activeIdx, setActiveIdx] = useState(0);
   const [images, setImages] = useState<Record<string, string>>({});
   const [addListOpen, setAddListOpen] = useState(false);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
   const fetchedRef = useRef(new Set<string>());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -281,12 +297,27 @@ export default function ForYou({
   const mouseDragRef = useRef<number | null>(null);
   const mouseDraggingRef = useRef(false);
 
+  useEffect(() => {
+    const handleWindowMouseUp = (e: MouseEvent) => {
+      if (mouseDragRef.current === null) return;
+      const dx = e.clientX - mouseDragRef.current;
+      mouseDragRef.current = null;
+      if (Math.abs(dx) > 50) {
+        if (dx < 0) setActiveIdx(i => Math.min(i + 1, slides.length - 1));
+        if (dx > 0) setActiveIdx(i => Math.max(i - 1, 0));
+        resetTimer();
+      }
+      mouseDraggingRef.current = false;
+    };
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => window.removeEventListener('mouseup', handleWindowMouseUp);
+  }, [slides.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const slide = slides[activeIdx];
   if (!isActive) return null;
   if (!slide) return null;
 
   const img = slide.influencer && slide.img ? slide.img : (images[slide.title] || null);
-  const cat = CATS.find(c => c.id === slide.catId);
   const primaryPlatform = slide.platforms?.[0] || null;
 
   return (
@@ -334,9 +365,8 @@ export default function ForYou({
           if (mouseDragRef.current === null) return;
           const dx = e.clientX - mouseDragRef.current;
           mouseDragRef.current = null;
-          if (Math.abs(dx) > 50) {
-            if (dx < 0 && activeIdx < slides.length - 1) { setActiveIdx(i => i + 1); resetTimer(); }
-            if (dx > 0 && activeIdx > 0) { setActiveIdx(i => i - 1); resetTimer(); }
+          if (Math.abs(dx) < 10 && !mouseDraggingRef.current) {
+            setQuickViewOpen(true);
           }
           mouseDraggingRef.current = false;
         }}
@@ -363,7 +393,7 @@ export default function ForYou({
               )}
               {!img && <span className="cin-em">{slide.emoji}</span>}
               <div className="cin-overlay" />
-              <div className="cin-badge">{cat?.icon} {slide.catName}</div>
+              <div className="cin-badge">{getCatIcon(slide.catId)} {slide.catName}</div>
 
               {/* Source badge — always visible */}
               <div className={
@@ -372,7 +402,7 @@ export default function ForYou({
               }>
                 {slide.influencer?.tier === 'gold'
                   ? `✦ Gold · @${slide.influencer.handle}`
-                  : '✦ What to'}
+                  : <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>What to</span>}
               </div>
             </div>
 
@@ -383,7 +413,7 @@ export default function ForYou({
                 <span>{slide.type}</span>
                 {slide.genre && <><span className="cin-meta-sep"> · </span><span>{slide.genre}</span></>}
                 {slide.year && <><span className="cin-meta-sep"> · </span><span>{slide.year}</span></>}
-                {slide.rating && <><span className="cin-meta-sep"> · </span><span>⭐ {slide.rating}</span></>}
+                {slide.rating && <><span className="cin-meta-sep"> · </span><span style={{ display:'inline-flex', alignItems:'center', gap:3 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="#C89B3C" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{slide.rating}</span></>}
               </div>
               <div className="cin-desc">{slide.desc}</div>
 
@@ -420,6 +450,61 @@ export default function ForYou({
           </div>
         </div>
       </div>
+
+      {quickViewOpen && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 16px 24px', zIndex:500 }}
+          onClick={() => setQuickViewOpen(false)}>
+          <div style={{ width:'100%', maxWidth:480, background:'rgba(10,12,20,0.95)', backdropFilter:'blur(40px)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:24, padding:'20px 20px 28px' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ width:36, height:3, background:'rgba(255,255,255,0.15)', borderRadius:10, margin:'0 auto 20px' }} />
+            <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:20, paddingBottom:16, borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+              {img && <img src={img} alt="" style={{ width:64, height:64, borderRadius:12, objectFit:'cover', flexShrink:0 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display='none'; }} />}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:700, fontStyle:'italic', color:'var(--tx)', lineHeight:1.15, marginBottom:4 }}>{slide.title}</div>
+                <div style={{ fontSize:11, color:'var(--mu)' }}>{slide.type}{slide.genre ? ` · ${slide.genre}` : ''}{slide.year ? ` · ${slide.year}` : ''}{slide.rating ? ` · ★ ${slide.rating}` : ''}</div>
+              </div>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {primaryPlatform && (
+                <button onClick={() => { window.open(primaryPlatform.url,'_blank'); setQuickViewOpen(false); resetTimer(); }}
+                  style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', background:'linear-gradient(135deg,rgba(200,155,60,0.15),rgba(168,117,53,0.08))', border:'1px solid rgba(200,155,60,0.35)', borderRadius:16, cursor:'pointer', textAlign:'left', width:'100%' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3" fill="var(--ac)" stroke="none"/></svg>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:700, color:'var(--ac)', fontFamily:"'Outfit',sans-serif" }}>Ver agora</div>
+                    <div style={{ fontSize:11, color:'var(--mu)', marginTop:1 }}>Abre na plataforma</div>
+                  </div>
+                </button>
+              )}
+              <button onClick={() => {
+                const now = new Date();
+                const s = now.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+                const e2 = new Date(now.getTime()+7200000).toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+                window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(slide.title)}&dates=${s}/${e2}`,'_blank');
+                setQuickViewOpen(false);
+              }}
+                style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', background:'rgba(106,180,224,0.07)', border:'1px solid rgba(106,180,224,0.2)', borderRadius:16, cursor:'pointer', textAlign:'left', width:'100%' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--bl)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:700, color:'var(--bl)', fontFamily:"'Outfit',sans-serif" }}>Agendar</div>
+                  <div style={{ fontSize:11, color:'var(--mu)', marginTop:1 }}>Adicionar ao Google Calendar</div>
+                </div>
+              </button>
+              <button onClick={() => { setAddListOpen(true); setQuickViewOpen(false); }}
+                style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, cursor:'pointer', textAlign:'left', width:'100%' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--mu)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:600, color:'var(--tx)', fontFamily:"'Outfit',sans-serif" }}>Guardar em lista</div>
+                  <div style={{ fontSize:11, color:'var(--mu)', marginTop:1 }}>Adicionar a uma lista pessoal</div>
+                </div>
+              </button>
+            </div>
+            <button onClick={() => setQuickViewOpen(false)}
+              style={{ width:'100%', marginTop:14, padding:'12px', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, color:'var(--mu)', fontSize:13, fontFamily:"'Outfit',sans-serif", cursor:'pointer' }}>
+              ← fechar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Add to list panel */}
       {addListOpen && (

@@ -24,6 +24,21 @@ const SUGGEST_FALLBACKS: Record<string, string> = {
 };
 
 
+function getCatIcon(catId: string) {
+  const props = { width:12, height:12, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:"1.5", strokeLinecap:"round" as const, strokeLinejoin:"round" as const };
+  switch(catId) {
+    case 'watch': return <svg {...props}><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 2l-4 5-4-5"/></svg>;
+    case 'eat': return <svg {...props}><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M5 2v20M21 2c0 0-2 2-2 8h4c0-6-2-8-2-8z"/><path d="M19 10v12"/></svg>;
+    case 'read': return <svg {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+    case 'listen': return <svg {...props}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>;
+    case 'play': return <svg {...props}><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/></svg>;
+    case 'learn': return <svg {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+    case 'visit': return <svg {...props}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
+    case 'do': return <svg {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+    default: return <svg {...props}><circle cx="12" cy="12" r="10"/></svg>;
+  }
+}
+
 function getUnsplashFallback(catId: string, genre: string): string {
   if (catId === 'eat') {
     if (genre === 'Restaurante') return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=90';
@@ -356,7 +371,7 @@ export default function Suggest({
       try {
         if (cat.id === 'watch' && watchPrefs) {
           const typeMap: Record<string, DiscoverFilters['type']> = { 'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both' };
-          const items = await discoverTMDB({
+          const baseFilters = {
             type: typeMap[watchPrefs.type] || 'both',
             genres: watchPrefs.genres || [],
             duration: (watchPrefs.duration || 'normal') as DiscoverFilters['duration'],
@@ -366,8 +381,22 @@ export default function Suggest({
             lingua: (watchPrefs as any).lingua || 'Qualquer',
             epoca: (watchPrefs as any).epoca || 'qualquer',
             minRating: parseFloat((watchPrefs as any).minRating) || 0,
-          });
-          setApiItems(items);
+          };
+          const items = await discoverTMDB(baseFilters);
+          let allItems = [...items];
+          if (items.length < 15) {
+            const [p2, p3] = await Promise.all([
+              discoverTMDB({ ...baseFilters, page: 2 }),
+              discoverTMDB({ ...baseFilters, page: 3 }),
+            ]);
+            allItems = [...items, ...p2, ...p3];
+          }
+          if (watchPrefs.genres && watchPrefs.genres.length > 0) {
+            const matching = allItems.filter(i => watchPrefs.genres.includes((i as DiscoverItem).genre));
+            const rest = allItems.filter(i => !watchPrefs.genres.includes((i as DiscoverItem).genre));
+            allItems = [...matching, ...rest];
+          }
+          setApiItems(allItems);
         } else if (cat.id === 'eat' && eatPrefs) {
           const items = await discoverMeals({
             local: eatPrefs.local || [],
@@ -378,20 +407,22 @@ export default function Suggest({
           });
           setApiItems(items);
         } else if (cat.id === 'play' && playPrefs) {
-          const items = await discoverRAWG({
+          const filters = {
             genres: playPrefs.genres || [],
             platforms: profile.platforms || [],
             dificuldade: playPrefs.dificuldade || 'normal',
             type: playPrefs.type || 'Ambos',
-          });
-          setApiItems(items);
+          };
+          const [p1, p2, p3] = await Promise.all([
+            discoverRAWG({ ...filters, page: 1 }),
+            discoverRAWG({ ...filters, page: 2 }),
+            discoverRAWG({ ...filters, page: 3 }),
+          ]);
+          setApiItems([...p1, ...p2, ...p3]);
         } else if (cat.id === 'learn' && learnPrefs) {
-          const items = await discoverYouTube({
-            genres: learnPrefs.genres || [],
-            formato: learnPrefs.formato || 'Ambos',
-            duracao: learnPrefs.duracao || 'normal',
-          });
-          setApiItems(items);
+          const queries = learnPrefs.genres && learnPrefs.genres.length > 0 ? learnPrefs.genres : ['popular'];
+          const results = await Promise.all(queries.map((g: string) => discoverYouTube({ genres: [g], formato: learnPrefs.formato || 'Ambos', duracao: learnPrefs.duracao || 'normal' })));
+          setApiItems(results.flat());
         } else if (cat.id === 'listen' && listenPrefs) {
           const items = await discoverDeezer({
             type: listenPrefs.type || 'Ambos',
@@ -400,12 +431,17 @@ export default function Suggest({
           });
           setApiItems(items);
         } else if (cat.id === 'read' && readPrefs) {
-          const items = await discoverBooks({
+          const filters = {
             genres: readPrefs.genres || [],
             type: readPrefs.type || 'Ambos',
             peso: readPrefs.peso || 'mistura',
-          });
-          setApiItems(items);
+          };
+          const [p1, p2, p3] = await Promise.all([
+            discoverBooks(filters),
+            discoverBooks({ ...filters, page: 2 } as any),
+            discoverBooks({ ...filters, page: 3 } as any),
+          ]);
+          setApiItems([...p1, ...p2, ...p3].filter((v, i, a) => a.findIndex(t => t.title === v.title) === i));
         } else if (cat.id === 'visit' && visitPrefs && profile.location) {
           const items = await discoverFSQ({
             lat: profile.location.lat,
@@ -728,7 +764,7 @@ export default function Suggest({
                 {!hasImg && <span className="cin-em">{displayEmoji}</span>}
                 <div className="cin-overlay" />
                 {/* Category badge top-left */}
-                <div className="cin-badge">{cat.icon} {cat.name}</div>
+                <div className="cin-badge">{getCatIcon(cat.id)} {cat.name}</div>
                 {/* Source badge top-right — always visible */}
                 <div className={
                   displayData?.influencer?.tier === 'gold' ? 'inf-badge inf-badge-gold' :
@@ -737,7 +773,7 @@ export default function Suggest({
                 }>
                   {displayData?.influencer?.tier === 'gold' ? `✦ Gold · @${displayData.influencer.handle}` :
                    displayData?.influencer?.tier === 'silver' ? `◈ Silver · @${displayData.influencer.handle}` :
-                   '✦ What to'}
+                   <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>What to</span>}
                 </div>
               </div>
 
@@ -750,7 +786,7 @@ export default function Suggest({
                   {displayGenre && <><span className="cin-meta-sep"> · </span><span>{displayGenre}</span></>}
                   {displayYear && <><span className="cin-meta-sep"> · </span><span>{displayYear}</span></>}
                   {data?.tmdb?.runtime && <><span className="cin-meta-sep"> · </span><span>{data.tmdb.runtime}</span></>}
-                  {displayRating && <><span className="cin-meta-sep"> · </span><span>⭐ {displayRating}</span></>}
+                  {displayRating && <><span className="cin-meta-sep"> · </span><span style={{ display:'inline-flex', alignItems:'center', gap:3 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="#C89B3C" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{displayRating}</span></>}
                 </div>
 
                 <div className="cin-desc">{displayDesc}</div>
