@@ -52,13 +52,30 @@ import { trackAsync } from './services/analytics';
 
 const SWIPE_THRESHOLD = 60;
 
+function getStoredSupabaseToken(): boolean {
+  try {
+    // A chave do Supabase segue o padrão sb-{project-ref}-auth-token
+    const keys = Object.keys(localStorage);
+    const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (!authKey) return false;
+    const raw = localStorage.getItem(authKey);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return !!(parsed?.access_token || parsed?.refresh_token);
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
   const store = useAppStore();
   const { msg, visible, toast } = useToast();
 
   // Auth state
   const [authUser, setAuthUser] = useState<{ id: string; email?: string } | null>(null);
+  // Se há token guardado, assume que está autenticado até prova em contrário
   const [authLoading, setAuthLoading] = useState(true);
+  const hasStoredToken = useRef(getStoredSupabaseToken());
   const [syncing, setSyncing] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
 
@@ -348,23 +365,48 @@ export default function App() {
     // Timeout de segurança — se ao fim de 8s ainda não há resposta, mostra login
     const timeout = setTimeout(() => {
       setAuthLoading(false);
-    }, 8000);
+    }, 15000);
 
     // Tenta restaurar sessão existente
-    const tryGetSession = async (attemptsLeft: number): Promise<void> => {
-      const { data: { session } } = await supabase.auth.getSession();
+    const tryGetSession = async (): Promise<void> => {
+      // Tenta refresh explícito primeiro (força o Supabase a usar o token guardado)
+      const { data: refreshData } = await supabase.auth.refreshSession();
       clearTimeout(timeout);
+      if (refreshData?.session?.user) {
+        await processUser(refreshData.session.user);
+        return;
+      }
+
+      // Se refresh falhou, tenta getSession normal
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         await processUser(session.user);
-      } else if (attemptsLeft > 0) {
-        // Rede pode ainda não estar pronta no Android — tenta novamente
-        await new Promise(r => setTimeout(r, 1500));
-        return tryGetSession(attemptsLeft - 1);
-      } else {
-        setAuthLoading(false);
+        return;
       }
+
+      // Se há token guardado mas ambos falharam, é problema de rede
+      // Tenta mais 3 vezes com 2s de intervalo
+      if (hasStoredToken.current) {
+        for (let i = 0; i < 3; i++) {
+          await new Promise(r => setTimeout(r, 2000));
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          if (retrySession?.user) {
+            await processUser(retrySession.user);
+            return;
+          }
+          // Tenta refresh novamente
+          const { data: retryRefresh } = await supabase.auth.refreshSession();
+          if (retryRefresh?.session?.user) {
+            await processUser(retryRefresh.session.user);
+            return;
+          }
+        }
+      }
+
+      // Desiste — mostra login
+      setAuthLoading(false);
     };
-    tryGetSession(3);
+    tryGetSession();
 
     // Listener para mudanças de auth (login novo, token refresh, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
