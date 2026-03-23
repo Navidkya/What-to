@@ -967,31 +967,79 @@ export default function Suggest({
     }
   }, [activeIdx, apiItems, cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Pull-to-refresh
+  useEffect(() => {
+    const el = document.getElementById('suggest');
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      // só activa se estiver no topo
+      if (el.scrollTop === 0) {
+        pullStartY.current = e.touches[0].clientY;
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (pullStartY.current === null) return;
+      const delta = e.touches[0].clientY - pullStartY.current;
+      if (delta > 0) {
+        pullDeltaY.current = delta;
+        if (delta > 60) e.preventDefault(); // impede scroll nativo
+      }
+    };
+    const onTouchEnd = async () => {
+      if (pullStartY.current === null) return;
+      const delta = pullDeltaY.current;
+      pullStartY.current = null;
+      pullDeltaY.current = 0;
+      if (delta > 80) {
+        setPullRefreshing(true);
+        setApiItems([]);
+        setActiveIdx(0);
+        setCurrentPage(1);
+        // força re-discover — mesmo efeito que abrir a categoria de novo
+        await new Promise(r => setTimeout(r, 400));
+        setPullRefreshing(false);
+        // o useEffect de discovery corre automaticamente porque apiItems ficou []
+        // e isActive é true — mas precisa de trigger manual:
+        setApiItems([]); // garante que o useEffect de discovery re-corre
+      }
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleLoadMore = async (): Promise<void> => {
     if (isLoadingMore) return;
     setIsLoadingMore(true);
     const nextPage = currentPage + 1;
 
     try {
-      if (cat.id === 'watch' && watchPrefs?.done) {
-        const wType = (watchPrefs as any).type || 'Ambos';
+      if (cat.id === 'watch') {
+        const wType = (watchPrefs as any)?.type || 'Ambos';
         const typeMap: Record<string, DiscoverFilters['type']> = {
           'Filme': 'movie', 'Série': 'tv', 'Documentário': 'both', 'Anime': 'tv',
         };
-        let apiGenres = [...((watchPrefs as any).genres || [])];
+        let apiGenres = [...((watchPrefs as any)?.genres || [])];
         if (wType === 'Documentário' && !apiGenres.includes('Documentário')) apiGenres = ['Documentário', ...apiGenres];
         if (wType === 'Anime' && !apiGenres.includes('Anime')) apiGenres = ['Anime', ...apiGenres];
 
         const baseFilters: DiscoverFilters = {
           type: typeMap[wType] || 'both',
           genres: apiGenres,
-          duration: ((watchPrefs as any).duration || 'normal') as DiscoverFilters['duration'],
-          discovery: ((watchPrefs as any).discovery || 'mistura') as DiscoverFilters['discovery'],
+          duration: ((watchPrefs as any)?.duration || 'normal') as DiscoverFilters['duration'],
+          discovery: ((watchPrefs as any)?.discovery || 'mistura') as DiscoverFilters['discovery'],
           platforms: profile.platforms || [],
-          origem: (watchPrefs as any).origem || 'Qualquer',
-          lingua: (watchPrefs as any).lingua || 'Qualquer',
-          epoca: (watchPrefs as any).epoca || 'qualquer',
-          minRating: parseFloat((watchPrefs as any).minRating) || 0,
+          origem: (watchPrefs as any)?.origem || 'Qualquer',
+          lingua: (watchPrefs as any)?.lingua || 'Qualquer',
+          epoca: (watchPrefs as any)?.epoca || 'qualquer',
+          minRating: parseFloat((watchPrefs as any)?.minRating) || 0,
         };
 
         const selectedGenreIds = apiGenres
@@ -1007,8 +1055,8 @@ export default function Suggest({
         const moreFiltered = strictFilter(moreRaw, 'watch', {
           watchType: wType !== 'Ambos' ? wType : undefined,
           watchGenreIds: selectedGenreIds.length > 0 ? selectedGenreIds : undefined,
-          watchMinRating: parseFloat((watchPrefs as any).minRating) || undefined,
-          watchEpoca: (watchPrefs as any).epoca !== 'qualquer' ? (watchPrefs as any).epoca : undefined,
+          watchMinRating: parseFloat((watchPrefs as any)?.minRating) || undefined,
+          watchEpoca: (watchPrefs as any)?.epoca !== 'qualquer' ? (watchPrefs as any)?.epoca : undefined,
           excluded: disliked.filter(d => d.startsWith('watch:')).map(d => d.split(':')[1]),
         });
         setApiItems(prev => {
@@ -1017,11 +1065,11 @@ export default function Suggest({
         });
         setCurrentPage(nextPage + 2);
 
-      } else if (cat.id === 'play' && playPrefs?.done) {
+      } else if (cat.id === 'play') {
         const playFilters = {
-          genres: playPrefs.genres || [],
+          genres: (playPrefs as any)?.genres || [],
           platforms: profile.platforms || [],
-          dificuldade: playPrefs.dificuldade || ('normal' as const),
+          dificuldade: (playPrefs as any)?.dificuldade || ('normal' as const),
           type: 'Videojogo' as const,
         };
         const [r1, r2, r3] = await Promise.all([
@@ -1031,7 +1079,7 @@ export default function Suggest({
         ]);
         const moreRaw = [...r1, ...r2, ...r3];
         const moreFiltered = strictFilter(moreRaw, 'play', {
-          playDificuldade: playPrefs.dificuldade,
+          playDificuldade: (playPrefs as any)?.dificuldade,
           excluded: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
         });
         setApiItems(prev => {
@@ -1123,6 +1171,10 @@ export default function Suggest({
   const mouseDragStartX = useRef<number | null>(null);
   const mouseDragging = useRef(false);
 
+  const pullStartY = useRef<number | null>(null);
+  const pullDeltaY = useRef(0);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+
   return (
     <div className={`screen${isActive ? ' active' : ''}`} id="suggest">
       <div className="tb">
@@ -1149,18 +1201,29 @@ export default function Suggest({
       </div>
 
       <div className="carousel-viewport">
+        {pullRefreshing && (
+          <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--ac)', fontSize: 13, opacity: 0.8 }}>
+            <div className="discover-spinner" style={{ margin: '0 auto 6px' }} />
+            A actualizar…
+          </div>
+        )}
         {apiLoading && (
           <div className="discover-loading">
             <div className="discover-spinner" />
             <div className="discover-loading-lbl">A descobrir…</div>
           </div>
         )}
-        {!apiLoading && cards[activeIdx] && (() => {
-          const card = cards[activeIdx];
-          const data = cardDataMap[card.title];
+        {!apiLoading && (() => {
+          const isApiMode = apiItemsRef.current.length > 0;
+          const apiItem = isApiMode ? apiItemsRef.current[activeIdx] ?? null : null;
+          if (!apiItem && !cards[activeIdx]) return null;
+          return (() => {
+          const isApiMode = apiItemsRef.current.length > 0;
+          const card = isApiMode
+            ? (cards[0] ?? { title: '', emoji: '✦', type: '', genre: '', desc: '', platforms: [] } as any)
+            : cards[activeIdx];
+          const data = cardDataMap[card?.title ?? ''] ?? { tmdb: null, meal: null, cover: null };
 
-          // API mode: use API item data when available
-          const apiItem = apiItemsRef.current.length > 0 ? apiItemsRef.current[activeIdx] ?? null : null;
           const displayData = apiItem ? getDisplayData(apiItem, cat.id) : null;
 
           const displayTitle = displayData?.title ?? card.title;
@@ -1345,7 +1408,8 @@ export default function Suggest({
 
             </div>
           );
-        })()}
+        })()
+      })()}
 
       </div>
 

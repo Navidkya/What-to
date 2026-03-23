@@ -368,7 +368,8 @@ export default function App() {
           await processUser(session.user);
         }
       } else if (event === 'SIGNED_OUT') {
-        // Aguarda 800ms para ver se é apenas refresh de token
+        // Aguarda 2500ms em mobile para token refresh não fazer logout falso
+        const delay = /Mobi|Android/i.test(navigator.userAgent) ? 2500 : 800;
         setTimeout(async () => {
           const { data: { session: currentSession } } = await supabase.auth.getSession();
           if (!currentSession) {
@@ -376,7 +377,7 @@ export default function App() {
             setIsCreator(false);
             setAuthLoading(false);
           }
-        }, 800);
+        }, delay);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         // Token renovado — actualiza authUser se necessário
         if (!authUser) {

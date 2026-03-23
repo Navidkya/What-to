@@ -3,15 +3,6 @@
 // #1 = baseCount, #2 = baseCount * 0.67, #3 = baseCount * 0.45, etc.
 // O baseCount diminui à medida que há mais utilizadores reais na app.
 
-const PORTUGUESE_NAMES = [
-  'Ana','Miguel','Sofia','João','Beatriz','Tiago','Inês','Pedro','Mariana','Rui',
-  'Catarina','André','Marta','Diogo','Carolina','Nuno','Filipa','Gonçalo','Rita','Luís',
-  'Sara','Vasco','Daniela','Bruno','Francisca','Rodrigo','Leonor','Afonso','Matilde','Hugo',
-];
-
-function randomName(): string {
-  return PORTUGUESE_NAMES[Math.floor(Math.random() * PORTUGUESE_NAMES.length)];
-}
 
 function randomCount(position: number, baseCount: number): number {
   const decay = Math.pow(0.67, position - 1);
@@ -214,22 +205,6 @@ export async function buildTrendingFeedCards(realUserCount = 0): Promise<Trendin
       });
     });
 
-    // #1 e #2 de cada categoria → card individual (pessoa fictícia)
-    items.slice(0, 2).forEach((item) => {
-      if (!item.title) return;
-      cards.push({
-        id: `individual-${catId}-${item.title}-${Date.now()}`,
-        type: 'individual',
-        personName: randomName(),
-        action: pickVerb(catId, 'individual'),
-        title: item.title,
-        catId,
-        catName: CAT_NAMES[catId] || catId,
-        emoji: CAT_EMOJIS[catId] || '✦',
-        img: item.img,
-        badge: '✦ What to',
-      });
-    });
   }
 
   // Embaralha para misturar categorias
