@@ -1407,26 +1407,26 @@ body::after {
   /* sem animação própria — cada filho anima individualmente */
 }
 .cin-body-netflix .cin-title {
-  animation: fadeInUp 0.4s ease both;
-  animation-delay: 0.25s;
+  animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.35s;
   opacity: 0;
 }
 .cin-body-netflix .cin-tags {
-  animation: fadeInUp 0.4s ease both;
-  animation-delay: 0.45s;
+  animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.6s;
   opacity: 0;
 }
 .cin-body-netflix .cin-desc {
-  animation: fadeInUp 0.4s ease both;
-  animation-delay: 0.6s;
+  animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.85s;
   opacity: 0;
 }
 .cin-body-netflix .cin-cast,
 .cin-body-netflix .cin-ings,
 .cin-body-netflix .cin-actions,
 .cin-body-netflix .track-badge {
-  animation: fadeInUp 0.4s ease both;
-  animation-delay: 0.75s;
+  animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 1.05s;
   opacity: 0;
 }
 /* Overlay mais cinematográfico */
