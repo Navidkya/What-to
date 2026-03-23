@@ -1238,7 +1238,7 @@ export default function Suggest({
               </div>
 
               {/* Content overlay */}
-              <div className="cin-body cin-body-netflix">
+              <div key={`body-${activeIdx}`} className="cin-body cin-body-netflix">
                 <div className="cin-title">{displayTitle}</div>
 
                 {/* Tags row — todos os géneros + ano + duração + rating */}

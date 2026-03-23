@@ -967,53 +967,7 @@ export default function Suggest({
     }
   }, [activeIdx, apiItems, cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pull-to-refresh
-  useEffect(() => {
-    const el = document.getElementById('suggest');
-    if (!el) return;
 
-    const onTouchStart = (e: TouchEvent) => {
-      // só activa se estiver no topo
-      if (el.scrollTop === 0) {
-        pullStartY.current = e.touches[0].clientY;
-      }
-    };
-    const onTouchMove = (e: TouchEvent) => {
-      if (pullStartY.current === null) return;
-      const delta = e.touches[0].clientY - pullStartY.current;
-      if (delta > 0) {
-        pullDeltaY.current = delta;
-        if (delta > 60) e.preventDefault(); // impede scroll nativo
-      }
-    };
-    const onTouchEnd = async () => {
-      if (pullStartY.current === null) return;
-      const delta = pullDeltaY.current;
-      pullStartY.current = null;
-      pullDeltaY.current = 0;
-      if (delta > 80) {
-        setPullRefreshing(true);
-        setApiItems([]);
-        setActiveIdx(0);
-        setCurrentPage(1);
-        // força re-discover — mesmo efeito que abrir a categoria de novo
-        await new Promise(r => setTimeout(r, 400));
-        setPullRefreshing(false);
-        // o useEffect de discovery corre automaticamente porque apiItems ficou []
-        // e isActive é true — mas precisa de trigger manual:
-        setApiItems([]); // garante que o useEffect de discovery re-corre
-      }
-    };
-
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    el.addEventListener('touchend', onTouchEnd);
-    return () => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchMove);
-      el.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLoadMore = async (): Promise<void> => {
     if (isLoadingMore) return;
@@ -1171,9 +1125,6 @@ export default function Suggest({
   const mouseDragStartX = useRef<number | null>(null);
   const mouseDragging = useRef(false);
 
-  const pullStartY = useRef<number | null>(null);
-  const pullDeltaY = useRef(0);
-  const [pullRefreshing, setPullRefreshing] = useState(false);
 
   return (
     <div className={`screen${isActive ? ' active' : ''}`} id="suggest">
@@ -1201,12 +1152,6 @@ export default function Suggest({
       </div>
 
       <div className="carousel-viewport">
-        {pullRefreshing && (
-          <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--ac)', fontSize: 13, opacity: 0.8 }}>
-            <div className="discover-spinner" style={{ margin: '0 auto 6px' }} />
-            A actualizar…
-          </div>
-        )}
         {apiLoading && (
           <div className="discover-loading">
             <div className="discover-spinner" />

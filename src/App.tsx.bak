@@ -351,14 +351,20 @@ export default function App() {
     }, 8000);
 
     // Tenta restaurar sessão existente
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const tryGetSession = async (attemptsLeft: number): Promise<void> => {
+      const { data: { session } } = await supabase.auth.getSession();
       clearTimeout(timeout);
       if (session?.user) {
         await processUser(session.user);
+      } else if (attemptsLeft > 0) {
+        // Rede pode ainda não estar pronta no Android — tenta novamente
+        await new Promise(r => setTimeout(r, 1500));
+        return tryGetSession(attemptsLeft - 1);
       } else {
         setAuthLoading(false);
       }
-    });
+    };
+    tryGetSession(3);
 
     // Listener para mudanças de auth (login novo, token refresh, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
