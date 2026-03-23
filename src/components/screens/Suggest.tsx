@@ -456,6 +456,8 @@ export default function Suggest({
   const skipCountRef = useRef(0);
   const acceptedRef = useRef(false);
   const lastPrefsVersionRef = useRef(0);
+  // Sinaliza que o pool inicial é pequeno — dispara handleLoadMore após render
+  const needsMoreRef = useRef(false);
 
   const getPool = useCallback((gf?: string, moodOverride?: string) => {
     const mood = moodOverride ?? curMood;
@@ -635,7 +637,9 @@ export default function Suggest({
               watchEpoca: wEpoca !== 'qualquer' ? wEpoca : undefined,
               excluded: disliked.filter(d => d.startsWith('watch:')).map(d => d.split(':')[1]),
             });
-            setApiItems(filtered.length > 0 ? filtered : allItems);
+            const watchFinal = filtered.length > 0 ? filtered : allItems;
+            setApiItems(watchFinal);
+            if (watchFinal.length < 20) needsMoreRef.current = true;
           }
         }
 
@@ -669,7 +673,9 @@ export default function Suggest({
             eatRestrictions: isDone ? (eatPrefs!.restrictions || []) : [],
             excluded: disliked.filter(d => d.startsWith('eat:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? filtered : apply7030(filtered));
+          const eatFinal = isDone ? filtered : apply7030(filtered);
+          setApiItems(eatFinal);
+          if (eatFinal.length < 20) needsMoreRef.current = true;
         }
 
         // ── PLAY ───────────────────────────────────────────────────────────
@@ -692,7 +698,9 @@ export default function Suggest({
               playDificuldade: isDone ? playPrefs!.dificuldade : undefined,
               excluded: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
             });
-            setApiItems(isDone ? filtered : apply7030(filtered));
+            const playFinal = isDone ? filtered : apply7030(filtered);
+            setApiItems(playFinal);
+            if (playFinal.length < 20) needsMoreRef.current = true;
           }
         }
 
@@ -709,7 +717,9 @@ export default function Suggest({
           const filtered = strictFilter(allItems, 'learn', {
             excluded: disliked.filter(d => d.startsWith('learn:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? (filtered.length > 0 ? filtered : allItems) : apply7030(allItems));
+          const learnFinal = isDone ? (filtered.length > 0 ? filtered : allItems) : apply7030(allItems);
+          setApiItems(learnFinal);
+          if (learnFinal.length < 20) needsMoreRef.current = true;
         }
 
         // ── LISTEN ─────────────────────────────────────────────────────────
@@ -724,7 +734,9 @@ export default function Suggest({
             listenType: isDone && listenPrefs!.type !== 'Ambos' ? listenPrefs!.type : undefined,
             excluded: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items));
+          const listenFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
+          setApiItems(listenFinal);
+          if (listenFinal.length < 20) needsMoreRef.current = true;
         }
 
         // ── READ ───────────────────────────────────────────────────────────
@@ -740,7 +752,9 @@ export default function Suggest({
             readPeso: isDone && readPrefs!.peso !== 'mistura' ? readPrefs!.peso : undefined,
             excluded: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items));
+          const readFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
+          setApiItems(readFinal);
+          if (readFinal.length < 20) needsMoreRef.current = true;
         }
 
         // ── VISIT ──────────────────────────────────────────────────────────
@@ -758,7 +772,9 @@ export default function Suggest({
             visitDistancia: isDone ? vDistancia : undefined,
             excluded: disliked.filter(d => d.startsWith('visit:')).map(d => d.split(':')[1]),
           });
-          setApiItems(isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items));
+          const visitFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
+          setApiItems(visitFinal);
+          if (visitFinal.length < 20) needsMoreRef.current = true;
         }
 
       } catch {
@@ -801,6 +817,14 @@ export default function Suggest({
 
     loadWithInfluencers();
   }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-carregar mais quando o pool inicial é pequeno (< 20 items)
+  useEffect(() => {
+    if (needsMoreRef.current && apiItems.length > 0 && apiItems.length < 20 && !isLoadingMore) {
+      needsMoreRef.current = false;
+      handleLoadMore();
+    }
+  }, [apiItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // After ReactPanel/WhyPanel action → advance carousel
   useEffect(() => {
