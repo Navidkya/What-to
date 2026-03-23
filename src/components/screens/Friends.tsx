@@ -7,6 +7,7 @@ import {
 } from '../../services/friends';
 import type { FriendProfile, FriendRequest } from '../../services/friends';
 import { supabase } from '../../lib/supabase';
+import { trackAsync } from '../../services/analytics';
 
 interface FriendsProps {
   isActive: boolean;
@@ -70,11 +71,11 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
     setSearchLoading(true);
     const timer = setTimeout(async () => {
       const q = search.startsWith('@') ? search.slice(1) : search;
-      // Pesquisa por username parcial
+      // Pesquisa por username OU nome
       const { data } = await supabase
         .from('profiles')
         .select('id, name, username')
-        .ilike('username', `%${q}%`)
+        .or(`username.ilike.%${q}%,name.ilike.%${q}%`)
         .neq('id', userId)
         .limit(10);
       const results: FriendProfile[] = (data || [])
@@ -100,6 +101,7 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
     if (ok) {
       setStatusMap(m => ({ ...m, [targetId]: 'pending_sent' }));
       onToast(`✦ Pedido enviado a ${name}`);
+      trackAsync({ userId, eventType: 'friend_request_sent', value: { targetId } });
     } else {
       onToast('Erro ao enviar pedido');
     }
@@ -109,6 +111,7 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
     const ok = await acceptFriendRequest(req.id);
     if (ok) {
       onToast(`✦ ${req.profile?.name || 'Amigo'} adicionado!`);
+      trackAsync({ userId, eventType: 'friend_request_accepted', value: { requesterId: req.requesterId } });
       load();
       setTab('friends');
     }
@@ -231,7 +234,61 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                 <button style={s.btnGold} onClick={() => setTab('search')}>
                   Adicionar amigos
                 </button>
+                <button
+                  onClick={() => {
+                    const link = `https://what-to-zdka.vercel.app`;
+                    if (navigator.share) {
+                      navigator.share({
+                        title: 'Experimenta o What to!',
+                        text: 'Descobre o que ver, jogar, ouvir ou fazer hoje. Entra aqui:',
+                        url: link,
+                      });
+                    } else {
+                      navigator.clipboard.writeText(link);
+                      onToast('✦ Link copiado!');
+                    }
+                    trackAsync({ userId, eventType: 'friend_invite_shared' });
+                  }}
+                  style={{
+                    marginTop: 10, background: 'none',
+                    border: '1px solid rgba(200,155,60,0.3)',
+                    borderRadius: 12, padding: '10px 20px',
+                    color: 'var(--ac)', fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  ↑ Convidar amigo para a app
+                </button>
               </div>
+            )}
+            {friends.length > 0 && (
+              <button
+                onClick={() => {
+                  const link = `https://what-to-zdka.vercel.app`;
+                  if (navigator.share) {
+                    navigator.share({
+                      title: 'Experimenta o What to!',
+                      text: 'Descobre o que ver, jogar, ouvir ou fazer hoje.',
+                      url: link,
+                    });
+                  } else {
+                    navigator.clipboard.writeText(link);
+                    onToast('✦ Link copiado!');
+                  }
+                  trackAsync({ userId, eventType: 'friend_invite_shared' });
+                }}
+                style={{
+                  width: '100%', marginBottom: 16,
+                  background: 'rgba(200,155,60,0.08)',
+                  border: '1px solid rgba(200,155,60,0.2)',
+                  borderRadius: 12, padding: '12px',
+                  color: 'var(--ac)', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: 6,
+                }}
+              >
+                ↑ Convidar mais amigos
+              </button>
             )}
             {!loading && friends.map(f => (
               <div key={f.friendshipId} style={{ ...s.card, cursor: 'pointer' }}

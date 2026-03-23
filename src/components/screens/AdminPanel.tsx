@@ -21,6 +21,8 @@ interface DashStats {
   osSplit: Array<{ os: string; count: number }>;
   avgSessionSeconds: number;
   influencerConversion: Array<{ handle: string; views: number; accepts: number; rate: number }>;
+  recentUsersList: Array<{ id: string; name: string; username: string; lastSeen: string; eventCount: number }>;
+  funnel: { opens: number; inqueritos: number; accepts: number };
 }
 
 const CAT_NAMES: Record<string, string> = {
@@ -188,6 +190,50 @@ export default function AdminPanel() {
         rate: infViews[handle] ? Math.round((infAccepts[handle] || 0) / infViews[handle] * 100) : 0,
       })).sort((a, b) => b.views - a.views);
 
+      // Funil: abriu → fez inquérito → aceitou
+      const { count: funnelOpens } = await supabase.from('analytics_events')
+        .select('*', { count: 'exact', head: true }).eq('event_type', 'suggest_open');
+      const { count: funnelInqueritos } = await supabase.from('analytics_events')
+        .select('*', { count: 'exact', head: true }).eq('event_type', 'inquerito_complete');
+      const { count: funnelAccepts } = await supabase.from('analytics_events')
+        .select('*', { count: 'exact', head: true }).eq('event_type', 'suggest_accept');
+      const funnel = {
+        opens: funnelOpens || 0,
+        inqueritos: funnelInqueritos || 0,
+        accepts: funnelAccepts || 0,
+      };
+
+      // Utilizadores individuais — últimos 20 activos
+      const { data: recentUsers } = await supabase
+        .from('analytics_events')
+        .select('user_id, created_at')
+        .not('user_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      // Agrupa por user_id — última actividade e total de eventos
+      const userActivity: Record<string, { lastSeen: string; eventCount: number }> = {};
+      (recentUsers || []).forEach((r: any) => {
+        if (!userActivity[r.user_id]) {
+          userActivity[r.user_id] = { lastSeen: r.created_at, eventCount: 0 };
+        }
+        userActivity[r.user_id].eventCount++;
+      });
+
+      // Busca nomes dos utilizadores activos
+      const activeUserIds = Object.keys(userActivity).slice(0, 20);
+      const { data: userProfiles } = activeUserIds.length
+        ? await supabase.from('profiles').select('id, name, username').in('id', activeUserIds)
+        : { data: [] };
+
+      const recentUsersList = (userProfiles || []).map((p: any) => ({
+        id: p.id,
+        name: p.name || 'Sem nome',
+        username: p.username || '',
+        lastSeen: userActivity[p.id]?.lastSeen || '',
+        eventCount: userActivity[p.id]?.eventCount || 0,
+      })).sort((a: any, b: any) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
+
       setStats({
         totalUsers: totalUsers || 0,
         activeToday: todayRes.count || 0,
@@ -201,6 +247,8 @@ export default function AdminPanel() {
         osSplit,
         avgSessionSeconds,
         influencerConversion,
+        funnel,
+        recentUsersList,
       });
     } catch (e) {
       console.error('Stats error:', e);
@@ -540,6 +588,81 @@ export default function AdminPanel() {
                         <span style={{ fontSize: 13, opacity: 0.7 }}>
                           {rate}% ({accepts}/{views})
                         </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Funil */}
+              <div style={card}>
+                <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 12,
+                  textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Funil de conversão
+                </div>
+                {[
+                  { label: 'Abriram categoria', value: stats.funnel.opens, color: '#C89B3C', pct: undefined },
+                  { label: 'Fizeram inquérito', value: stats.funnel.inqueritos,
+                    color: '#a87535', pct: stats.funnel.opens
+                      ? Math.round(stats.funnel.inqueritos / stats.funnel.opens * 100) : 0 },
+                  { label: 'Aceitaram sugestão', value: stats.funnel.accepts,
+                    color: '#5ec97a', pct: stats.funnel.opens
+                      ? Math.round(stats.funnel.accepts / stats.funnel.opens * 100) : 0 },
+                ].map(({ label, value, color, pct }) => (
+                  <div key={label} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between',
+                      fontSize: 13, marginBottom: 4 }}>
+                      <span style={{ opacity: 0.8 }}>{label}</span>
+                      <span style={{ color, fontWeight: 600 }}>
+                        {value}{pct !== undefined ? ` (${pct}%)` : ''}
+                      </span>
+                    </div>
+                    <div style={{ height: 4, borderRadius: 2,
+                      background: 'rgba(255,255,255,0.06)' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 2, background: color,
+                        width: `${stats.funnel.opens
+                          ? Math.min(100, Math.round(value / stats.funnel.opens * 100))
+                          : 0}%`,
+                        transition: 'width 0.6s ease',
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Utilizadores recentes */}
+              {stats.recentUsersList.length > 0 && (
+                <div style={card}>
+                  <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 12,
+                    textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Utilizadores recentes
+                  </div>
+                  {stats.recentUsersList.map(u => (
+                    <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'center', marginBottom: 10,
+                      paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div>
+                        <div style={{ fontSize: 14, color: '#f5f1eb' }}>
+                          {u.name}
+                          {u.username && (
+                            <span style={{ fontSize: 12, color: '#8a94a8', marginLeft: 6 }}>
+                              @{u.username}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#8a94a8', marginTop: 2 }}>
+                          {u.eventCount} eventos · último:{' '}
+                          {new Date(u.lastSeen).toLocaleDateString('pt-PT',
+                            { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: 11, color: '#C89B3C',
+                        background: 'rgba(200,155,60,0.1)',
+                        borderRadius: 6, padding: '3px 8px',
+                      }}>
+                        {u.eventCount} ev.
                       </div>
                     </div>
                   ))}

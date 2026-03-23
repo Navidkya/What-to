@@ -25,7 +25,12 @@ type EventType =
   | 'influencer_accept'
   | 'wrapped_shared'
   | 'tracking_update'
-  | 'series_finished';
+  | 'series_finished'
+  | 'friend_request_sent'
+  | 'friend_request_accepted'
+  | 'friend_invite_shared'
+  | 'card_view'
+  | 'profile_view';
 
 interface TrackParams {
   userId?: string | null;
@@ -60,9 +65,11 @@ export async function track(params: TrackParams): Promise<void> {
       event_type: params.eventType,
       cat_id: params.catId ?? null,
       value: {
-        ...params.value ?? {},
         hour_of_day: new Date().getHours(),
         day_of_week: new Date().getDay(),
+        day_of_month: new Date().getDate(),
+        month: new Date().getMonth() + 1,
+        ...(params.value ?? {}),
       },
     });
   } catch { /* silencioso */ }

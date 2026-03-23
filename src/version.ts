@@ -1,2 +1,2 @@
 // App version — bump here for each major release
-export const APP_VERSION = 'V18';
+export const APP_VERSION = 'V19';
