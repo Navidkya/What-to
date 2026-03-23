@@ -48,7 +48,7 @@ import { signOut } from './services/auth';
 import { loadInfluencerProfile } from './services/influencers';
 import { loadAllFromSupabase, syncProfileToSupabase, syncHistoryToSupabase, syncTrackingToSupabase, syncListsToSupabase, syncPrefsToSupabase } from './services/sync';
 import { publishFeedEvent } from './services/feedEvents';
-import { trackAsync } from './services/analytics';
+import { trackAsync, trackSessionStart, trackSessionEnd } from './services/analytics';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -108,6 +108,7 @@ export default function App() {
   // Gesture detection refs
   const gestureStartX = useRef<number | null>(null);
   const gestureStartY = useRef<number | null>(null);
+  const sessionStartedAt = useRef<number>(Date.now());
 
   const goHome = useCallback(() => {
     setScreen('home');
@@ -120,7 +121,8 @@ export default function App() {
   const navTo = useCallback((s: Screen) => {
     setPrevScreen(prev => screen !== s ? screen : prev);
     setScreen(s);
-  }, [screen]);
+    trackAsync({ userId: authUser?.id, eventType: 'screen_view', value: { screen: s } });
+  }, [screen, authUser]);
 
   const openCat = useCallback((id: string, item?: DataItem) => {
     const cat = CATS.find(c => c.id === id);
@@ -171,6 +173,8 @@ export default function App() {
       ...store.tracking,
       [key]: { state: 'watching', title: curSugg.title, emoji: curSugg.emoji, cat: curCat.name, catId: curCat.id },
     });
+    trackAsync({ userId: authUser?.id, eventType: 'tracking_update',
+      catId: curCat.id, value: { title: curSugg.title, state: 'watching' } });
 
     if (authUser && store.profile.name) {
       publishFeedEvent({
@@ -311,6 +315,8 @@ export default function App() {
       if (remote.prefs.visit) store.updateVisitPrefs(remote.prefs.visit as any);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (remote.prefs.do) store.updateDoPrefs(remote.prefs.do as any);
+      trackSessionStart(userId).catch(() => {});
+      sessionStartedAt.current = Date.now();
       setScreen('home');
     } catch (e) {
       console.error('Sync error:', e);
@@ -389,6 +395,9 @@ export default function App() {
   // Restaura sessão quando a app volta ao foreground (PWA mobile)
   useEffect(() => {
     const handleVisibility = async () => {
+      if (document.visibilityState === 'hidden' && authUser) {
+        trackSessionEnd(authUser.id, sessionStartedAt.current).catch(() => {});
+      }
       if (document.visibilityState === 'visible' && !authUser) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {

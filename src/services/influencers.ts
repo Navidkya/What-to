@@ -224,7 +224,7 @@ export async function createInviteCode(payload: {
   return { ok: true };
 }
 
-export async function listInviteCodes(): Promise<Array<{
+export interface InviteCode {
   id: string;
   code: string;
   name: string;
@@ -235,7 +235,9 @@ export async function listInviteCodes(): Promise<Array<{
   usedAt: string | null;
   usedBy: string | undefined;
   createdAt: string;
-}>> {
+}
+
+export async function listInviteCodes(): Promise<InviteCode[]> {
   const { data } = await supabase
     .from('invite_codes')
     .select('*')
