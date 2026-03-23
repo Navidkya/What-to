@@ -1396,11 +1396,11 @@ body::after {
   to   { opacity: 1; transform: translateY(0); }
 }
 .cin-poster-img.pan-left {
-  animation: panLeft 8s ease-in-out forwards;
+  animation: panLeft 4s ease-in-out forwards;
   transform-origin: center center;
 }
 .cin-poster-img.pan-right {
-  animation: panRight 8s ease-in-out forwards;
+  animation: panRight 4s ease-in-out forwards;
   transform-origin: center center;
 }
 .cin-body-netflix {
@@ -1408,17 +1408,17 @@ body::after {
 }
 .cin-body-netflix .cin-title {
   animation: fadeInUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 0.3s;
+  animation-delay: 0.2s;
   opacity: 0;
 }
 .cin-body-netflix .cin-tags {
   animation: fadeInUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 0.7s;
+  animation-delay: 0.55s;
   opacity: 0;
 }
 .cin-body-netflix .cin-desc {
   animation: fadeInUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 1.1s;
+  animation-delay: 0.9s;
   opacity: 0;
 }
 .cin-body-netflix .cin-cast,
@@ -1426,7 +1426,7 @@ body::after {
 .cin-body-netflix .cin-actions,
 .cin-body-netflix .track-badge {
   animation: fadeInUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 1.4s;
+  animation-delay: 1.2s;
   opacity: 0;
 }
 /* Overlay mais cinematográfico */
