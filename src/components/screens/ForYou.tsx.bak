@@ -216,12 +216,10 @@ export default function ForYou({
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const fetchedRef = useRef(new Set<string>());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const panDirRef = useRef(0);
 
   const resetTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      panDirRef.current = (panDirRef.current + 1) % 2;
       setActiveIdx(i => (i >= slides.length - 1 ? 0 : i + 1));
     }, 8000);
   };
@@ -289,8 +287,8 @@ export default function ForYou({
     if (dragStart.current === null) return;
     const dx = e.changedTouches[0].clientX - dragStart.current;
     if (Math.abs(dx) > 50) {
-      if (dx < 0 && activeIdx < slides.length - 1) { panDirRef.current = (panDirRef.current + 1) % 2; setActiveIdx(i => i + 1); resetTimer(); }
-      if (dx > 0 && activeIdx > 0) { panDirRef.current = (panDirRef.current + 1) % 2; setActiveIdx(i => i - 1); resetTimer(); }
+      if (dx < 0 && activeIdx < slides.length - 1) { setActiveIdx(i => i + 1); resetTimer(); }
+      if (dx > 0 && activeIdx > 0) { setActiveIdx(i => i - 1); resetTimer(); }
     }
     dragStart.current = null;
   };
@@ -305,7 +303,6 @@ export default function ForYou({
       const dx = e.clientX - mouseDragRef.current;
       mouseDragRef.current = null;
       if (Math.abs(dx) > 50) {
-        panDirRef.current = (panDirRef.current + 1) % 2;
         if (dx < 0) setActiveIdx(i => Math.min(i + 1, slides.length - 1));
         if (dx > 0) setActiveIdx(i => Math.max(i - 1, 0));
         resetTimer();
@@ -350,7 +347,7 @@ export default function ForYou({
         {slides.map((_, i) => (
           <button
             key={i}
-            onClick={() => { panDirRef.current = (panDirRef.current + 1) % 2; setActiveIdx(i); resetTimer(); }}
+            onClick={() => { setActiveIdx(i); resetTimer(); }}
             style={{
               height: 3, flex: 1, borderRadius: 100,
               background: i === activeIdx ? '#C89B3C' : i < activeIdx ? 'rgba(200,155,60,0.35)' : 'rgba(255,255,255,0.15)',
@@ -387,18 +384,15 @@ export default function ForYou({
             >
               {img && (
                 <img
-                  key={`${img}-${activeIdx}`}
-                  className={`cin-poster-img ${panDirRef.current === 0 ? 'pan-left' : 'pan-right'}`}
+                  className="cin-poster-img"
                   src={img}
                   alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover',
-                           objectPosition: 'center center', position: 'absolute', inset: 0,
-                           display: 'block' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center center', position: 'absolute', inset: 0, display: 'block' }}
                   onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
               )}
               {!img && <span className="cin-em">{slide.emoji}</span>}
-              <div className="cin-overlay-netflix" />
+              <div className="cin-overlay" />
               <div className="cin-badge">{getCatIcon(slide.catId)} {slide.catName}</div>
 
               {/* Source badge — always visible */}
@@ -410,19 +404,10 @@ export default function ForYou({
                   ? `✦ Gold · @${slide.influencer.handle}`
                   : <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>What to</span>}
               </div>
-              {/* Logo What to */}
-              {!slide.influencer && (
-                <div className="cin-whatto-badge">
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                  </svg>
-                  what<em>to</em>
-                </div>
-              )}
             </div>
 
             {/* Info */}
-            <div className="cin-body cin-body-netflix">
+            <div className="cin-body">
               <div className="cin-title">{slide.title}</div>
               <div className="cin-meta">
                 <span>{slide.type}</span>

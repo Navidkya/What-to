@@ -500,7 +500,7 @@ export default function Suggest({
     if (batch.length > 0) setCurSugg(batch[0]);
   }, [getPool, setCurSugg]);
 
-  const doAdvance = useCallback(async () => {
+  const doAdvance = useCallback(() => {
     skipCountRef.current++;
     const currentApiItems = apiItemsRef.current;
     const isAPIMode = currentApiItems.length > 0;
@@ -512,15 +512,14 @@ export default function Suggest({
       if (nextIdx >= Math.max(currentApiItems.length - 10, currentApiItems.length * 0.8)) {
         handleLoadMore();
       }
-      panDirRef.current = (panDirRef.current + 1) % 2;
       if (nextIdx >= currentApiItems.length) {
-        if (currentApiItems.length < 15) {
-          // Pool muito pequeno — tenta carregar mais antes de recomeçar
-          handleLoadMore();
-          await new Promise(resolve => setTimeout(resolve, 1500));
-        }
-        setApiItems(prev => [...prev].sort(() => Math.random() - 0.5));
+        // Embaralha e recomeça — loop infinito de sugestões
+        setApiItems(prev => {
+          const reshuffled = [...prev].sort(() => Math.random() - 0.5);
+          return reshuffled;
+        });
         setActiveIdx(0);
+        // Tenta também carregar mais items novos em background
         handleLoadMore();
       } else {
         setActiveIdx(nextIdx);
@@ -529,7 +528,6 @@ export default function Suggest({
     }
 
     // Mock/local pool logic
-    panDirRef.current = (panDirRef.current + 1) % 2;
     const currentCards = cardsRef.current;
     if (nextIdx >= currentCards.length) {
       loadBatch(undefined, undefined, currentCards.map(c => c.title));
@@ -537,7 +535,7 @@ export default function Suggest({
       setActiveIdx(nextIdx);
       setCurSugg(currentCards[nextIdx]);
     }
-  }, [loadBatch, setCurSugg]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadBatch, setCurSugg]);
 
   // Load when screen activates or category changes
   useEffect(() => {
@@ -819,25 +817,11 @@ export default function Suggest({
     loadWithInfluencers();
   }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Garante pool mínimo de 30 items — carrega em loop até ter suficiente
-  const poolCheckRef = useRef(false);
+  // Garante pool mínimo — carrega mais se necessário
   useEffect(() => {
-    if (!isActive || apiLoading) return;
-    if (apiItems.length > 0 && apiItems.length < 30 && !poolCheckRef.current) {
-      poolCheckRef.current = true;
-      const loadUntilFull = async () => {
-        let attempts = 0;
-        while (apiItemsRef.current.length < 30 && attempts < 5) {
-          attempts++;
-          await new Promise(resolve => setTimeout(resolve, 500));
-          if (!isLoadingMore) {
-            await handleLoadMore();
-          }
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        poolCheckRef.current = false;
-      };
-      loadUntilFull();
+    if (!isActive || apiLoading || isLoadingMore) return;
+    if (apiItems.length > 0 && apiItems.length < 20) {
+      handleLoadMore();
     }
   }, [apiItems.length, isActive, apiLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -967,7 +951,7 @@ export default function Suggest({
     }
   }, [activeIdx, apiItems, cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleLoadMore = async (): Promise<void> => {
+  const handleLoadMore = async () => {
     if (isLoadingMore) return;
     setIsLoadingMore(true);
     const nextPage = currentPage + 1;
@@ -1119,7 +1103,6 @@ export default function Suggest({
     }
   };
 
-  const panDirRef = useRef(0); // 0 = left, 1 = right, alternates
   const mouseDragStartX = useRef<number | null>(null);
   const mouseDragging = useRef(false);
 
@@ -1194,18 +1177,15 @@ export default function Suggest({
               <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>
                 {hasImg && (
                   <img
-                    key={`${displayImg}-${activeIdx}`}
-                    className={`cin-poster-img ${panDirRef.current === 0 ? 'pan-left' : 'pan-right'}`}
+                    className="cin-poster-img"
                     src={displayImg}
                     alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover',
-                             objectPosition: 'center center', position: 'absolute', inset: 0,
-                             display: 'block' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center center', position: 'absolute', inset: 0, display: 'block' }}
                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 )}
                 {!hasImg && <span className="cin-em">{displayEmoji}</span>}
-                <div className="cin-overlay-netflix" />
+                <div className="cin-overlay" />
                 {/* Category badge top-left */}
                 <div className="cin-badge">{getCatIcon(cat.id)} {cat.name}</div>
                 {/* Source badge top-right — always visible */}
@@ -1218,19 +1198,10 @@ export default function Suggest({
                    displayData?.influencer?.tier === 'silver' ? `◈ Silver · @${displayData.influencer.handle}` :
                    <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>What to</span>}
                 </div>
-                {/* Logo What to */}
-                {!displayData?.influencer && (
-                  <div className="cin-whatto-badge">
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                    </svg>
-                    what<em>to</em>
-                  </div>
-                )}
               </div>
 
               {/* Content overlay */}
-              <div className="cin-body cin-body-netflix">
+              <div className="cin-body">
                 <div className="cin-title">{displayTitle}</div>
 
                 {/* Tags row — todos os géneros + ano + duração + rating */}
