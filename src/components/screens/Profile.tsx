@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Profile as ProfileType, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, PermanentPrefs } from '../../types';
 import { ALL_PLATFORMS, PLATFORM_SECTIONS, CATS } from '../../data';
 import { setFeedPrivacy } from '../../services/feedEvents';
+import { QRCodeSVG } from 'qrcode.react';
+import { suggestUsername, validateUsername, checkUsernameAvailable, saveUsername } from '../../services/username';
 
 interface ProfileProps {
   profile: ProfileType;
@@ -42,6 +44,29 @@ export default function Profile({
   const [feedPublic, setFeedPublicState] = useState(() => {
     try { return localStorage.getItem('wt_feed_public') !== 'false'; } catch { return true; }
   });
+
+  // Username / perfil público
+  const [usernameEdit, setUsernameEdit] = useState('');
+  const [usernameEditing, setUsernameEditing] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameChecking, setUsernameChecking] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+
+  useEffect(() => {
+    if (!usernameEditing) return;
+    const err = validateUsername(usernameEdit);
+    if (err) { setUsernameError(err); setUsernameAvailable(null); return; }
+    setUsernameError('');
+    setUsernameChecking(true);
+    const timer = setTimeout(async () => {
+      const available = await checkUsernameAvailable(usernameEdit, userId);
+      setUsernameAvailable(available);
+      setUsernameChecking(false);
+      if (!available) setUsernameError('Username já está a ser usado');
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [usernameEdit, usernameEditing, userId]);
 
   const handleFeedPrivacyToggle = async () => {
     const newVal = !feedPublic;
@@ -164,6 +189,167 @@ export default function Profile({
             maxLength={20}
           />
           <button className="prof-save" onClick={saveName}>Guardar nome</button>
+        </div>
+
+        {/* Perfil público */}
+        <div className="prof-section fade-in">
+          <div className="prof-sec-lbl">Perfil público</div>
+
+          {/* Username */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 8 }}>@username</div>
+            {!usernameEditing ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  flex: 1, background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 10, padding: '10px 14px',
+                  fontSize: 15, color: profile.username ? '#f5f1eb' : 'var(--mu)',
+                }}>
+                  {profile.username ? `@${profile.username}` : 'Sem username — adiciona um'}
+                </div>
+                <button
+                  onClick={() => {
+                    setUsernameEdit(profile.username || suggestUsername(profile.name || ''));
+                    setUsernameEditing(true);
+                  }}
+                  style={{
+                    background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.3)',
+                    borderRadius: 10, padding: '10px 14px', color: 'var(--ac)',
+                    fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  Editar
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <div style={{
+                    position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+                    color: 'var(--mu)', fontSize: 15, pointerEvents: 'none',
+                  }}>@</div>
+                  <input
+                    style={{
+                      width: '100%', boxSizing: 'border-box',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(200,155,60,0.4)',
+                      borderRadius: 10, padding: '10px 14px 10px 30px',
+                      color: '#f5f1eb', fontSize: 15, outline: 'none',
+                      fontFamily: 'Outfit, sans-serif',
+                    }}
+                    value={usernameEdit}
+                    autoFocus
+                    maxLength={20}
+                    onChange={e => setUsernameEdit(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  />
+                </div>
+                {usernameChecking && (
+                  <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 6 }}>A verificar…</div>
+                )}
+                {!usernameChecking && usernameAvailable === true && !usernameError && (
+                  <div style={{ fontSize: 12, color: '#5ec97a', marginBottom: 6 }}>✓ Disponível</div>
+                )}
+                {usernameError && (
+                  <div style={{ fontSize: 12, color: '#e07b7b', marginBottom: 6 }}>{usernameError}</div>
+                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={async () => {
+                      if (!usernameAvailable || usernameError) return;
+                      if (userId) await saveUsername(userId, usernameEdit);
+                      onUpdateProfile({ ...profile, username: usernameEdit });
+                      setUsernameEditing(false);
+                      onToast('✦ Username guardado');
+                    }}
+                    style={{
+                      flex: 1, background: '#C89B3C', color: '#0B0D12',
+                      border: 'none', borderRadius: 10, padding: '10px',
+                      fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                      opacity: usernameAvailable ? 1 : 0.5,
+                    }}
+                  >
+                    Guardar
+                  </button>
+                  <button
+                    onClick={() => setUsernameEditing(false)}
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 10, padding: '10px 16px',
+                      color: 'var(--mu)', fontSize: 14, cursor: 'pointer',
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Link de convite + QR */}
+          {profile.username && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => {
+                  const link = `https://what-to-zdka.vercel.app/?add=${profile.username}`;
+                  if (navigator.share) {
+                    navigator.share({ title: 'Adiciona-me no What to', url: link });
+                  } else {
+                    navigator.clipboard.writeText(link);
+                    onToast('✦ Link copiado!');
+                  }
+                }}
+                style={{
+                  flex: 1, background: 'rgba(200,155,60,0.12)',
+                  border: '1px solid rgba(200,155,60,0.25)',
+                  borderRadius: 12, padding: '12px',
+                  color: 'var(--ac)', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: 6,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <polyline points="16 6 12 2 8 6"/>
+                  <line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>
+                Partilhar link
+              </button>
+              <button
+                onClick={() => setShowQR(o => !o)}
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 12, padding: '12px 16px',
+                  color: 'var(--mu)', fontSize: 13, cursor: 'pointer',
+                }}
+              >
+                QR
+              </button>
+            </div>
+          )}
+
+          {/* QR Code expandido */}
+          {showQR && profile.username && (
+            <div style={{
+              marginTop: 16, padding: 20, background: '#fff',
+              borderRadius: 16, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: 12,
+            }}>
+              <QRCodeSVG
+                value={`https://what-to-zdka.vercel.app/?add=${profile.username}`}
+                size={180}
+                bgColor="#ffffff"
+                fgColor="#0B0D12"
+                level="M"
+              />
+              <div style={{ fontSize: 13, color: '#0B0D12', fontWeight: 600 }}>
+                @{profile.username}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="prof-section fade-in">

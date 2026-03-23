@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 export interface FriendProfile {
   id: string;
   name: string;
+  username?: string;
   platforms?: string[];
 }
 

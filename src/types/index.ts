@@ -51,6 +51,7 @@ export interface Profile {
   name: string;
   onboarded: boolean;
   platforms: string[];
+  username?: string;
   blockedPlatforms?: string[];
   savedPeople?: string[];
   location?: {

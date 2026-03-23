@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Screen } from '../../types';
 import {
-  searchUsers, sendFriendRequest, acceptFriendRequest,
+  sendFriendRequest, acceptFriendRequest,
   rejectFriendRequest, removeFriend, loadFriends, loadPendingRequests,
   getFriendshipStatus,
 } from '../../services/friends';
 import type { FriendProfile, FriendRequest } from '../../services/friends';
+import { supabase } from '../../lib/supabase';
 
 interface FriendsProps {
   isActive: boolean;
@@ -41,6 +42,7 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [friendPopup, setFriendPopup] = useState<(FriendProfile & { friendshipId: string }) | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -59,16 +61,26 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
     if (isActive && userId) load();
   }, [isActive, userId, load]);
 
-  // Pesquisa com debounce
+  // Pesquisa por @username com debounce
   useEffect(() => {
-    if (!search.trim() || search.length < 2 || !userId) {
+    if (!search.trim() || !userId) {
       setSearchResults([]);
       return;
     }
     setSearchLoading(true);
     const timer = setTimeout(async () => {
-      const results = await searchUsers(search, userId);
-      // Verificar status para cada resultado
+      const q = search.startsWith('@') ? search.slice(1) : search;
+      // Pesquisa por username parcial
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name, username')
+        .ilike('username', `%${q}%`)
+        .neq('id', userId)
+        .limit(10);
+      const results: FriendProfile[] = (data || [])
+        .filter((p: { id: string; name: string; username?: string }) => p.username)
+        .map((p: { id: string; name: string; username?: string }) => ({ id: p.id, name: p.name, username: p.username }));
+      // Verificar status
       const newStatusMap: Record<string, string> = { ...statusMap };
       await Promise.all(results.map(async r => {
         if (!newStatusMap[r.id]) {
@@ -222,14 +234,16 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
               </div>
             )}
             {!loading && friends.map(f => (
-              <div key={f.friendshipId} style={s.card}>
+              <div key={f.friendshipId} style={{ ...s.card, cursor: 'pointer' }}
+                onClick={() => setFriendPopup(f)}>
                 <Avatar name={f.name} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, color: '#f5f1eb', fontWeight: 500 }}>{f.name}</div>
+                  {f.username && (
+                    <div style={{ fontSize: 12, color: '#8a94a8' }}>@{f.username}</div>
+                  )}
                 </div>
-                <button style={s.btnOutline} onClick={() => handleRemove(f.friendshipId, f.name)}>
-                  Remover
-                </button>
+                <span style={{ color: 'rgba(156,165,185,0.4)', fontSize: 18 }}>›</span>
               </div>
             ))}
           </div>
@@ -241,7 +255,7 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
             <div style={{ position: 'relative', marginBottom: 16 }}>
               <input
                 type="text"
-                placeholder="Pesquisar por nome…"
+                placeholder="Pesquisar por @username…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 autoFocus
@@ -275,6 +289,9 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                   <Avatar name={r.name} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 15, color: '#f5f1eb', fontWeight: 500 }}>{r.name}</div>
+                    {r.username && (
+                      <div style={{ fontSize: 12, color: '#8a94a8' }}>@{r.username}</div>
+                    )}
                   </div>
                   {status === 'none' && (
                     <button style={s.btnGold} onClick={() => handleSendRequest(r.id, r.name)}>
@@ -340,6 +357,55 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
 
         <div style={{ height: 80 }} />
       </div>
+
+      {/* Pop-up perfil amigo */}
+      {friendPopup && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'flex-end',
+          }}
+          onClick={() => setFriendPopup(null)}
+        >
+          <div
+            style={{
+              width: '100%', background: '#161820',
+              borderRadius: '20px 20px 0 0',
+              padding: '24px 20px 40px',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+              <Avatar name={friendPopup.name} size={56} />
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 600, color: '#f5f1eb' }}>
+                  {friendPopup.name}
+                </div>
+                {friendPopup.username && (
+                  <div style={{ fontSize: 14, color: '#8a94a8', marginTop: 2 }}>
+                    @{friendPopup.username}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              style={{
+                width: '100%', background: 'rgba(224,123,123,0.15)',
+                border: '1px solid rgba(224,123,123,0.3)',
+                borderRadius: 12, padding: '12px',
+                color: '#e07b7b', fontSize: 14, cursor: 'pointer',
+              }}
+              onClick={() => {
+                handleRemove(friendPopup.friendshipId, friendPopup.name);
+                setFriendPopup(null);
+              }}
+            >
+              Remover amigo
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

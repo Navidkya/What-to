@@ -179,6 +179,25 @@ export default function App() {
   }, [store.history, store.tracking]);
 
 
+  // Tratar link de convite (?add=username)
+  useEffect(() => {
+    if (!authUser) return;
+    const params = new URLSearchParams(window.location.search);
+    const addUsername = params.get('add');
+    if (!addUsername) return;
+    // Limpar o parâmetro do URL
+    window.history.replaceState({}, '', window.location.pathname);
+    // Navegar para Amigos com toast
+    import('./services/username').then(({ getProfileByUsername }) => {
+      getProfileByUsername(addUsername).then(p => {
+        if (p && p.id !== authUser.id) {
+          setScreen('friends');
+          toast(`✦ Adiciona @${addUsername} como amigo!`);
+        }
+      });
+    });
+  }, [authUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // React actions
   const reactNow = useCallback(() => {
     if (!curSugg || !curCat) return;
@@ -560,6 +579,7 @@ export default function App() {
       {!isOnboarded ? (
         <Onboard
           profile={store.profile}
+          userId={authUser?.id}
           onFinish={p => {
             store.updateProfile(p);
             setScreen('home');
