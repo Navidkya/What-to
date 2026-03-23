@@ -1,73 +1,125 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { LearnPrefs } from '../../types';
 
-interface Props {
-  isOpen: boolean;
-  currentPrefs: LearnPrefs;
-  onClose: (prefs: LearnPrefs) => void;
+interface Props { isOpen?: boolean; currentPrefs: LearnPrefs; onClose: (prefs: LearnPrefs) => void; }
+
+function toggleVal(arr: string[], val: string): string[] {
+  if (val === 'Qualquer') return arr.includes('Qualquer') ? [] : ['Qualquer'];
+  const without = arr.filter(v => v !== 'Qualquer');
+  return without.includes(val) ? without.filter(v => v !== val) : [...without, val];
 }
 
-const LEARN_GENRES = ['IA', 'Design', 'Programação', 'Negócios', 'Psicologia', 'Ciência', 'Arte', 'Línguas', 'Meditação', 'Filosofia', 'História', 'Marketing'];
-
 export default function LearnOnboard({ isOpen, currentPrefs, onClose }: Props) {
-  const [formato, setFormato] = useState<'video' | 'texto' | 'Ambos'>(currentPrefs.formato || 'Ambos');
+  if (!isOpen) return null;
+  const [formatos, setFormatos] = useState<string[]>(currentPrefs.formato && currentPrefs.formato !== 'Ambos' ? [currentPrefs.formato] : []);
   const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
-  const [duracao, setDuracao] = useState<'curta' | 'normal' | 'longa'>(currentPrefs.duracao || 'normal');
+  const [duracao, setDuracao] = useState<string[]>(currentPrefs.duracao ? [currentPrefs.duracao] : []);
+  const [advanced, setAdvanced] = useState(false);
+  const [nivel, setNivel] = useState<string[]>(currentPrefs.nivel ? [currentPrefs.nivel] : []);
+  const [gratis, setGratis] = useState(currentPrefs.gratis || false);
+  const [certificado, setCertificado] = useState(currentPrefs.certificado || false);
+  const [lingua, setLingua] = useState<string[]>(currentPrefs.lingua ? [currentPrefs.lingua] : []);
+  const [objetivo, setObjetivo] = useState<string[]>(currentPrefs.objetivo ? [currentPrefs.objetivo] : []);
 
-  useEffect(() => {
-    if (isOpen) {
-      setFormato(currentPrefs.formato || 'Ambos');
-      setGenres(currentPrefs.genres || []);
-      setDuracao(currentPrefs.duracao || 'normal');
-    }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const TEMAS = ['IA','Design','Programação','Negócios','Psicologia','Ciência','Arte','Línguas','Meditação','Filosofia','História','Marketing','Matemática','Física','Economia','Fotografia','Música','Culinária','Fitness','Finanças'];
 
-  const toggle = (g: string) => setGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
-  const handleSave = (skip = false) => onClose(skip
-    ? { done: false, formato: 'Ambos', genres: [], duracao: 'normal' }
-    : { done: true, formato, genres, duracao }
+  const btn = (active: boolean) => ({
+    borderRadius: 20, padding: '6px 14px', fontSize: 13, cursor: 'pointer',
+    border: `1px solid ${active ? 'rgba(200,155,60,0.4)' : 'rgba(255,255,255,0.1)'}`,
+    background: active ? 'rgba(200,155,60,0.9)' : 'rgba(255,255,255,0.06)',
+    color: active ? '#0b0d12' : 'rgba(245,241,235,0.7)',
+    fontFamily: "'Outfit', sans-serif", fontWeight: active ? 600 : 400, margin: '3px',
+  });
+  const lbl = { fontSize: 12, color: '#8a94a8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '16px 0 8px' };
+  const togBtn = (active: boolean, label: string, onClick: () => void) => (
+    <button onClick={onClick} style={{ ...btn(active), marginRight: 8 }}>{label}</button>
   );
 
-  if (!isOpen) return null;
+  const save = () => {
+    const f = formatos.filter(v => v !== 'Qualquer');
+    const d = duracao.filter(v => v !== 'Qualquer');
+    onClose({
+      done: true,
+      formato: (f.length === 1 ? f[0] : 'Ambos') as LearnPrefs['formato'],
+      genres: genres.filter(v => v !== 'Qualquer'),
+      duracao: (d[0] as LearnPrefs['duracao']) || 'normal',
+      nivel: nivel.filter(v => v !== 'Qualquer')[0],
+      gratis,
+      certificado,
+      lingua: lingua.filter(v => v !== 'Qualquer')[0],
+      objetivo: objetivo.filter(v => v !== 'Qualquer')[0],
+    });
+  };
+
   return (
     <div className="ov on" style={{ zIndex: 400 }}>
-      <div className="panel eat-ob-panel">
+      <div className="panel eat-ob-panel" style={{ overflowY: 'auto', maxHeight: '85vh' }}>
         <div className="panel-drag" />
-        <button className="btn-x" style={{ marginBottom: 14 }} onClick={() => handleSave(true)}>Saltar tudo →</button>
-        <div className="eat-ob-title">
-          <span>🧠</span>
-          <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que aprender?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para hoje</div>
-          </div>
+    <div style={{ fontFamily: "'Outfit', sans-serif", padding: '0 4px' }}>
+      <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontStyle: 'italic', fontWeight: 600, color: '#f5f1eb', marginBottom: 4 }}>What to Learn</div>
+      <div style={{ fontSize: 13, color: '#8a94a8', marginBottom: 20 }}>Personaliza as tuas sugestões</div>
+
+      <div style={lbl}>Tipo de conteúdo</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+        {['Qualquer','Vídeo/YouTube','Curso Online','Artigo/Blog','Podcast','Livro Técnico','Documentário'].map(v => (
+          <button key={v} style={btn(formatos.includes(v) || (v === 'Qualquer' && formatos.length === 0))} onClick={() => setFormatos(prev => toggleVal(prev, v))}>{v}</button>
+        ))}
+      </div>
+
+      <div style={lbl}>Temas</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+        {['Qualquer', ...TEMAS].map(v => (
+          <button key={v} style={btn(genres.includes(v) || (v === 'Qualquer' && genres.length === 0))} onClick={() => setGenres(prev => toggleVal(prev, v))}>{v}</button>
+        ))}
+      </div>
+
+      <div style={lbl}>Duração</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+        {['Qualquer','Curta (-15min)','Normal (15-45min)','Longa (+45min)'].map(v => (
+          <button key={v} style={btn(duracao.includes(v) || (v === 'Qualquer' && duracao.length === 0))} onClick={() => setDuracao(prev => toggleVal(prev, v))}>{v}</button>
+        ))}
+      </div>
+
+      <button onClick={() => setAdvanced(a => !a)} style={{ background: 'none', border: 'none', color: '#8a94a8', fontSize: 13, cursor: 'pointer', padding: '12px 0 4px', width: '100%', textAlign: 'left' }}>
+        {advanced ? '▲ Menos opções' : '▼ Mais opções'}
+      </button>
+
+      {advanced && (<>
+        <div style={lbl}>Nível</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','Iniciante','Intermédio','Avançado'].map(v => (
+            <button key={v} style={btn(nivel.includes(v) || (v === 'Qualquer' && nivel.length === 0))} onClick={() => setNivel(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
         </div>
-        <div className="eat-ob-section">
-          <div className="eat-ob-lbl">Formato preferido?</div>
-          <div className="eat-ob-row">
-            {(['video', 'texto', 'Ambos'] as const).map(f => (
-              <button key={f} className={`eat-ob-toggle${formato === f ? ' on' : ''}`} onClick={() => setFormato(f)}>
-                {f === 'video' ? '📹 Vídeo' : f === 'texto' ? '📄 Texto/Artigo' : '✦ Ambos'}
-              </button>
-            ))}
-          </div>
+
+        <div style={lbl}>Opções</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {togBtn(gratis, 'Gratuito', () => setGratis(g => !g))}
+          {togBtn(certificado, 'Com certificado', () => setCertificado(c => !c))}
         </div>
-        <div className="eat-ob-section">
-          <div className="eat-ob-lbl">Temas de interesse</div>
-          <div className="eat-ob-row" style={{ flexWrap: 'wrap' }}>
-            {LEARN_GENRES.map(g => (
-              <button key={g} className={`eat-ob-toggle${genres.includes(g) ? ' on' : ''}`} onClick={() => toggle(g)}>{g}</button>
-            ))}
-          </div>
+
+        <div style={lbl}>Língua</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','Português','Inglês'].map(v => (
+            <button key={v} style={btn(lingua.includes(v) || (v === 'Qualquer' && lingua.length === 0))} onClick={() => setLingua(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
         </div>
-        <div className="eat-ob-section">
-          <div className="eat-ob-lbl">Duração da sessão?</div>
-          <div className="eat-ob-row">
-            {([['curta', '⚡ Curta (< 15 min)'], ['normal', '🎯 Normal (15–45 min)'], ['longa', '📚 Longa (45 min+)']] as [string, string][]).map(([v, l]) => (
-              <button key={v} className={`eat-ob-toggle${duracao === v ? ' on' : ''}`} onClick={() => setDuracao(v as 'curta' | 'normal' | 'longa')}>{l}</button>
-            ))}
-          </div>
+
+        <div style={lbl}>Objectivo</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','Curiosidade','Para o trabalho','Projecto pessoal','Mudar de carreira'].map(v => (
+            <button key={v} style={btn(objetivo.includes(v) || (v === 'Qualquer' && objetivo.length === 0))} onClick={() => setObjetivo(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
         </div>
-        <button className="eat-ob-save" onClick={() => handleSave(false)}>Aplicar preferências</button>
+      </>)}
+
+      <button onClick={save} style={{ marginTop: 24, width: '100%', padding: '14px', background: 'rgba(200,155,60,0.9)', border: 'none', borderRadius: 12, color: '#0b0d12', fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+        Guardar preferências
+      </button>
+      <button onClick={() => onClose({ ...currentPrefs, done: false })} style={{ marginTop: 8, width: '100%', padding: '10px', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#8a94a8', fontFamily: "'Outfit', sans-serif", fontSize: 13, cursor: 'pointer' }}>
+        Saltar por agora
+      </button>
+    </div>
       </div>
     </div>
   );

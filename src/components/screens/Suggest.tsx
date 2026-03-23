@@ -9,7 +9,7 @@ import { discoverRAWG, type RAWGItem } from '../../services/rawg';
 import { discoverYouTube, type YTItem } from '../../services/youtube';
 import { discoverDeezer, type DeezerItem } from '../../services/deezer';
 import { discoverFSQ, type FSQItem } from '../../services/foursquare';
-import { discoverBooks, discoverBooksMultiPage, type GBItem } from '../../services/googleBooks';
+import { discoverBooksMultiPage, type GBItem } from '../../services/googleBooks';
 import { loadActiveSuggestions } from '../../services/influencers';
 import type { InfluencerSuggestion } from '../../services/influencers';
 
@@ -456,8 +456,7 @@ export default function Suggest({
   const skipCountRef = useRef(0);
   const acceptedRef = useRef(false);
   const lastPrefsVersionRef = useRef(0);
-  // Sinaliza que o pool inicial é pequeno — dispara handleLoadMore após render
-  const needsMoreRef = useRef(false);
+  // (needsMoreRef removed in V8 — handled by pool minimum useEffect)
 
   const getPool = useCallback((gf?: string, moodOverride?: string) => {
     const mood = moodOverride ?? curMood;
@@ -639,7 +638,7 @@ export default function Suggest({
             });
             const watchFinal = filtered.length > 0 ? filtered : allItems;
             setApiItems(watchFinal);
-            if (watchFinal.length < 20) needsMoreRef.current = true;
+            // pool minimum handled by useEffect below
           }
         }
 
@@ -675,7 +674,7 @@ export default function Suggest({
           });
           const eatFinal = isDone ? filtered : apply7030(filtered);
           setApiItems(eatFinal);
-          if (eatFinal.length < 20) needsMoreRef.current = true;
+          // pool minimum handled by useEffect below
         }
 
         // ── PLAY ───────────────────────────────────────────────────────────
@@ -700,7 +699,7 @@ export default function Suggest({
             });
             const playFinal = isDone ? filtered : apply7030(filtered);
             setApiItems(playFinal);
-            if (playFinal.length < 20) needsMoreRef.current = true;
+            // pool minimum handled by useEffect below
           }
         }
 
@@ -710,7 +709,7 @@ export default function Suggest({
           const queries = isDone && learnPrefs!.genres?.length > 0 ? learnPrefs!.genres : ['popular'];
           const results = await Promise.all(queries.map((g: string) => discoverYouTube({
             genres: [g],
-            formato: isDone ? (learnPrefs!.formato || 'Ambos') : 'Ambos',
+            formato: (isDone ? (learnPrefs!.formato || 'Ambos') : 'Ambos') as any,
             duracao: isDone ? (learnPrefs!.duracao || 'normal') : 'normal',
           })));
           const allItems = results.flat();
@@ -719,14 +718,14 @@ export default function Suggest({
           });
           const learnFinal = isDone ? (filtered.length > 0 ? filtered : allItems) : apply7030(allItems);
           setApiItems(learnFinal);
-          if (learnFinal.length < 20) needsMoreRef.current = true;
+          // pool minimum handled by useEffect below
         }
 
         // ── LISTEN ─────────────────────────────────────────────────────────
         else if (cat.id === 'listen') {
           const isDone = listenPrefs?.done === true;
           const items = await discoverDeezer({
-            type: isDone ? (listenPrefs!.type || 'Ambos') : 'Ambos',
+            type: (isDone ? (listenPrefs!.type || 'Ambos') : 'Ambos') as any,
             genres: isDone ? (listenPrefs!.genres || []) : [],
             energia: isDone ? (listenPrefs!.energia || 'mistura') : 'mistura',
           });
@@ -736,7 +735,7 @@ export default function Suggest({
           });
           const listenFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
           setApiItems(listenFinal);
-          if (listenFinal.length < 20) needsMoreRef.current = true;
+          // pool minimum handled by useEffect below
         }
 
         // ── READ ───────────────────────────────────────────────────────────
@@ -744,7 +743,7 @@ export default function Suggest({
           const isDone = readPrefs?.done === true;
           const items = await discoverBooksMultiPage(
             { genres: isDone ? (readPrefs!.genres || []) : [],
-              type: isDone ? (readPrefs!.type || 'Ambos') : 'Ambos',
+              type: (isDone ? (readPrefs!.type || 'Ambos') : 'Ambos') as any,
               peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura' },
             [0, 20, 40, 60, 80]
           );
@@ -754,7 +753,7 @@ export default function Suggest({
           });
           const readFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
           setApiItems(readFinal);
-          if (readFinal.length < 20) needsMoreRef.current = true;
+          // pool minimum handled by useEffect below
         }
 
         // ── VISIT ──────────────────────────────────────────────────────────
@@ -774,7 +773,7 @@ export default function Suggest({
           });
           const visitFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
           setApiItems(visitFinal);
-          if (visitFinal.length < 20) needsMoreRef.current = true;
+          // pool minimum handled by useEffect below
         }
 
       } catch {
@@ -818,13 +817,13 @@ export default function Suggest({
     loadWithInfluencers();
   }, [isActive, cat.id, watchPrefs, eatPrefs, playPrefs, learnPrefs, listenPrefs, readPrefs, visitPrefs, profile.location, profile.platforms]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-carregar mais quando o pool inicial é pequeno (< 20 items)
+  // Garante pool mínimo — carrega mais se necessário
   useEffect(() => {
-    if (needsMoreRef.current && apiItems.length > 0 && apiItems.length < 20 && !isLoadingMore) {
-      needsMoreRef.current = false;
+    if (!isActive || apiLoading || isLoadingMore) return;
+    if (apiItems.length > 0 && apiItems.length < 20) {
       handleLoadMore();
     }
-  }, [apiItems]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [apiItems.length, isActive, apiLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // After ReactPanel/WhyPanel action → advance carousel
   useEffect(() => {
@@ -953,89 +952,150 @@ export default function Suggest({
   }, [activeIdx, apiItems, cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLoadMore = async () => {
-    if (isLoadingMore || apiItemsRef.current.length === 0) return;
+    if (isLoadingMore) return;
     setIsLoadingMore(true);
     const nextPage = currentPage + 1;
+
     try {
-      let newItems: APIItem[] = [];
-      if (cat.id === 'watch' && watchPrefs) {
+      if (cat.id === 'watch' && watchPrefs?.done) {
+        const wType = (watchPrefs as any).type || 'Ambos';
         const typeMap: Record<string, DiscoverFilters['type']> = {
-          'Filme': 'movie', 'Série': 'tv', 'Ambos': 'both', 'Documentário': 'tv', 'Anime': 'tv',
+          'Filme': 'movie', 'Série': 'tv', 'Documentário': 'both', 'Anime': 'tv',
         };
+        let apiGenres = [...((watchPrefs as any).genres || [])];
+        if (wType === 'Documentário' && !apiGenres.includes('Documentário')) apiGenres = ['Documentário', ...apiGenres];
+        if (wType === 'Anime' && !apiGenres.includes('Anime')) apiGenres = ['Anime', ...apiGenres];
+
         const baseFilters: DiscoverFilters = {
-          type: typeMap[watchPrefs.type] || 'both',
-          genres: watchPrefs.genres || [],
-          duration: (watchPrefs.duration || 'normal') as DiscoverFilters['duration'],
-          discovery: (watchPrefs.discovery || 'mistura') as DiscoverFilters['discovery'],
+          type: typeMap[wType] || 'both',
+          genres: apiGenres,
+          duration: ((watchPrefs as any).duration || 'normal') as DiscoverFilters['duration'],
+          discovery: ((watchPrefs as any).discovery || 'mistura') as DiscoverFilters['discovery'],
           platforms: profile.platforms || [],
           origem: (watchPrefs as any).origem || 'Qualquer',
           lingua: (watchPrefs as any).lingua || 'Qualquer',
           epoca: (watchPrefs as any).epoca || 'qualquer',
           minRating: parseFloat((watchPrefs as any).minRating) || 0,
         };
-        // Busca 3 páginas de cada vez para ter sempre pool grande
+
+        const selectedGenreIds = apiGenres
+          .flatMap(g => [TMDB_GENRE_MAP[g], TMDB_TV_GENRE_MAP[g]])
+          .filter((id): id is number => !!id);
+
         const [m1, m2, m3] = await Promise.all([
           discoverTMDB({ ...baseFilters, page: nextPage }),
           discoverTMDB({ ...baseFilters, page: nextPage + 1 }),
           discoverTMDB({ ...baseFilters, page: nextPage + 2 }),
         ]);
-        const moreItems = [...m1, ...m2, ...m3];
+        const moreRaw = [...m1, ...m2, ...m3];
+        const moreFiltered = strictFilter(moreRaw, 'watch', {
+          watchType: wType !== 'Ambos' ? wType : undefined,
+          watchGenreIds: selectedGenreIds.length > 0 ? selectedGenreIds : undefined,
+          watchMinRating: parseFloat((watchPrefs as any).minRating) || undefined,
+          watchEpoca: (watchPrefs as any).epoca !== 'qualquer' ? (watchPrefs as any).epoca : undefined,
+          excluded: disliked.filter(d => d.startsWith('watch:')).map(d => d.split(':')[1]),
+        });
         setApiItems(prev => {
-          const seen = new Set(prev.map(i => i.title));
-          return [...prev, ...moreItems.filter(i => !seen.has(i.title))];
+          const seen = new Set(prev.map((i: any) => i.title));
+          return [...prev, ...moreFiltered.filter((i: any) => !seen.has(i.title))];
         });
         setCurrentPage(nextPage + 2);
-        newItems = [];
-      } else if (cat.id === 'play' && playPrefs) {
+
+      } else if (cat.id === 'play' && playPrefs?.done) {
         const playFilters = {
           genres: playPrefs.genres || [],
           platforms: profile.platforms || [],
-          dificuldade: playPrefs.dificuldade || 'normal',
-          type: playPrefs.type || 'Ambos',
+          dificuldade: playPrefs.dificuldade || ('normal' as const),
+          type: 'Videojogo' as const,
         };
         const [r1, r2, r3] = await Promise.all([
           discoverRAWG({ ...playFilters, page: nextPage }),
           discoverRAWG({ ...playFilters, page: nextPage + 1 }),
           discoverRAWG({ ...playFilters, page: nextPage + 2 }),
         ]);
-        const morePlay = [...r1, ...r2, ...r3];
+        const moreRaw = [...r1, ...r2, ...r3];
+        const moreFiltered = strictFilter(moreRaw, 'play', {
+          playDificuldade: playPrefs.dificuldade,
+          excluded: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
+        });
         setApiItems(prev => {
-          const seen = new Set(prev.map(i => i.title));
-          return [...prev, ...morePlay.filter(i => !seen.has(i.title))];
+          const seen = new Set(prev.map((i: any) => i.title));
+          return [...prev, ...moreFiltered.filter((i: any) => !seen.has(i.title))];
         });
         setCurrentPage(nextPage + 2);
-        newItems = [];
-      } else if (cat.id === 'eat' && eatPrefs) {
-        newItems = await discoverMeals({
-          local: eatPrefs.local || [],
-          fome: eatPrefs.fome || 'normal',
-          budget: eatPrefs.budget || 'medio',
-          restrictions: eatPrefs.restrictions || [],
-          tempo: eatPrefs.tempo || 'normal',
-        });
-      } else if (cat.id === 'learn' && learnPrefs) {
-        newItems = await discoverYouTube({
-          genres: learnPrefs.genres || [],
-          formato: learnPrefs.formato || 'Ambos',
-          duracao: learnPrefs.duracao || 'normal',
-        });
+
       } else if (cat.id === 'listen' && listenPrefs) {
-        newItems = await discoverDeezer({
-          type: listenPrefs.type || 'Ambos',
-          genres: listenPrefs.genres || [],
-          energia: listenPrefs.energia || 'mistura',
+        const allGenres = (listenPrefs as any).genres || [];
+        const rotatedGenre = allGenres.length > 0
+          ? allGenres[nextPage % allGenres.length]
+          : undefined;
+        const moreRaw = await discoverDeezer({
+          type: (listenPrefs as any).type || 'Ambos',
+          genres: rotatedGenre ? [rotatedGenre] : [],
+          energia: (listenPrefs as any).energia || 'mistura',
         });
+        const moreFiltered = strictFilter(moreRaw, 'listen', {
+          listenType: (listenPrefs as any).type !== 'Ambos' ? (listenPrefs as any).type : undefined,
+          excluded: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
+        });
+        setApiItems(prev => {
+          const seen = new Set(prev.map((i: any) => i.title));
+          const newItems = moreFiltered.filter((i: any) => !seen.has(i.title));
+          return newItems.length > 0 ? [...prev, ...newItems] : [...prev].sort(() => Math.random() - 0.5);
+        });
+        setCurrentPage(nextPage);
+
       } else if (cat.id === 'read' && readPrefs) {
-        newItems = await discoverBooks({
-          genres: readPrefs.genres || [],
-          type: readPrefs.type || 'Ambos',
-          peso: readPrefs.peso || 'mistura',
+        const startIndex = nextPage * 20;
+        const moreRaw = await discoverBooksMultiPage(
+          {
+            genres: (readPrefs as any).genres || [],
+            type: (readPrefs as any).type || 'Ambos',
+            peso: (readPrefs as any).peso || 'mistura',
+          },
+          [startIndex]
+        );
+        const moreFiltered = strictFilter(moreRaw, 'read', {
+          readPeso: (readPrefs as any).peso !== 'mistura' ? (readPrefs as any).peso : undefined,
+          excluded: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
         });
-      }
-      if (newItems.length > 0) {
-        setApiItems(prev => [...prev, ...newItems]);
+        setApiItems(prev => {
+          const seen = new Set(prev.map((i: any) => i.title));
+          return [...prev, ...moreFiltered.filter((i: any) => !seen.has(i.title))];
+        });
+        setCurrentPage(nextPage);
+
+      } else if (cat.id === 'learn' && learnPrefs) {
+        const allGenres = (learnPrefs as any).genres || ['popular'];
+        const rotatedGenre = allGenres[nextPage % allGenres.length];
+        const moreRaw = await discoverYouTube({
+          genres: [rotatedGenre],
+          formato: (learnPrefs as any).formato || 'Ambos',
+          duracao: (learnPrefs as any).duracao || 'normal',
+        });
+        setApiItems(prev => {
+          const seen = new Set(prev.map((i: any) => i.title));
+          const newItems = moreRaw.filter((i: any) => !seen.has(i.title));
+          return newItems.length > 0 ? [...prev, ...newItems] : [...prev].sort(() => Math.random() - 0.5);
+        });
+        setCurrentPage(nextPage);
+
+      } else if (cat.id === 'eat' && eatPrefs) {
+        const moreRaw = await discoverMeals({
+          local: (eatPrefs as any).local || [],
+          fome: (eatPrefs as any).fome || 'normal',
+          budget: (eatPrefs as any).budget || 'medio',
+          restrictions: (eatPrefs as any).restrictions || [],
+          tempo: (eatPrefs as any).tempo || 'normal',
+        });
+        setApiItems(prev => {
+          const seen = new Set(prev.map((i: any) => i.title));
+          const newItems = moreRaw.filter((i: any) => !seen.has(i.title));
+          return newItems.length > 0 ? [...prev, ...newItems] : [...prev].sort(() => Math.random() - 0.5);
+        });
         setCurrentPage(nextPage);
       }
+
     } catch {
       // silently fail
     } finally {

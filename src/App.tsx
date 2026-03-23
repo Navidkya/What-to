@@ -594,14 +594,14 @@ export default function App() {
                 onUpdateProfile={store.updateProfile}
                 onUpdatePrefs={store.updatePrefs}
                 onClearAll={store.clearAll}
-                onResetEatPrefs={() => store.updateEatPrefs({ done: false, local: [], fome: 'normal', budget: 'medio', restrictions: [], tempo: 'normal' })}
-                onResetWatchPrefs={() => store.updateWatchPrefs({ done: false, genres: [], duration: 'normal', type: 'Ambos', discovery: 'mistura' })}
-                onResetListenPrefs={() => store.updateListenPrefs({ done: false, type: 'Ambos', genres: [], energia: 'mistura' })}
-                onResetReadPrefs={() => store.updateReadPrefs({ done: false, type: 'Ambos', genres: [], peso: 'mistura' })}
-                onResetPlayPrefs={() => store.updatePlayPrefs({ done: false, type: 'Ambos', genres: [], dificuldade: 'normal' })}
-                onResetLearnPrefs={() => store.updateLearnPrefs({ done: false, formato: 'Ambos', genres: [], duracao: 'normal' })}
-                onResetVisitPrefs={() => store.updateVisitPrefs({ done: false, tipo: [], custo: 'qualquer', distancia: 'qualquer' })}
-                onResetDoPrefs={() => store.updateDoPrefs({ done: false, contexto: 'qualquer', local: 'qualquer', custo: 'qualquer' })}
+                onResetEatPrefs={() => store.updateEatPrefs({ done: false, local: [], fome: 'normal', budget: 'medio', restrictions: [], tempo: 'normal', nivelCozinheiro: undefined, quantas: undefined, cozinha: [], ocasiao: undefined, abertoAgora: false, petFriendly: false, esplanada: false })}
+                onResetWatchPrefs={() => store.updateWatchPrefs({ done: false, type: 'Ambos', genres: [], duration: 'normal', discovery: 'mistura', conQuem: undefined, humor: undefined, classificacao: undefined, gatilhos: undefined, reassistir: undefined })}
+                onResetListenPrefs={() => store.updateListenPrefs({ done: false, type: 'Ambos', genres: [], energia: 'mistura', momento: undefined, lingua: undefined, duracao: undefined, novidade: undefined })}
+                onResetReadPrefs={() => store.updateReadPrefs({ done: false, type: 'Ambos', genres: [], peso: 'mistura', comprimento: undefined, lingua: undefined, formato: undefined, standalone: undefined, tempoReal: undefined })}
+                onResetPlayPrefs={() => store.updatePlayPrefs({ done: false, type: 'Ambos', genres: [], dificuldade: 'normal', jogadores: undefined, online: undefined, duracao: undefined, experiencia: undefined })}
+                onResetLearnPrefs={() => store.updateLearnPrefs({ done: false, formato: 'Ambos', genres: [], duracao: 'normal', nivel: undefined, gratis: false, certificado: false, lingua: undefined, objetivo: undefined })}
+                onResetVisitPrefs={() => store.updateVisitPrefs({ done: false, tipo: [], custo: 'qualquer', distancia: 'qualquer', altura: undefined, conQuem: undefined, interior: undefined, tempoVisita: undefined, acessivel: false, reserva: undefined, mobilidade: undefined })}
+                onResetDoPrefs={() => store.updateDoPrefs({ done: false, contexto: 'qualquer', local: 'qualquer', custo: 'qualquer', duracao: undefined, energia: undefined, objetivo: undefined, meteorologia: undefined, animais: false })}
                 permanentPrefs={store.permanentPrefs}
                 onUpdatePermanentPrefs={store.updatePermanentPrefs}
                 onLogout={handleLogout}

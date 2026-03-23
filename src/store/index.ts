@@ -33,28 +33,38 @@ export function useAppStore() {
   const [disliked, setDislikedRaw] = useState<string[]>(() => load('wt6_dis', []));
   const [schedules, setSchedulesRaw] = useState<ScheduleEntry[]>(() => load('wt6_sched', []));
   const [eatPrefs, setEatPrefsRaw] = useState<EatPrefs>(() =>
-    load('wt6_eatprefs', { done: false, local: [], fome: 'normal', budget: 'medio', restrictions: [], tempo: 'normal' })
+    load('wt6_eatprefs', { done: false, local: [], fome: 'normal', budget: 'medio', restrictions: [], tempo: 'normal',
+      nivelCozinheiro: undefined, quantas: undefined, cozinha: [], ocasiao: undefined,
+      abertoAgora: false, petFriendly: false, esplanada: false })
   );
   const [watchPrefs, setWatchPrefsRaw] = useState<WatchPrefs>(() =>
-    load('wt6_watchprefs', { done: false, genres: [], duration: 'normal', type: 'Ambos', discovery: 'mistura' })
+    load('wt6_watchprefs', { done: false, type: 'Ambos', genres: [], duration: 'normal', discovery: 'mistura',
+      conQuem: undefined, humor: undefined, classificacao: undefined, gatilhos: undefined, reassistir: undefined })
   );
   const [listenPrefs, setListenPrefsRaw] = useState<ListenPrefs>(() =>
-    load('wt6_listenprefs', { done: false, type: 'Ambos' as const, genres: [], energia: 'mistura' as const })
+    load('wt6_listenprefs', { done: false, type: 'Ambos' as const, genres: [], energia: 'mistura' as const,
+      momento: undefined, lingua: undefined, duracao: undefined, novidade: undefined })
   );
   const [readPrefs, setReadPrefsRaw] = useState<ReadPrefs>(() =>
-    load('wt6_readprefs', { done: false, type: 'Ambos' as const, genres: [], peso: 'mistura' as const })
+    load('wt6_readprefs', { done: false, type: 'Ambos' as const, genres: [], peso: 'mistura' as const,
+      comprimento: undefined, lingua: undefined, formato: undefined, standalone: undefined, tempoReal: undefined })
   );
   const [playPrefs, setPlayPrefsRaw] = useState<PlayPrefs>(() =>
-    load('wt6_playprefs', { done: false, type: 'Ambos' as const, genres: [], dificuldade: 'normal' as const })
+    load('wt6_playprefs', { done: false, type: 'Ambos' as const, genres: [], dificuldade: 'normal' as const,
+      jogadores: undefined, online: undefined, duracao: undefined, experiencia: undefined })
   );
   const [learnPrefs, setLearnPrefsRaw] = useState<LearnPrefs>(() =>
-    load('wt6_learnprefs', { done: false, formato: 'Ambos' as const, genres: [], duracao: 'normal' as const })
+    load('wt6_learnprefs', { done: false, formato: 'Ambos' as const, genres: [], duracao: 'normal' as const,
+      nivel: undefined, gratis: false, certificado: false, lingua: undefined, objetivo: undefined })
   );
   const [visitPrefs, setVisitPrefsRaw] = useState<VisitPrefs>(() =>
-    load('wt6_visitprefs', { done: false, tipo: [], custo: 'qualquer' as const, distancia: 'qualquer' as const })
+    load('wt6_visitprefs', { done: false, tipo: [], custo: 'qualquer' as const, distancia: 'qualquer' as const,
+      altura: undefined, conQuem: undefined, interior: undefined, tempoVisita: undefined, acessivel: false,
+      reserva: undefined, mobilidade: undefined })
   );
   const [doPrefs, setDoPrefsRaw] = useState<DoPrefs>(() =>
-    load('wt6_doprefs', { done: false, contexto: 'qualquer' as const, local: 'qualquer' as const, custo: 'qualquer' as const })
+    load('wt6_doprefs', { done: false, contexto: 'qualquer' as const, local: 'qualquer' as const, custo: 'qualquer' as const,
+      duracao: undefined, energia: undefined, objetivo: undefined, meteorologia: undefined, animais: false })
   );
   const [userLists, setUserListsRaw] = useState<UserList[]>(() =>
     load('wt6_lists', [])

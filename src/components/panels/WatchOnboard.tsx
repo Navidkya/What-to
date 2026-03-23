@@ -1,235 +1,168 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { WatchPrefs } from '../../types';
 
-interface WatchOnboardProps {
-  isOpen: boolean;
-  currentPrefs: WatchPrefs;
-  onClose: (prefs: WatchPrefs) => void;
+interface Props { isOpen?: boolean; currentPrefs: WatchPrefs; onClose: (prefs: WatchPrefs) => void; }
+
+function toggleVal(arr: string[], val: string): string[] {
+  if (val === 'Qualquer') return arr.includes('Qualquer') ? [] : ['Qualquer'];
+  const without = arr.filter(v => v !== 'Qualquer');
+  return without.includes(val) ? without.filter(v => v !== val) : [...without, val];
 }
 
-function Toggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button className={`eat-ob-toggle${active ? ' on' : ''}`} onClick={onClick}>
-      {label}
-    </button>
-  );
-}
+const GENRE_MAP: Record<string, string[]> = {
+  'Filme': ['Ação','Aventura','Comédia','Crime','Drama','Fantasia','Sci-Fi','Terror','Mistério','Romance','Suspense','Animação','Biográfico','Guerra','Musical','Faroeste'],
+  'Série': ['Ação','Comédia','Crime','Drama','Fantasia','Sci-Fi','Terror','Mistério','Romance','Suspense','Histórico','Médico','Legal','Espionagem','Reality'],
+  'Documentário': ['Natureza','Crime','História','Ciência','Tecnologia','Desporto','Arte','Sociedade','Culinária','Viagens','Política','Filosofia','Espaço'],
+  'Anime': ['Shonen','Shojo','Seinen','Isekai','Mecha','Slice of Life','Terror','Fantasia'],
+  'default': ['Ação','Comédia','Drama','Terror','Sci-Fi','Romance','Anime','Documentário'],
+};
 
-const FILM_GENRES = ['Comédia', 'Drama', 'Sci-Fi', 'Suspense', 'Terror', 'Romance', 'Ação', 'Animação'];
-const SERIES_GENRES = ['Drama', 'Comédia', 'Crime', 'Sci-Fi', 'Thriller', 'Romance', 'Documentário', 'Anime'];
-const DOC_GENRES = ['Natureza', 'Crime', 'História', 'Ciência', 'Tecnologia', 'Desporto', 'Arte', 'Sociedade'];
-const AMBOS_GENRES = ['Ação', 'Comédia', 'Drama', 'Terror', 'Sci-Fi', 'Romance', 'Anime', 'Documentário'];
-
-const FILM_GENRES_EXTRA = ['Faroeste', 'Musical', 'Biográfico', 'Guerra', 'Fantasia', 'Mistério'];
-const SERIES_GENRES_EXTRA = ['Reality', 'Histórico', 'Sobrenatural', 'Espionagem', 'Médico', 'Legal'];
-const DOC_GENRES_EXTRA = ['Culinária', 'Viagens', 'Política', 'Filosofia', 'Natureza Humana', 'Espaço'];
-const AMBOS_GENRES_EXTRA = ['Faroeste', 'Musical', 'Biográfico', 'Guerra', 'Fantasia', 'Mistério'];
-
-const EP_DURATIONS: [string, string][] = [
-  ['curto', '⚡ -25min/ep'],
-  ['normal', '🎬 25-50min/ep'],
-  ['longo', '🍿 +50min/ep'],
-];
-const FILM_DURATIONS: [string, string][] = [
-  ['curto', '⚡ -90min'],
-  ['normal', '🎬 90-120min'],
-  ['longo', '🍿 +120min'],
-];
-
-export default function WatchOnboard({ isOpen, currentPrefs, onClose }: WatchOnboardProps) {
-  const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
-  const [duration, setDuration] = useState(currentPrefs.duration || 'normal');
-  const [type, setType] = useState(currentPrefs.type || 'Ambos');
-  const [discovery, setDiscovery] = useState(currentPrefs.discovery || 'mistura');
-  const [showExtraGenres, setShowExtraGenres] = useState(false);
-  const [origem, setOrigem] = useState((currentPrefs as any).origem || 'Qualquer');
-  const [lingua, setLingua] = useState((currentPrefs as any).lingua || 'Qualquer');
-  const [epoca, setEpoca] = useState((currentPrefs as any).epoca || 'qualquer');
-  const [minRating, setMinRating] = useState((currentPrefs as any).minRating || 'qualquer');
-  const [showMoreFilters, setShowMoreFilters] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setGenres(currentPrefs.genres || []);
-      setDuration(currentPrefs.duration || 'normal');
-      setType(currentPrefs.type || 'Ambos');
-      setDiscovery(currentPrefs.discovery || 'mistura');
-      setShowExtraGenres(false);
-      setOrigem((currentPrefs as any).origem || 'Qualquer');
-      setLingua((currentPrefs as any).lingua || 'Qualquer');
-      setEpoca((currentPrefs as any).epoca || 'qualquer');
-      setMinRating((currentPrefs as any).minRating || 'qualquer');
-      setShowMoreFilters(false);
-    }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleTypeChange = (newType: string) => {
-    setType(newType);
-    setGenres([]);
-    setDuration('normal');
-    setShowExtraGenres(false);
-  };
-
-  const toggleGenre = (g: string) => {
-    if (genres.includes(g)) setGenres(genres.filter(x => x !== g));
-    else setGenres([...genres, g]);
-  };
-
-  const getMainGenres = () => {
-    if (type === 'Filme') return FILM_GENRES;
-    if (type === 'Série') return SERIES_GENRES;
-    if (type === 'Documentário') return DOC_GENRES;
-    return AMBOS_GENRES;
-  };
-
-  const getExtraGenres = () => {
-    if (type === 'Filme') return FILM_GENRES_EXTRA;
-    if (type === 'Série') return SERIES_GENRES_EXTRA;
-    if (type === 'Documentário') return DOC_GENRES_EXTRA;
-    return AMBOS_GENRES_EXTRA;
-  };
-
-  const getDurations = (): [string, string][] => {
-    return type === 'Série' ? EP_DURATIONS : FILM_DURATIONS;
-  };
-
-  const handleSave = (skip = false) => {
-    onClose({
-      done: !skip,
-      genres: skip ? [] : genres,
-      duration: skip ? 'normal' : duration,
-      type: skip ? 'Ambos' : type,
-      discovery: skip ? 'mistura' : discovery,
-      origem: skip ? 'Qualquer' : origem,
-      lingua: skip ? 'Qualquer' : lingua,
-      epoca: skip ? 'qualquer' : epoca,
-      minRating: skip ? 'qualquer' : minRating,
-    } as WatchPrefs);
-  };
-
+export default function WatchOnboard({ isOpen, currentPrefs, onClose }: Props) {
   if (!isOpen) return null;
+  const [types, setTypes] = useState<string[]>(currentPrefs.type ? [currentPrefs.type] : []);
+  const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
+  const [conQuem, setConQuem] = useState<string[]>(currentPrefs.conQuem ? [currentPrefs.conQuem] : []);
+  const [humor, setHumor] = useState<string[]>(currentPrefs.humor ? [currentPrefs.humor] : []);
+  const [advanced, setAdvanced] = useState(false);
+  const [duration, setDuration] = useState<string[]>(currentPrefs.duration ? [currentPrefs.duration] : []);
+  const [origem, setOrigem] = useState<string[]>(currentPrefs.origem ? [currentPrefs.origem] : []);
+  const [lingua, setLingua] = useState<string[]>(currentPrefs.lingua ? [currentPrefs.lingua] : []);
+  const [epoca, setEpoca] = useState<string[]>(currentPrefs.epoca && currentPrefs.epoca !== 'qualquer' ? [currentPrefs.epoca] : []);
+  const [minRating, setMinRating] = useState<string[]>(currentPrefs.minRating ? [currentPrefs.minRating] : []);
+  const [classificacao, setClassificacao] = useState<string[]>(currentPrefs.classificacao ? [currentPrefs.classificacao] : []);
+  const [reassistir, setReassistir] = useState<string[]>(currentPrefs.reassistir ? [currentPrefs.reassistir] : []);
 
-  const mainGenres = getMainGenres();
-  const extraGenres = getExtraGenres();
+  const activeTypes = types.filter(t => t !== 'Qualquer');
+  const genreOptions = activeTypes.length === 1 ? (GENRE_MAP[activeTypes[0]] || GENRE_MAP.default) : GENRE_MAP.default;
+
+  const btn = (active: boolean) => ({
+    borderRadius: 20, padding: '6px 14px', fontSize: 13, cursor: 'pointer',
+    border: `1px solid ${active ? 'rgba(200,155,60,0.4)' : 'rgba(255,255,255,0.1)'}`,
+    background: active ? 'rgba(200,155,60,0.9)' : 'rgba(255,255,255,0.06)',
+    color: active ? '#0b0d12' : 'rgba(245,241,235,0.7)',
+    fontFamily: "'Outfit', sans-serif", fontWeight: active ? 600 : 400,
+    margin: '3px',
+  });
+
+  const lbl = { fontSize: 12, color: '#8a94a8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '16px 0 8px' };
+
+  const save = () => {
+    const t = types.filter(v => v !== 'Qualquer');
+    onClose({
+      done: true,
+      type: t.length === 1 ? t[0] : (t.length > 1 ? t.join(',') : 'Ambos'),
+      genres: genres.filter(v => v !== 'Qualquer'),
+      conQuem: conQuem.filter(v => v !== 'Qualquer')[0],
+      humor: humor.filter(v => v !== 'Qualquer')[0],
+      duration: duration.filter(v => v !== 'Qualquer')[0] || 'normal',
+      discovery: 'mistura',
+      origem: origem.filter(v => v !== 'Qualquer')[0],
+      lingua: lingua.filter(v => v !== 'Qualquer')[0],
+      epoca: epoca.filter(v => v !== 'Qualquer')[0] || 'qualquer',
+      minRating: minRating.filter(v => v !== 'Qualquer')[0],
+      classificacao: classificacao.filter(v => v !== 'Qualquer')[0],
+      reassistir: reassistir.filter(v => v !== 'Qualquer')[0],
+    });
+  };
 
   return (
     <div className="ov on" style={{ zIndex: 400 }}>
-      <div className="panel eat-ob-panel">
+      <div className="panel eat-ob-panel" style={{ overflowY: 'auto', maxHeight: '85vh' }}>
         <div className="panel-drag" />
+    <div style={{ fontFamily: "'Outfit', sans-serif", padding: '0 4px' }}>
+      <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontStyle: 'italic', fontWeight: 600, color: '#f5f1eb', marginBottom: 4 }}>What to Watch</div>
+      <div style={{ fontSize: 13, color: '#8a94a8', marginBottom: 20 }}>Personaliza as tuas sugestões</div>
 
-        <button className="btn-x" style={{ marginBottom: 14 }} onClick={() => handleSave(true)}>
-          Saltar tudo →
-        </button>
+      <div style={lbl}>Tipo</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+        {['Qualquer','Filme','Série','Documentário','Stand-up','Anime','Desporto','YouTube','Twitch'].map(v => (
+          <button key={v} style={btn(types.includes(v) || (v === 'Qualquer' && types.length === 0))} onClick={() => setTypes(prev => toggleVal(prev, v))}>{v}</button>
+        ))}
+      </div>
 
-        <div className="eat-ob-title">
-          <span>🎬</span>
-          <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 700, fontStyle: 'italic' }}>O que ver?</div>
-            <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Para esta sessão</div>
-          </div>
+      <div style={lbl}>Géneros</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+        {['Qualquer', ...genreOptions].map(v => (
+          <button key={v} style={btn(genres.includes(v) || (v === 'Qualquer' && genres.length === 0))} onClick={() => setGenres(prev => toggleVal(prev, v))}>{v}</button>
+        ))}
+      </div>
+
+      <div style={lbl}>Com quem</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+        {['Qualquer','Sozinho','A dois','Família','Grupo'].map(v => (
+          <button key={v} style={btn(conQuem.includes(v) || (v === 'Qualquer' && conQuem.length === 0))} onClick={() => setConQuem(prev => toggleVal(prev, v))}>{v}</button>
+        ))}
+      </div>
+
+      <div style={lbl}>Humor</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+        {['Qualquer','Sério','Leve'].map(v => (
+          <button key={v} style={btn(humor.includes(v) || (v === 'Qualquer' && humor.length === 0))} onClick={() => setHumor(prev => toggleVal(prev, v))}>{v}</button>
+        ))}
+      </div>
+
+      <button onClick={() => setAdvanced(a => !a)} style={{ background: 'none', border: 'none', color: '#8a94a8', fontSize: 13, cursor: 'pointer', padding: '12px 0 4px', width: '100%', textAlign: 'left' }}>
+        {advanced ? '▲ Menos opções' : '▼ Mais opções'}
+      </button>
+
+      {advanced && (<>
+        <div style={lbl}>Duração</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','Curto (-90min)','Normal (90-150min)','Longo (+150min)'].map(v => (
+            <button key={v} style={btn(duration.includes(v) || (v === 'Qualquer' && duration.length === 0))} onClick={() => setDuration(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
         </div>
 
-        <div className="eat-ob-section">
-          <div className="eat-ob-lbl">Tipo?</div>
-          <div className="eat-ob-row">
-            {([['Filme', '🎞 Filme'], ['Série', '📺 Série'], ['Documentário', '🎙 Documentário'], ['Ambos', '✦ Ambos']] as [string, string][]).map(([v, l]) => (
-              <Toggle key={v} label={l} active={type === v} onClick={() => handleTypeChange(v)} />
-            ))}
-          </div>
+        <div style={lbl}>Origem</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','Americano','Europeu','Asiático','Português','Latino'].map(v => (
+            <button key={v} style={btn(origem.includes(v) || (v === 'Qualquer' && origem.length === 0))} onClick={() => setOrigem(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
         </div>
 
-        <div className="eat-ob-section">
-          <div className="eat-ob-lbl">Géneros?</div>
-          <div className="eat-ob-row" style={{ flexWrap: 'wrap' }}>
-            {mainGenres.map(g => (
-              <Toggle key={g} label={g} active={genres.includes(g)} onClick={() => toggleGenre(g)} />
-            ))}
-            {showExtraGenres && extraGenres.map(g => (
-              <Toggle key={g} label={g} active={genres.includes(g)} onClick={() => toggleGenre(g)} />
-            ))}
-          </div>
-          <button
-            onClick={() => setShowExtraGenres(v => !v)}
-            style={{ background: 'none', border: 'none', color: 'var(--ac)', fontSize: 12, cursor: 'pointer', marginTop: 6, padding: 0 }}
-          >
-            {showExtraGenres ? '▲ menos opções' : '▼ mais opções'}
-          </button>
+        <div style={lbl}>Língua</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','Português','Inglês','Legendado'].map(v => (
+            <button key={v} style={btn(lingua.includes(v) || (v === 'Qualquer' && lingua.length === 0))} onClick={() => setLingua(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
         </div>
 
-        {/* ORIGEM */}
-        <div className="eat-ob-section">
-          <div className="eat-ob-lbl">Origem?</div>
-          <div className="eat-ob-row" style={{ flexWrap: 'wrap' }}>
-            {(['Qualquer', 'Americano', 'Europeu', 'Asiático', 'Português', 'Latino'] as const).map(o => (
-              <Toggle key={o} label={o} active={origem === o} onClick={() => setOrigem(o)} />
-            ))}
-          </div>
+        <div style={lbl}>Época</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','Recente (+2015)','Anos 2000-2015','Anos 90 (1980-2000)','Anos 70-80','Clássico (-1960)'].map(v => (
+            <button key={v} style={btn(epoca.includes(v) || (v === 'Qualquer' && epoca.length === 0))} onClick={() => setEpoca(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
         </div>
 
-        {/* LÍNGUA */}
-        <div className="eat-ob-section">
-          <div className="eat-ob-lbl">Língua?</div>
-          <div className="eat-ob-row">
-            {(['Qualquer', 'Português', 'Inglês', 'Legendado'] as const).map(l => (
-              <Toggle key={l} label={l} active={lingua === l} onClick={() => setLingua(l)} />
-            ))}
-          </div>
+        <div style={lbl}>Rating mínimo</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','7+','8+','8.5+'].map(v => (
+            <button key={v} style={btn(minRating.includes(v) || (v === 'Qualquer' && minRating.length === 0))} onClick={() => setMinRating(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
         </div>
 
-        {/* ÉPOCA E RATING — expansíveis */}
-        {!showMoreFilters && (
-          <button onClick={() => setShowMoreFilters(true)} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 11, cursor: 'pointer', padding: '4px 0', fontFamily: "'Outfit', sans-serif", marginBottom: 8 }}>
-            ▼ mais filtros
-          </button>
-        )}
-
-        {showMoreFilters && (
-          <>
-            <div className="eat-ob-section">
-              <div className="eat-ob-lbl">Época?</div>
-              <div className="eat-ob-row">
-                {([['qualquer', 'Qualquer'], ['recente', 'Recente (+2015)'], ['classico', 'Clássico (-2000)']] as [string, string][]).map(([v, l]) => (
-                  <Toggle key={v} label={l} active={epoca === v} onClick={() => setEpoca(v)} />
-                ))}
-              </div>
-            </div>
-
-            <div className="eat-ob-section">
-              <div className="eat-ob-lbl">Rating mínimo?</div>
-              <div className="eat-ob-row">
-                {([['qualquer', 'Qualquer'], ['7', '7+ IMDb'], ['8', '8+ IMDb'], ['8.5', '8.5+ IMDb']] as [string, string][]).map(([v, l]) => (
-                  <Toggle key={v} label={l} active={minRating === v} onClick={() => setMinRating(v)} />
-                ))}
-              </div>
-            </div>
-
-            <button onClick={() => setShowMoreFilters(false)} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 11, cursor: 'pointer', padding: '4px 0', fontFamily: "'Outfit', sans-serif", marginBottom: 8 }}>
-              ▲ menos filtros
-            </button>
-          </>
-        )}
-
-        {type !== 'Ambos' && (
-          <div className="eat-ob-section">
-            <div className="eat-ob-lbl">{type === 'Série' ? 'Duração por episódio?' : 'Duração?'}</div>
-            <div className="eat-ob-row">
-              {getDurations().map(([v, l]) => (
-                <Toggle key={v} label={l} active={duration === v} onClick={() => setDuration(v)} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="eat-ob-section">
-          <div className="eat-ob-lbl">Descoberta?</div>
-          <div className="eat-ob-row">
-            {([['populares', '⭐ Só populares'], ['mistura', '🎭 Mistura'], ['surpresa', '🎲 Surpreende-me']] as [string, string][]).map(([v, l]) => (
-              <Toggle key={v} label={l} active={discovery === v} onClick={() => setDiscovery(v)} />
-            ))}
-          </div>
+        <div style={lbl}>Classificação etária</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','Todas as idades','M/12','M/16','M/18'].map(v => (
+            <button key={v} style={btn(classificacao.includes(v) || (v === 'Qualquer' && classificacao.length === 0))} onClick={() => setClassificacao(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
         </div>
 
-        <button className="eat-ob-save" onClick={() => handleSave(false)}>Aplicar preferências</button>
+        <div style={lbl}>Reassistir</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {['Qualquer','Novo para mim','Posso rever'].map(v => (
+            <button key={v} style={btn(reassistir.includes(v) || (v === 'Qualquer' && reassistir.length === 0))} onClick={() => setReassistir(prev => toggleVal(prev, v))}>{v}</button>
+          ))}
+        </div>
+      </>)}
+
+      <button onClick={save} style={{ marginTop: 24, width: '100%', padding: '14px', background: 'rgba(200,155,60,0.9)', border: 'none', borderRadius: 12, color: '#0b0d12', fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+        Guardar preferências
+      </button>
+      <button onClick={() => onClose({ ...currentPrefs, done: false })} style={{ marginTop: 8, width: '100%', padding: '10px', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#8a94a8', fontFamily: "'Outfit', sans-serif", fontSize: 13, cursor: 'pointer' }}>
+        Saltar por agora
+      </button>
+    </div>
       </div>
     </div>
   );
