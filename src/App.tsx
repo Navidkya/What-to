@@ -44,6 +44,7 @@ import AuthScreen from './components/screens/AuthScreen';
 import PlanScreen from './components/screens/PlanScreen';
 import CreatorDashboard from './components/screens/CreatorDashboard';
 import AdminPanel from './components/screens/AdminPanel';
+import MessagesScreen from './components/screens/MessagesScreen';
 import { supabase } from './lib/supabase';
 import { signOut } from './services/auth';
 import { loadInfluencerProfile } from './services/influencers';
@@ -64,6 +65,10 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
   const [friendPendingCount, setFriendPendingCount] = useState(0);
+  const [messagesFriendId, setMessagesFriendId] = useState<string | undefined>();
+  const [messagesFriendName, setMessagesFriendName] = useState<string | undefined>();
+  const [messagesUnread, setMessagesUnread] = useState(0);
+  const [pendingSuggestionShare, setPendingSuggestionShare] = useState<any>(null);
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -179,6 +184,12 @@ export default function App() {
     });
   }, [store.history, store.tracking]);
 
+
+  const openMessages = useCallback((friendId?: string, friendName?: string) => {
+    setMessagesFriendId(friendId);
+    setMessagesFriendName(friendName);
+    navTo('messages');
+  }, [navTo]);
 
   // Tratar link de convite (?add=username)
   useEffect(() => {
@@ -546,6 +557,24 @@ export default function App() {
     return <AdminPanel />;
   }
 
+  // MessagesScreen (overlay de ecrã completo)
+  if (screen === 'messages') {
+    return (
+      <MessagesScreen
+        isActive={true}
+        userId={authUser?.id}
+        userName={store.profile.name}
+        onBack={() => navTo('friends')}
+        onToast={toast}
+        initialFriendId={messagesFriendId}
+        initialFriendName={messagesFriendName}
+        pendingSuggestion={pendingSuggestionShare}
+        onClearPendingSuggestion={() => setPendingSuggestionShare(null)}
+        onUnreadCount={setMessagesUnread}
+      />
+    );
+  }
+
   // Auth guards
   if (authLoading) {
     return (
@@ -607,6 +636,7 @@ export default function App() {
                 onToast={toast}
                 userId={authUser?.id}
                 onPendingCount={setFriendPendingCount}
+                onOpenMessages={(fid, fname) => openMessages(fid, fname)}
               />
             </div>
             <div className="h-pane">
@@ -814,7 +844,7 @@ export default function App() {
 
           {/* Bottom Nav */}
           {showBottomNav && (
-            <BottomNav activeScreen={screen} onNav={navTo} friendBadge={friendPendingCount} />
+            <BottomNav activeScreen={screen} onNav={navTo} friendBadge={friendPendingCount + messagesUnread} />
           )}
 
           {/* Panels */}

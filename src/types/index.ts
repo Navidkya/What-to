@@ -232,7 +232,9 @@ export type Screen =
   | 'friends'
   | 'feed'
   | 'creator-dashboard'
-  | 'plan';
+  | 'plan'
+  | 'messages'
+  | 'conversation';
 
 export type OverlayId =
   | 'reactOv'
@@ -308,4 +310,33 @@ export interface NightPlan {
   participants: string[];
   createdAt: string;
   isAuto: boolean; // gerado pelo Surpreende-me
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  text?: string;
+  suggestion?: {
+    title: string;
+    emoji: string;
+    catId: string;
+    cat: string;
+    img?: string | null;
+    type?: string;
+  };
+  readAt?: string | null;
+  createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  user1Id: string;
+  user2Id: string;
+  lastMessage?: string;
+  lastMessageAt: string;
+  // enriquecido no cliente
+  friendName?: string;
+  friendUsername?: string;
+  unreadCount?: number;
 }

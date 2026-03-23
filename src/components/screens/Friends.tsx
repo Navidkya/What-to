@@ -15,6 +15,7 @@ interface FriendsProps {
   onToast: (msg: string) => void;
   userId?: string;
   onPendingCount?: (count: number) => void;
+  onOpenMessages?: (friendId: string, friendName: string) => void;
 }
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
@@ -34,7 +35,7 @@ function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   );
 }
 
-export default function Friends({ isActive, onNav, onToast, userId, onPendingCount }: FriendsProps) {
+export default function Friends({ isActive, onNav, onToast, userId, onPendingCount, onOpenMessages }: FriendsProps) {
   const [tab, setTab] = useState<'friends' | 'search' | 'requests'>('friends');
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
@@ -446,6 +447,20 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                 )}
               </div>
             </div>
+            <button
+              style={{
+                width: '100%', background: 'rgba(200,155,60,0.12)',
+                border: '1px solid rgba(200,155,60,0.25)',
+                borderRadius: 12, padding: '12px', marginBottom: 10,
+                color: '#C89B3C', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              }}
+              onClick={() => {
+                setFriendPopup(null);
+                onOpenMessages?.(friendPopup.id, friendPopup.name);
+              }}
+            >
+              💬 Enviar mensagem
+            </button>
             <button
               style={{
                 width: '100%', background: 'rgba(224,123,123,0.15)',
