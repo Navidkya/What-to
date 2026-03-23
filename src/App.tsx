@@ -36,7 +36,8 @@ import WhyPanel from './components/panels/WhyPanel';
 import LinkPanel from './components/panels/LinkPanel';
 import LivePanel from './components/panels/LivePanel';
 import TrackPanel from './components/panels/TrackPanel';
-import WrappedOverlay from './components/panels/WrappedOverlay';
+import WrappedGenerator from './components/panels/WrappedGenerator';
+import type { WrappedData } from './components/panels/WrappedGenerator';
 import SchedulePanel from './components/panels/SchedulePanel';
 import AddToListPanel from './components/panels/AddToListPanel';
 import AuthScreen from './components/screens/AuthScreen';
@@ -96,7 +97,7 @@ export default function App() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
-  const [wrappedOpen, setWrappedOpen] = useState(false);
+  const [wrappedGenData, setWrappedGenData] = useState<WrappedData | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [suggestKey, setSuggestKey] = useState(0);
 
@@ -154,6 +155,27 @@ export default function App() {
     setLiveOpen(true);
   }, []);
 
+  const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const openMonthlyWrapped = useCallback(() => {
+    const now = new Date();
+    setWrappedGenData({
+      mode: 'monthly',
+      history: store.history,
+      tracking: store.tracking,
+      monthName: MONTHS_PT[now.getMonth()],
+      year: now.getFullYear(),
+    });
+  }, [store.history, store.tracking]);
+
+  const openAnnualWrapped = useCallback(() => {
+    setWrappedGenData({
+      mode: 'annual',
+      history: store.history,
+      tracking: store.tracking,
+      year: new Date().getFullYear(),
+    });
+  }, [store.history, store.tracking]);
 
 
   // React actions
@@ -693,6 +715,7 @@ export default function App() {
             onOpenCat={openCat}
             isActive={screen === 'plan'}
             onToast={toast}
+            userId={authUser?.id}
           />
 
           <Metrics
@@ -700,7 +723,8 @@ export default function App() {
             tracking={store.tracking}
             isActive={screen === 'metrics'}
             onBack={goHome}
-            onShowWrapped={() => setWrappedOpen(true)}
+            onShowWrapped={openMonthlyWrapped}
+            onShowAnnualWrapped={openAnnualWrapped}
           />
 
           <Match
@@ -823,12 +847,12 @@ export default function App() {
             onToast={toast}
           />
 
-          <WrappedOverlay
-            history={store.history}
-            tracking={store.tracking}
-            isOpen={wrappedOpen}
-            onClose={() => setWrappedOpen(false)}
+          <WrappedGenerator
+            data={wrappedGenData}
+            isOpen={wrappedGenData !== null}
+            onClose={() => setWrappedGenData(null)}
             onToast={toast}
+            userId={authUser?.id}
           />
 
           <SchedulePanel

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { Profile, NightPlan, PlanItem } from '../../types';
 import { DATA, CATS } from '../../data';
+import WrappedGenerator from '../panels/WrappedGenerator';
+import type { WrappedData } from '../panels/WrappedGenerator';
 
 interface Props {
   profile: Profile;
@@ -9,6 +11,7 @@ interface Props {
   onOpenCat: (catId: string) => void;
   isActive: boolean;
   onToast: (msg: string) => void;
+  userId?: string | null;
 }
 
 function genId(): string {
@@ -58,13 +61,13 @@ function pickEmoji(items: PlanItem[]): string {
   return PLAN_EMOJIS[Math.floor(Math.random() * PLAN_EMOJIS.length)];
 }
 
-export default function PlanScreen({ profile, plans, onUpdatePlans, onOpenCat, isActive, onToast }: Props) {
+export default function PlanScreen({ profile, plans, onUpdatePlans, onOpenCat, isActive, onToast, userId }: Props) {
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
   const [activePlan, setActivePlan] = useState<NightPlan | null>(null);
   const [planName, setPlanName] = useState('');
   const [planParticipants, setPlanParticipants] = useState<string[]>([profile.name || 'Eu']);
   const [planItems, setPlanItems] = useState<PlanItem[]>([]);
-  const [showShare, setShowShare] = useState(false);
+  const [wrappedData, setWrappedData] = useState<WrappedData | null>(null);
   const [newPersonInput, setNewPersonInput] = useState('');
   const [newItemCat, setNewItemCat] = useState('watch');
   const [newItemTitle, setNewItemTitle] = useState('');
@@ -151,97 +154,11 @@ export default function PlanScreen({ profile, plans, onUpdatePlans, onOpenCat, i
     onToast('Plano apagado');
   };
 
-  const handleShare = () => {
-    if (!activePlan) return;
-    if (navigator.share) {
-      navigator.share({
-        title: activePlan.name,
-        text: activePlan.items.map(i => i.title).join(' · '),
-        url: window.location.href,
-      }).catch(() => {});
-    } else {
-      try {
-        navigator.clipboard.writeText(
-          `${activePlan.emoji} ${activePlan.name}\n${activePlan.items.map(i => `${i.emoji} ${i.title}`).join('\n')}`
-        );
-        onToast('Copiado para a área de transferência');
-      } catch {
-        onToast('Partilha não disponível neste browser');
-      }
-    }
+  const openShare = (plan: NightPlan) => {
+    setWrappedData({ mode: 'plan', plan });
   };
 
   if (!isActive) return null;
-
-  // ── SHARE OVERLAY ──
-  if (showShare && activePlan) {
-    return (
-      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'20px', zIndex:600 }}>
-        {/* Card partilhável */}
-        <div id="share-card" style={{ width:'100%', maxWidth:360, background:'linear-gradient(135deg, #0d1020, #0B0D12)', border:'1px solid rgba(200,155,60,0.3)', borderRadius:24, padding:'28px 24px 24px', boxShadow:'0 0 60px rgba(200,155,60,0.1)' }}>
-          {/* Header */}
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:20, paddingBottom:16, borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#C89B3C" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            <span style={{ fontFamily:"'Outfit',sans-serif", fontSize:11, letterSpacing:3, color:'rgba(200,155,60,0.7)', textTransform:'uppercase' }}>what to · plano</span>
-          </div>
-          {/* Nome do plano */}
-          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:30, fontWeight:700, fontStyle:'italic', color:'#f5f1eb', lineHeight:1.15, marginBottom:6 }}>
-            {activePlan.name}
-          </div>
-          <div style={{ fontSize:11, color:'rgba(156,165,185,0.5)', marginBottom:20 }}>
-            {new Date(activePlan.createdAt).toLocaleDateString('pt-PT', { weekday:'long', day:'numeric', month:'long' })}
-          </div>
-          {/* Itens */}
-          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
-            {activePlan.items.map((item, i) => (
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12 }}>
-                <div style={{ width:32, height:32, borderRadius:8, background:'rgba(200,155,60,0.1)', border:'1px solid rgba(200,155,60,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <span style={{ fontSize:16 }}>{item.emoji}</span>
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:'#f5f1eb', fontFamily:"'Outfit',sans-serif", overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.title}</div>
-                  <div style={{ fontSize:10, color:'rgba(156,165,185,0.4)', marginTop:1 }}>{item.cat}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* Participantes */}
-          {activePlan.participants.length > 1 && (
-            <div style={{ fontSize:11, color:'rgba(156,165,185,0.4)', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:12 }}>
-              com {activePlan.participants.join(', ')}
-            </div>
-          )}
-        </div>
-        {/* Botões */}
-        <div style={{ display:'flex', flexDirection:'column', gap:10, width:'100%', maxWidth:360, marginTop:16 }}>
-          <button
-            onClick={handleShare}
-            style={{ width:'100%', padding:'14px', borderRadius:14, background:'linear-gradient(135deg,#C89B3C,#a87535)', border:'none', color:'#0B0D12', fontFamily:"'Outfit',sans-serif", fontSize:14, fontWeight:700, cursor:'pointer' }}>
-            Partilhar
-          </button>
-          <button
-            onClick={() => {
-              try {
-                navigator.clipboard.writeText(
-                  `✦ ${activePlan.name}\n\n` +
-                  activePlan.items.map(i => `${i.emoji} ${i.title} (${i.cat})`).join('\n') +
-                  (activePlan.participants.length > 1 ? `\n\ncom ${activePlan.participants.join(', ')}` : '') +
-                  '\n\n— what to · decide less. live more.'
-                );
-                onToast('Copiado!');
-              } catch { onToast('Não foi possível copiar'); }
-            }}
-            style={{ width:'100%', padding:'13px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(245,241,235,0.7)', fontFamily:"'Outfit',sans-serif", fontSize:13, cursor:'pointer' }}>
-            Copiar texto
-          </button>
-          <button onClick={() => setShowShare(false)}
-            style={{ width:'100%', padding:'11px', borderRadius:14, background:'transparent', border:'1px solid rgba(255,255,255,0.07)', color:'rgba(156,165,185,0.5)', fontFamily:"'Outfit',sans-serif", fontSize:12, cursor:'pointer' }}>
-            ← fechar
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // ── VIEW 'detail' ──
   if (view === 'detail' && activePlan) {
@@ -286,7 +203,7 @@ export default function PlanScreen({ profile, plans, onUpdatePlans, onOpenCat, i
           </div>
 
           <button
-            onClick={() => setShowShare(true)}
+            onClick={() => openShare(activePlan)}
             style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', color: '#0B0D12', fontFamily: "'Outfit',sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 12 }}
           >
             Partilhar plano
@@ -469,6 +386,15 @@ export default function PlanScreen({ profile, plans, onUpdatePlans, onOpenCat, i
           </button>
         </div>
       </div>
+
+      {/* ── Wrapped image generator (plan mode) ── */}
+      <WrappedGenerator
+        data={wrappedData}
+        isOpen={wrappedData !== null}
+        onClose={() => setWrappedData(null)}
+        onToast={onToast}
+        userId={userId}
+      />
     </div>
   );
 }

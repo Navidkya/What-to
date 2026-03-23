@@ -6,9 +6,10 @@ interface MetricsProps {
   isActive: boolean;
   onBack: () => void;
   onShowWrapped: () => void;
+  onShowAnnualWrapped?: () => void;
 }
 
-export default function Metrics({ history, tracking, isActive, onBack, onShowWrapped }: MetricsProps) {
+export default function Metrics({ history, tracking, isActive, onBack, onShowWrapped, onShowAnnualWrapped }: MetricsProps) {
   const now = new Date();
   const m = now.getMonth();
   const thisM = history.filter(h => new Date(h.date).getMonth() === m);
@@ -97,7 +98,10 @@ export default function Metrics({ history, tracking, isActive, onBack, onShowWra
           </div>
         </div>
 
-        <button className="wrapped-btn" onClick={onShowWrapped}>✨ Gerar o meu Wrapped</button>
+        <button className="wrapped-btn" onClick={onShowWrapped}>✨ Wrapped mensal</button>
+        {onShowAnnualWrapped && (
+          <button className="wrapped-btn" onClick={onShowAnnualWrapped} style={{ marginTop: 8 }}>🏆 Wrapped anual</button>
+        )}
       </div>
     </div>
   );
