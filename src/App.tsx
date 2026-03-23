@@ -63,6 +63,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [friendPendingCount, setFriendPendingCount] = useState(0);
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -579,7 +580,13 @@ export default function App() {
             }}
           >
             <div className="h-pane">
-              <Friends isActive={true} onNav={navTo} onToast={toast} />
+              <Friends
+                isActive={true}
+                onNav={navTo}
+                onToast={toast}
+                userId={authUser?.id}
+                onPendingCount={setFriendPendingCount}
+              />
             </div>
             <div className="h-pane">
               <Home
@@ -786,7 +793,7 @@ export default function App() {
 
           {/* Bottom Nav */}
           {showBottomNav && (
-            <BottomNav activeScreen={screen} onNav={navTo} />
+            <BottomNav activeScreen={screen} onNav={navTo} friendBadge={friendPendingCount} />
           )}
 
           {/* Panels */}

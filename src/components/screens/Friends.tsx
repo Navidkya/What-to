@@ -1,148 +1,339 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Screen } from '../../types';
+import {
+  searchUsers, sendFriendRequest, acceptFriendRequest,
+  rejectFriendRequest, removeFriend, loadFriends, loadPendingRequests,
+  getFriendshipStatus,
+} from '../../services/friends';
+import type { FriendProfile, FriendRequest } from '../../services/friends';
 
 interface FriendsProps {
   isActive: boolean;
   onNav: (screen: Screen) => void;
   onToast: (msg: string) => void;
+  userId?: string;
+  onPendingCount?: (count: number) => void;
 }
 
-const IMPORT_BUTTONS = [
-  {
-    name: 'Instagram',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="2" width="20" height="20" rx="5"/>
-        <circle cx="12" cy="12" r="4"/>
-        <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'WhatsApp',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'Contactos',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'Facebook',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'LinkedIn',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-        <rect x="2" y="9" width="4" height="12"/>
-        <circle cx="4" cy="4" r="2"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'TikTok',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/>
-      </svg>
-    ),
-  },
-];
+function Avatar({ name, size = 40 }: { name: string; size?: number }) {
+  const colors = ['#6ab4e0', '#e07b9a', '#7be0a0', '#e0c47b', '#c47be0', '#e0a07b'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const color = colors[Math.abs(hash) % colors.length];
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: color, display: 'flex', alignItems: 'center',
+      justifyContent: 'center', fontSize: size * 0.4,
+      fontWeight: 700, color: '#0B0D12', flexShrink: 0,
+    }}>
+      {name[0]?.toUpperCase() || '?'}
+    </div>
+  );
+}
 
-export default function Friends({ isActive: _isActive, onNav, onToast }: FriendsProps) {
+export default function Friends({ isActive, onNav, onToast, userId, onPendingCount }: FriendsProps) {
+  const [tab, setTab] = useState<'friends' | 'search' | 'requests'>('friends');
   const [search, setSearch] = useState('');
-  const [importOpen, setImportOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [friends, setFriends] = useState<Array<FriendProfile & { friendshipId: string }>>([]);
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [statusMap, setStatusMap] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    const [fs, reqs] = await Promise.all([
+      loadFriends(userId),
+      loadPendingRequests(userId),
+    ]);
+    setFriends(fs);
+    setPendingRequests(reqs);
+    onPendingCount?.(reqs.length);
+    setLoading(false);
+  }, [userId, onPendingCount]);
+
+  useEffect(() => {
+    if (isActive && userId) load();
+  }, [isActive, userId, load]);
+
+  // Pesquisa com debounce
+  useEffect(() => {
+    if (!search.trim() || search.length < 2 || !userId) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      const results = await searchUsers(search, userId);
+      // Verificar status para cada resultado
+      const newStatusMap: Record<string, string> = { ...statusMap };
+      await Promise.all(results.map(async r => {
+        if (!newStatusMap[r.id]) {
+          newStatusMap[r.id] = await getFriendshipStatus(userId, r.id);
+        }
+      }));
+      setStatusMap(newStatusMap);
+      setSearchResults(results);
+      setSearchLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search, userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSendRequest = async (targetId: string, name: string) => {
+    if (!userId) return;
+    const ok = await sendFriendRequest(userId, targetId);
+    if (ok) {
+      setStatusMap(m => ({ ...m, [targetId]: 'pending_sent' }));
+      onToast(`✦ Pedido enviado a ${name}`);
+    } else {
+      onToast('Erro ao enviar pedido');
+    }
+  };
+
+  const handleAccept = async (req: FriendRequest) => {
+    const ok = await acceptFriendRequest(req.id);
+    if (ok) {
+      onToast(`✦ ${req.profile?.name || 'Amigo'} adicionado!`);
+      load();
+      setTab('friends');
+    }
+  };
+
+  const handleReject = async (req: FriendRequest) => {
+    await rejectFriendRequest(req.id);
+    onToast('Pedido recusado');
+    load();
+  };
+
+  const handleRemove = async (friendshipId: string, name: string) => {
+    await removeFriend(friendshipId);
+    onToast(`Removeste ${name}`);
+    load();
+  };
+
+  if (!isActive) return null;
+
+  const s = {
+    screen: { paddingBottom: 80, minHeight: '100vh' } as React.CSSProperties,
+    inner: { maxWidth: 480, margin: '0 auto', padding: '0 20px' } as React.CSSProperties,
+    tab: (active: boolean): React.CSSProperties => ({
+      flex: 1, padding: '10px 0', fontSize: 13, fontWeight: active ? 600 : 400,
+      color: active ? '#C89B3C' : '#8a94a8',
+      background: 'none', border: 'none', cursor: 'pointer',
+      borderBottom: active ? '2px solid #C89B3C' : '2px solid transparent',
+      transition: 'all 0.2s',
+    }),
+    card: {
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
+    } as React.CSSProperties,
+    btnGold: {
+      background: '#C89B3C', color: '#0B0D12', border: 'none',
+      borderRadius: 8, padding: '6px 14px', fontSize: 13,
+      fontWeight: 600, cursor: 'pointer',
+    } as React.CSSProperties,
+    btnOutline: {
+      background: 'none', color: '#8a94a8',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer',
+    } as React.CSSProperties,
+  };
 
   return (
-    <div className="h-screen-content" id="friends" style={{ paddingBottom: 80 }}>
-      <div className="friends-inner" style={{ maxWidth: 480, margin: '0 auto', padding: '0 20px' }}>
-        <div className="screen-header">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontStyle: 'italic', fontWeight: 600, color: '#f5f1eb', lineHeight: 1.1 }}>Amigos</div>
-              <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 3 }}>0 amigos</div>
+    <div style={s.screen} id="friends">
+      <div style={s.inner}>
+
+        {/* Header */}
+        <div style={{ paddingTop: 56, paddingBottom: 16,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 32, fontStyle: 'italic', fontWeight: 600,
+              color: '#f5f1eb', lineHeight: 1.1 }}>
+              Amigos
             </div>
-            <button className="tbi" onClick={() => onNav('home')} style={{ marginTop: 4 }}>←</button>
+            <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 3 }}>
+              {friends.length} {friends.length === 1 ? 'amigo' : 'amigos'}
+            </div>
           </div>
+          <button onClick={() => onNav('home')} style={{
+            background: 'none', border: 'none', color: '#8a94a8',
+            fontSize: 20, cursor: 'pointer', padding: 8,
+          }}>←</button>
         </div>
 
-        <div className="friends-search">
-          <input
-            type="text"
-            placeholder="Pesquisar amigos..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 20 }}>
+          <button style={s.tab(tab === 'friends')} onClick={() => setTab('friends')}>
+            Os meus amigos
+          </button>
+          <button style={s.tab(tab === 'search')} onClick={() => setTab('search')}>
+            Adicionar
+          </button>
+          <button style={{ ...s.tab(tab === 'requests'), position: 'relative' }}
+            onClick={() => setTab('requests')}>
+            Pedidos
+            {pendingRequests.length > 0 && (
+              <span style={{
+                position: 'absolute', top: 6, right: '20%',
+                background: '#C89B3C', color: '#0B0D12',
+                borderRadius: '50%', width: 16, height: 16,
+                fontSize: 10, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        <div className="friends-section-lbl">Os meus amigos</div>
-
-        {/* Empty state */}
-        <div style={{
-          textAlign: 'center', padding: '32px 20px',
-          color: 'rgba(156,165,185,0.5)', fontSize: 13,
-          fontFamily: "'Outfit', sans-serif", lineHeight: 1.6,
-        }}>
-          <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.4 }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'rgba(200,155,60,0.4)' }}>
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
+        {/* TAB: Os meus amigos */}
+        {tab === 'friends' && (
+          <div>
+            {loading && (
+              <div style={{ textAlign: 'center', padding: 40, color: '#8a94a8', fontSize: 13 }}>
+                A carregar…
+              </div>
+            )}
+            {!loading && friends.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+                    stroke="rgba(200,155,60,0.5)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+                <div style={{ color: 'rgba(245,241,235,0.6)', fontSize: 15,
+                  fontWeight: 500, marginBottom: 8 }}>
+                  Ainda não tens amigos
+                </div>
+                <div style={{ color: '#8a94a8', fontSize: 13, marginBottom: 20 }}>
+                  Pesquisa pelo nome de alguém que usa a app
+                </div>
+                <button style={s.btnGold} onClick={() => setTab('search')}>
+                  Adicionar amigos
+                </button>
+              </div>
+            )}
+            {!loading && friends.map(f => (
+              <div key={f.friendshipId} style={s.card}>
+                <Avatar name={f.name} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 15, color: '#f5f1eb', fontWeight: 500 }}>{f.name}</div>
+                </div>
+                <button style={s.btnOutline} onClick={() => handleRemove(f.friendshipId, f.name)}>
+                  Remover
+                </button>
+              </div>
+            ))}
           </div>
-          <div style={{ color: 'rgba(245,241,235,0.6)', fontSize: 15, fontWeight: 500, marginBottom: 6 }}>
-            Ainda não tens amigos na app
-          </div>
-          <div>Convida alguém para começar a partilhar o que estás a ver, jogar ou ouvir.</div>
-        </div>
+        )}
 
-        <button
-          onClick={() => setImportOpen(o => !o)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 12,
-            padding: '14px 16px',
-            cursor: 'pointer',
-            marginTop: 16,
-            fontFamily: "'Outfit', sans-serif",
-          }}
-        >
-          <span style={{ fontSize: 13, color: '#8a94a8' }}>Importar contactos</span>
-          <span style={{ fontSize: 16, color: '#8a94a8', transition: 'transform 0.2s', transform: importOpen ? 'rotate(90deg)' : 'none' }}>›</span>
-        </button>
-        {importOpen && (
-          <div className="import-grid" style={{ marginTop: 8 }}>
-            {IMPORT_BUTTONS.map(btn => (
-              <button
-                key={btn.name}
-                className="import-btn"
-                onClick={() => onToast('Brevemente — precisas de conta')}
-              >
-                <span className="import-btn-icon" style={{ color: 'rgba(255,255,255,0.55)', display: 'flex' }}>{btn.icon}</span>
-                <span className="import-btn-name">{btn.name}</span>
-              </button>
+        {/* TAB: Adicionar */}
+        {tab === 'search' && (
+          <div>
+            <div style={{ position: 'relative', marginBottom: 16 }}>
+              <input
+                type="text"
+                placeholder="Pesquisar por nome…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 12, padding: '12px 16px',
+                  color: '#f5f1eb', fontSize: 14,
+                  outline: 'none', fontFamily: 'Outfit, sans-serif',
+                }}
+              />
+            </div>
+
+            {searchLoading && (
+              <div style={{ textAlign: 'center', padding: 20, color: '#8a94a8', fontSize: 13 }}>
+                A pesquisar…
+              </div>
+            )}
+
+            {!searchLoading && search.length >= 2 && searchResults.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 20, color: '#8a94a8', fontSize: 13 }}>
+                Nenhum utilizador encontrado
+              </div>
+            )}
+
+            {searchResults.map(r => {
+              const status = statusMap[r.id] || 'none';
+              return (
+                <div key={r.id} style={s.card}>
+                  <Avatar name={r.name} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 15, color: '#f5f1eb', fontWeight: 500 }}>{r.name}</div>
+                  </div>
+                  {status === 'none' && (
+                    <button style={s.btnGold} onClick={() => handleSendRequest(r.id, r.name)}>
+                      Adicionar
+                    </button>
+                  )}
+                  {status === 'pending_sent' && (
+                    <span style={{ fontSize: 12, color: '#8a94a8' }}>Pedido enviado</span>
+                  )}
+                  {status === 'accepted' && (
+                    <span style={{ fontSize: 12, color: '#5ec97a' }}>✓ Amigo</span>
+                  )}
+                  {status === 'pending_received' && (
+                    <button style={s.btnGold} onClick={() => setTab('requests')}>
+                      Ver pedido
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
+            {search.length < 2 && (
+              <div style={{ textAlign: 'center', padding: '32px 20px',
+                color: '#8a94a8', fontSize: 13 }}>
+                Escreve pelo menos 2 letras para pesquisar
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: Pedidos */}
+        {tab === 'requests' && (
+          <div>
+            {pendingRequests.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 20px',
+                color: '#8a94a8', fontSize: 13 }}>
+                Sem pedidos pendentes
+              </div>
+            )}
+            {pendingRequests.map(req => (
+              <div key={req.id} style={s.card}>
+                <Avatar name={req.profile?.name || '?'} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 15, color: '#f5f1eb', fontWeight: 500 }}>
+                    {req.profile?.name || 'Utilizador'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 2 }}>
+                    quer ser teu amigo
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button style={s.btnGold} onClick={() => handleAccept(req)}>
+                    Aceitar
+                  </button>
+                  <button style={s.btnOutline} onClick={() => handleReject(req)}>
+                    Recusar
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         )}

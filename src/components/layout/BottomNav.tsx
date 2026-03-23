@@ -2,6 +2,7 @@ import type { Screen } from '../../types';
 interface BottomNavProps {
   activeScreen: Screen;
   onNav: (screen: Screen) => void;
+  friendBadge?: number;
 }
 const NAV_ITEMS: { id: Screen; icon: React.ReactNode }[] = [
   {
@@ -33,7 +34,7 @@ const NAV_ITEMS: { id: Screen; icon: React.ReactNode }[] = [
     icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   },
 ];
-export default function BottomNav({ activeScreen, onNav }: BottomNavProps) {
+export default function BottomNav({ activeScreen, onNav, friendBadge = 0 }: BottomNavProps) {
   return (
     <nav style={{
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
@@ -59,9 +60,22 @@ export default function BottomNav({ activeScreen, onNav }: BottomNavProps) {
               filter: isActive ? 'drop-shadow(0 0 8px rgba(200,155,60,0.5))' : 'none',
               transition: 'all 0.2s',
               flexShrink: 0,
+              position: 'relative',
             }}
           >
             {item.icon}
+            {item.id === 'friends' && friendBadge > 0 && (
+              <span style={{
+                position: 'absolute', top: 2, right: 2,
+                background: '#C89B3C', color: '#0B0D12',
+                borderRadius: '50%', width: 14, height: 14,
+                fontSize: 9, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                lineHeight: 1,
+              }}>
+                {friendBadge > 9 ? '9+' : friendBadge}
+              </span>
+            )}
           </button>
         );
       })}
