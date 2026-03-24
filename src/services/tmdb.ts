@@ -116,6 +116,7 @@ export const TMDB_GENRE_MAP: Record<string, number> = {
   'Suspense': 53, 'Thriller': 53, 'Anime': 16, 'Família': 10751,
   'História': 36, 'Música': 10402, 'Guerra': 10752, 'Faroeste': 37,
   'Musical': 10402, 'Biográfico': 36,
+  'Desporto': 37, 'Stand-up': 35, 'Ocidental': 37, 'Curta': 18,
 };
 
 export const TMDB_TV_GENRE_MAP: Record<string, number> = {
@@ -316,4 +317,83 @@ export async function discoverTMDBMultiPage(
     seen.add(item.id);
     return true;
   });
+}
+
+// Descobre filmes/séries underground — bem avaliados mas pouco conhecidos
+export async function discoverTMDBUnderground(
+  mediaType: 'movie' | 'tv',
+  page: number = 1,
+  language?: string
+): Promise<DiscoverItem[]> {
+  const apiKey = import.meta.env.VITE_TMDB_KEY as string;
+  if (!apiKey) return [];
+
+  try {
+    const params = new URLSearchParams();
+    params.set('api_key', apiKey);
+    params.set('language', 'pt-PT');
+    params.set('include_adult', 'false');
+    params.set('sort_by', 'vote_average.desc');
+    // Bem avaliados mas poucos votos = underground
+    params.set('vote_average.gte', '7.0');
+    params.set('vote_count.gte', '20');
+    params.set('vote_count.lte', '500');
+    params.set('page', String(page));
+
+    if (language) {
+      params.set('with_original_language', language);
+    }
+
+    const endpoint = mediaType === 'movie' ? 'discover/movie' : 'discover/tv';
+    const res = await fetch(`${TMDB_BASE}/${endpoint}?${params.toString()}`);
+    if (!res.ok) return [];
+
+    const data = await res.json() as {
+      results?: Array<{
+        id: number;
+        title?: string;
+        name?: string;
+        poster_path?: string;
+        backdrop_path?: string;
+        overview?: string;
+        vote_average?: number;
+        release_date?: string;
+        first_air_date?: string;
+        genre_ids?: number[];
+      }>;
+    };
+
+    const reverseMap = mediaType === 'movie' ? TMDB_GENRE_MAP : TMDB_TV_GENRE_MAP;
+
+    return (data.results || []).map(r => {
+      const allGenreNames = (r.genre_ids || [])
+        .map(gid => Object.entries(reverseMap).find(([, id]) => id === gid)?.[0])
+        .filter((name): name is string => !!name);
+
+      return {
+        id: r.id,
+        title: r.title || r.name || '',
+        posterUrl: r.poster_path ? `${TMDB_IMG_POSTER}${r.poster_path}` : null,
+        backdropUrl: r.backdrop_path ? `${TMDB_IMG_BACKDROP}${r.backdrop_path}` : null,
+        overview: r.overview || null,
+        rating: r.vote_average ? Math.round(r.vote_average * 10) / 10 : null,
+        year: (r.release_date || r.first_air_date || '').substring(0, 4) || null,
+        type: mediaType === 'movie' ? 'Filme' as const : 'Série' as const,
+        genre: allGenreNames[0] || 'Drama',
+        genreIds: r.genre_ids || [],
+        allGenres: allGenreNames,
+        platforms: [],
+      };
+    });
+  } catch { return []; }
+}
+
+// Descobre cinema mundial (não americano)
+export async function discoverTMDBWorldCinema(
+  mediaType: 'movie' | 'tv',
+  page: number = 1
+): Promise<DiscoverItem[]> {
+  const languages = ['pt', 'fr', 'ko', 'ja', 'es', 'it', 'de', 'tr', 'hi', 'zh'];
+  const lang = languages[Math.floor(Math.random() * languages.length)];
+  return discoverTMDBUnderground(mediaType, page, lang);
 }

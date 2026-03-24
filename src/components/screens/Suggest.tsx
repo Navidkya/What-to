@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { trackAsync } from '../../services/analytics';
 import type { Category, DataItem, Profile, TrackingMap, PrefsMap, WatchPrefs, EatPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs } from '../../types';
 import { DATA, GRAD, GENRES, TSTATE, TCOLOR, getPlatformId } from '../../data';
-import { fetchTMDB, discoverTMDB, discoverTMDBMultiPage, TMDB_GENRE_MAP, TMDB_TV_GENRE_MAP, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
+import { fetchTMDB, discoverTMDB, discoverTMDBMultiPage, discoverTMDBUnderground, discoverTMDBWorldCinema, TMDB_GENRE_MAP, TMDB_TV_GENRE_MAP, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
 import { fetchMeal, discoverMeals, type MealResult, type MealDiscoverItem } from '../../services/mealdb';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
 import { discoverRAWG, type RAWGItem } from '../../services/rawg';
@@ -12,6 +12,11 @@ import { discoverFSQ, type FSQItem } from '../../services/foursquare';
 import { discoverBooksMultiPage, type GBItem } from '../../services/googleBooks';
 import { loadActiveSuggestions } from '../../services/influencers';
 import type { InfluencerSuggestion } from '../../services/influencers';
+import { discoverIGDB, type IGDBItem } from '../../services/igdb';
+import { discoverLastFM, type LastFMItem } from '../../services/lastfm';
+import { discoverITunes, type iTunesItem } from '../../services/itunes';
+import { discoverOpenLibrary, type OLBook } from '../../services/openLibraryDiscover';
+import { discoverEventbrite, type EventbriteItem } from '../../services/eventbrite';
 
 const SUGGEST_FALLBACKS: Record<string, string> = {
   watch:  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=90',
@@ -302,7 +307,7 @@ interface CardData {
   cover: string | null;
 }
 
-type APIItem = DiscoverItem | RAWGItem | YTItem | DeezerItem | FSQItem | GBItem | MealDiscoverItem | InfluencerSuggestion;
+type APIItem = DiscoverItem | RAWGItem | YTItem | DeezerItem | FSQItem | GBItem | MealDiscoverItem | InfluencerSuggestion | IGDBItem | LastFMItem | iTunesItem | OLBook | EventbriteItem;
 
 interface DisplayData {
   title: string;
@@ -400,6 +405,61 @@ function getDisplayData(item: APIItem, catId: string): DisplayData | null {
       type: 'Receita', genre: i.category,
       genres: [i.category, (i as any).area].filter(Boolean),
       url: null, emoji: '🍽️',
+    };
+  }
+  // IGDB (play)
+  if ('isIndie' in item && 'summary' in item) {
+    const i = item as IGDBItem;
+    return {
+      title: i.title, desc: i.summary, img: i.coverUrl,
+      rating: i.rating, year: i.year, type: 'Videojogo',
+      genre: i.genres[0] || 'Jogo',
+      genres: i.genres.length > 0 ? i.genres : ['Jogo'],
+      url: null, emoji: '🎮',
+    };
+  }
+  // Last.fm (listen)
+  if ('isUnderground' in item && 'artist' in item && 'playcount' in item) {
+    const i = item as LastFMItem;
+    return {
+      title: i.title, desc: i.artist, img: i.coverUrl,
+      rating: null, year: null, type: i.type,
+      genre: i.genre, genres: [i.genre, i.type].filter(Boolean),
+      url: i.url, emoji: '🎵',
+    };
+  }
+  // iTunes (listen)
+  if ('previewUrl' in item && 'duration' in item) {
+    const i = item as iTunesItem;
+    return {
+      title: i.title, desc: i.artist, img: i.coverUrl,
+      rating: null, year: i.year, type: i.type,
+      genre: i.genre, genres: [i.genre, i.type].filter(Boolean),
+      url: i.url, emoji: i.type === 'Podcast' ? '🎙️' : '🎵',
+    };
+  }
+  // OpenLibrary (read)
+  if ('subjects' in item && 'isUnderground' in item) {
+    const i = item as OLBook;
+    return {
+      title: i.title, desc: i.author, img: i.coverUrl,
+      rating: null, year: i.year, type: 'Livro',
+      genre: i.subjects[0] || 'Livro',
+      genres: i.subjects.length > 0 ? i.subjects : ['Livro'],
+      url: i.url, emoji: '📚',
+    };
+  }
+  // Eventbrite (visit/do)
+  if ('startDate' in item && 'venue' in item) {
+    const i = item as EventbriteItem;
+    const dateStr = new Date(i.startDate).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+    return {
+      title: i.title,
+      desc: `${i.venue} · ${dateStr}${i.isFree ? ' · Gratuito' : ''}`,
+      img: i.coverUrl, rating: null, year: null,
+      type: i.category, genre: 'Evento',
+      genres: [i.category, 'Evento'].filter(Boolean),
+      url: i.url, emoji: '📅',
     };
   }
   return null;
@@ -639,8 +699,21 @@ export default function Suggest({
               excluded: disliked.filter(d => d.startsWith('watch:')).map(d => d.split(':')[1]),
             });
             const watchFinal = filtered.length > 0 ? filtered : allItems;
-            setApiItems(watchFinal);
-            // pool minimum handled by useEffect below
+
+            // Adiciona underground e cinema mundial
+            const [underground, worldCinema] = await Promise.all([
+              discoverTMDBUnderground('movie', Math.floor(Math.random() * 10) + 1),
+              discoverTMDBWorldCinema('movie', Math.floor(Math.random() * 5) + 1),
+            ]);
+            const watchWithExtra = [...watchFinal, ...underground, ...worldCinema];
+            // Deduplica
+            const seenIds = new Set<number>();
+            const watchDeduped = watchWithExtra.filter(i => {
+              if (seenIds.has((i as any).id)) return false;
+              seenIds.add((i as any).id);
+              return true;
+            });
+            setApiItems(watchDeduped);
           }
         }
 
@@ -687,21 +760,28 @@ export default function Suggest({
           if (pType === 'Tabuleiro') {
             setApiItems([]);
           } else {
-            const filters = {
+            const rawgFilters = {
               genres: isDone ? (playPrefs!.genres || []) : [],
               platforms: profile.platforms || [],
               dificuldade: isDone ? (playPrefs!.dificuldade || 'normal') : ('normal' as const),
               type: 'Videojogo' as const,
             };
-            const pages = await Promise.all([1,2,3,4,5].map(pg => discoverRAWG({...filters, page: pg})));
-            const allItems = pages.flat();
+            const igdbGenres = isDone ? (playPrefs!.genres || []) : [];
+
+            // RAWG + IGDB em paralelo (mainstream + indie/underground)
+            const [rawgPages, igdbMainstream, igdbIndie] = await Promise.all([
+              Promise.all([1,2,3].map(pg => discoverRAWG({...rawgFilters, page: pg}))),
+              discoverIGDB({ genres: igdbGenres, tier: 'mainstream', limit: 50 }),
+              discoverIGDB({ genres: igdbGenres, tier: 'indie', limit: 50 }),
+            ]);
+
+            const allItems = [...rawgPages.flat(), ...igdbMainstream, ...igdbIndie];
             const filtered = strictFilter(allItems, 'play', {
               playDificuldade: isDone ? playPrefs!.dificuldade : undefined,
               excluded: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
             });
             const playFinal = isDone ? filtered : apply7030(filtered);
             setApiItems(playFinal);
-            // pool minimum handled by useEffect below
           }
         }
 
@@ -726,36 +806,45 @@ export default function Suggest({
         // ── LISTEN ─────────────────────────────────────────────────────────
         else if (cat.id === 'listen') {
           const isDone = listenPrefs?.done === true;
-          const items = await discoverDeezer({
-            type: (isDone ? (listenPrefs!.type || 'Ambos') : 'Ambos') as any,
-            genres: isDone ? (listenPrefs!.genres || []) : [],
-            energia: isDone ? (listenPrefs!.energia || 'mistura') : 'mistura',
-          });
-          const filtered = strictFilter(items, 'listen', {
+          const listenType = (isDone ? (listenPrefs!.type || 'Ambos') : 'Ambos') as any;
+          const genres = isDone ? (listenPrefs!.genres || []) : [];
+
+          // iTunes + Last.fm em paralelo
+          const [itunesItems, lastfmItems] = await Promise.all([
+            discoverITunes({ genres, type: listenType, limit: 100 }),
+            discoverLastFM({ genres, tier: 'all', type: listenType === 'Podcast' ? 'Álbum' : 'Ambos', limit: 50 }),
+          ]);
+
+          const combined = [...itunesItems, ...lastfmItems];
+          const filtered = strictFilter(combined, 'listen', {
             listenType: isDone && listenPrefs!.type !== 'Ambos' ? listenPrefs!.type : undefined,
             excluded: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
           });
-          const listenFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
+          const listenFinal = isDone ? (filtered.length > 0 ? filtered : combined) : apply7030(combined);
           setApiItems(listenFinal);
-          // pool minimum handled by useEffect below
         }
 
         // ── READ ───────────────────────────────────────────────────────────
         else if (cat.id === 'read') {
           const isDone = readPrefs?.done === true;
-          const items = await discoverBooksMultiPage(
-            { genres: isDone ? (readPrefs!.genres || []) : [],
-              type: (isDone ? (readPrefs!.type || 'Ambos') : 'Ambos') as any,
-              peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura' },
-            [0, 20, 40, 60, 80]
-          );
+          const genres = isDone ? (readPrefs!.genres || []) : [];
+
+          const [gbItems, olItems] = await Promise.all([
+            discoverBooksMultiPage(
+              { genres,
+                type: (isDone ? (readPrefs!.type || 'Ambos') : 'Ambos') as any,
+                peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura' },
+              [0, 20, 40, 60, 80]
+            ),
+            discoverOpenLibrary({ genres, tier: 'all', limit: 40 }),
+          ]);
+          const items = [...gbItems, ...olItems];
           const filtered = strictFilter(items, 'read', {
             readPeso: isDone && readPrefs!.peso !== 'mistura' ? readPrefs!.peso : undefined,
             excluded: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
           });
           const readFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
           setApiItems(readFinal);
-          // pool minimum handled by useEffect below
         }
 
         // ── VISIT ──────────────────────────────────────────────────────────
@@ -775,7 +864,18 @@ export default function Suggest({
           });
           const visitFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
           setApiItems(visitFinal);
-          // pool minimum handled by useEffect below
+
+          // Adiciona eventos Eventbrite se tiver localização
+          discoverEventbrite({
+            lat: profile.location.lat,
+            lng: profile.location.lng,
+            radius: profile.location.radius || 10,
+            limit: 20,
+          }).then(ebItems => {
+            if (ebItems.length > 0) {
+              setApiItems(prev => [...prev, ...ebItems]);
+            }
+          }).catch(() => {/* silencioso */});
         }
 
       } catch {
