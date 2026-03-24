@@ -17,6 +17,8 @@ import { discoverLastFM, type LastFMItem } from '../../services/lastfm';
 import { discoverITunes, type iTunesItem } from '../../services/itunes';
 import { discoverOpenLibrary, type OLBook } from '../../services/openLibraryDiscover';
 import { discoverEventbrite, type EventbriteItem } from '../../services/eventbrite';
+import { loadCachedSuggestions, getCacheCount } from '../../services/suggestionCache';
+import type { CachedSuggestion } from '../../services/suggestionCache';
 
 const SUGGEST_FALLBACKS: Record<string, string> = {
   watch:  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=90',
@@ -307,7 +309,7 @@ interface CardData {
   cover: string | null;
 }
 
-type APIItem = DiscoverItem | RAWGItem | YTItem | DeezerItem | FSQItem | GBItem | MealDiscoverItem | InfluencerSuggestion | IGDBItem | LastFMItem | iTunesItem | OLBook | EventbriteItem;
+type APIItem = DiscoverItem | RAWGItem | YTItem | DeezerItem | FSQItem | GBItem | MealDiscoverItem | InfluencerSuggestion | IGDBItem | LastFMItem | iTunesItem | OLBook | EventbriteItem | CachedSuggestion;
 
 interface DisplayData {
   title: string;
@@ -460,6 +462,22 @@ function getDisplayData(item: APIItem, catId: string): DisplayData | null {
       type: i.category, genre: 'Evento',
       genres: [i.category, 'Evento'].filter(Boolean),
       url: i.url, emoji: '📅',
+    };
+  }
+  // CachedSuggestion (do Supabase cache)
+  if ('sourceApi' in item && 'catId' in item) {
+    const i = item as CachedSuggestion;
+    return {
+      title: i.title,
+      desc: i.description || '',
+      img: i.img,
+      rating: i.rating,
+      year: i.year,
+      type: i.type,
+      genre: i.genre,
+      genres: i.genres.length > 0 ? i.genres : [i.genre].filter(Boolean),
+      url: i.url,
+      emoji: i.emoji,
     };
   }
   return null;
@@ -648,6 +666,29 @@ export default function Suggest({
 
     const load = async () => {
       try {
+
+        // Tenta usar cache do Supabase primeiro
+        const cacheCount = await getCacheCount(cat.id);
+        if (cacheCount >= 50) {
+          const cached = await loadCachedSuggestions(cat.id, 300);
+          if (cached.length >= 20) {
+            // Mistura 70% mainstream + 20% underground + 10% random
+            const mainstream = cached.filter(c => c.tier === 'mainstream');
+            const underground = cached.filter(c => c.tier === 'underground');
+            const random = cached.filter(c => c.tier === 'random');
+
+            const pool = [
+              ...mainstream.sort(() => Math.random() - 0.5).slice(0, Math.ceil(cached.length * 0.7)),
+              ...underground.sort(() => Math.random() - 0.5).slice(0, Math.ceil(cached.length * 0.2)),
+              ...random.sort(() => Math.random() - 0.5).slice(0, Math.ceil(cached.length * 0.1)),
+            ].sort(() => Math.random() - 0.5);
+
+            setApiItems(pool);
+            setApiLoading(false);
+            return; // não vai às APIs directamente
+          }
+        }
+        // Cache insuficiente — vai às APIs normalmente
 
         // ── WATCH ──────────────────────────────────────────────────────────
         if (cat.id === 'watch') {
