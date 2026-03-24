@@ -10,10 +10,23 @@ const LASTFM_KEY = process.env.LASTFM_KEY;
 
 async function upsert(items) {
   if (!items.length) return;
-  const { error } = await supabase.from('suggestions_cache')
-    .upsert(items, { onConflict: 'cat_id,source_api,external_id', ignoreDuplicates: false });
-  if (error) console.error('Upsert error:', error.message);
-  else console.log(`  + ${items.length} items`);
+  // Deduplicar por external_id antes de enviar
+  const seen = new Set();
+  const unique = items.filter(item => {
+    if (!item.external_id) return false;
+    if (seen.has(item.external_id)) return false;
+    seen.add(item.external_id);
+    return true;
+  });
+  if (!unique.length) return;
+  // Enviar em batches de 500 para evitar limites
+  for (let i = 0; i < unique.length; i += 500) {
+    const batch = unique.slice(i, i + 500);
+    const { error } = await supabase.from('suggestions_cache')
+      .upsert(batch, { onConflict: 'cat_id,source_api,external_id', ignoreDuplicates: true });
+    if (error) console.error('Upsert error:', error.message);
+    else console.log(`  + ${batch.length} items (batch ${Math.floor(i/500)+1})`);
+  }
 }
 
 async function getIGDBToken() {
