@@ -123,32 +123,64 @@ interface SuggestProps {
 // Sem mínimos, sem fallbacks.
 
 interface StrictFilterPrefs {
+  // WATCH
   watchType?: string;
   watchGenreIds?: number[];
+  watchGenreTexts?: string[];
   watchMinRating?: number;
   watchEpoca?: string;
+  // PLAY
   playDificuldade?: string;
+  playJogadores?: string;
+  playOnline?: string;
+  playDuracaoJogo?: string;
+  playTipo?: string;
+  // LISTEN
   listenType?: string;
+  listenMomento?: string;
+  listenNovidade?: string;
+  listenDuracao?: string;
+  // READ
   readPeso?: string;
+  readLingua?: string;
+  readComprimento?: string;
+  readTipo?: string;
+  // EAT
   eatRestrictions?: string[];
+  eatCozinha?: string[];
+  // VISIT
   visitDistancia?: string;
+  visitAltura?: string;
+  visitAcessivel?: boolean;
+  // DO
   doContexto?: string;
   doLocal?: string;
   doCusto?: string;
+  // LEARN
+  learnNivel?: string;
+  learnLingua?: string;
+  // GERAL
   excluded?: string[];
 }
 
 function strictFilter(items: APIItem[], catId: string, p: StrictFilterPrefs): APIItem[] {
   let result = [...items];
-
+  // Excluídos (disliked)
   if (p.excluded?.length) {
     const ex = new Set(p.excluded.map(t => t.toLowerCase().trim()));
     result = result.filter(i => !ex.has(((i as any).title || '').toLowerCase().trim()));
   }
-
   if (catId === 'watch') {
     if (p.watchType && p.watchType !== 'Ambos') {
       result = result.filter(i => {
+        if ('sourceApi' in i) {
+          const t = ((i as any).type || '').toLowerCase();
+          if (p.watchType === 'Documentário') return t.includes('documentário') || t.includes('documentary');
+          if (p.watchType === 'Anime') return t.includes('anime');
+          if (p.watchType === 'Filme') return t === 'filme' || t === 'movie';
+          if (p.watchType === 'Série') return t === 'série' || t === 'serie' || t === 'tv';
+          return true;
+        }
         const item = i as DiscoverItem;
         const gids = item.genreIds || [];
         if (p.watchType === 'Documentário') return gids.includes(99);
@@ -158,27 +190,60 @@ function strictFilter(items: APIItem[], catId: string, p: StrictFilterPrefs): AP
         return true;
       });
     }
-    if (p.watchGenreIds?.length) {
-      const ids = new Set(p.watchGenreIds);
-      const withGenre = result.filter(i => (i as DiscoverItem).genreIds?.some(id => ids.has(id)));
-      if (withGenre.length > 0) result = withGenre;
+    if (p.watchGenreIds?.length || p.watchGenreTexts?.length) {
+      const ids = new Set(p.watchGenreIds || []);
+      const texts = (p.watchGenreTexts || []).map(g => g.toLowerCase());
+      const filtered = result.filter(i => {
+        if ('sourceApi' in i) {
+          const g = ((i as any).genre || '').toLowerCase();
+          const gs = ((i as any).genres || '') as string;
+          const genreStr = (typeof gs === 'string' ? gs : '').toLowerCase();
+          return texts.some(t => g.includes(t) || genreStr.includes(t));
+        }
+        return (i as DiscoverItem).genreIds?.some(id => ids.has(id));
+      });
+      if (filtered.length > 0) result = filtered;
     }
     if (p.watchMinRating && p.watchMinRating > 0) {
-      const withRating = result.filter(i => ((i as any).rating ?? 0) >= p.watchMinRating!);
-      if (withRating.length > 0) result = withRating;
+      const r = result.filter(i => ((i as any).rating ?? 0) >= p.watchMinRating!);
+      if (r.length > 0) result = r;
     }
-    if (p.watchEpoca && p.watchEpoca !== 'qualquer') {
-      if (p.watchEpoca === 'recente') {
-        const r = result.filter(i => parseInt((i as any).year || '0') >= 2015);
-        if (r.length > 0) result = r;
-      } else if (p.watchEpoca === 'classico') {
-        const r = result.filter(i => parseInt((i as any).year || '9999') <= 2000);
-        if (r.length > 0) result = r;
-      }
+    if (p.watchEpoca && p.watchEpoca !== 'qualquer' && p.watchEpoca !== 'Qualquer') {
+      const yearFilter = (i: APIItem) => {
+        const y = parseInt((i as any).year || '0');
+        if (!y) return true;
+        if (p.watchEpoca === 'Recente (+2015)') return y >= 2015;
+        if (p.watchEpoca === 'Anos 2000-2015') return y >= 2000 && y < 2015;
+        if (p.watchEpoca === 'Anos 90 (1980-2000)') return y >= 1980 && y < 2000;
+        if (p.watchEpoca === 'Anos 70-80') return y >= 1960 && y < 1980;
+        if (p.watchEpoca === 'Clássico (-1960)') return y < 1960;
+        if (p.watchEpoca === 'recente') return y >= 2015;
+        if (p.watchEpoca === 'classico') return y < 2000;
+        return true;
+      };
+      const r = result.filter(yearFilter);
+      if (r.length > 0) result = r;
     }
   }
-
   if (catId === 'play') {
+    if (p.playTipo && p.playTipo !== 'Ambos' && p.playTipo !== 'Qualquer') {
+      const r = result.filter(i => {
+        if ('sourceApi' in i) {
+          const t = ((i as any).type || '').toLowerCase();
+          return t.includes(p.playTipo!.toLowerCase());
+        }
+        if (p.playTipo === 'Mobile') {
+          const plats = ((i as any).platforms || []) as string[];
+          return plats.some((pl: string) => pl.toLowerCase().includes('android') || pl.toLowerCase().includes('ios'));
+        }
+        if (p.playTipo === 'Arcade') {
+          const genres = ((i as any).genres || []) as string[];
+          return genres.some((g: string) => g.toLowerCase().includes('arcade'));
+        }
+        return true;
+      });
+      if (r.length > 0) result = r;
+    }
     if (p.playDificuldade === 'casual') {
       const r = result.filter(i => ((i as any).metacritic ?? 100) <= 75);
       if (r.length > 0) result = r;
@@ -186,65 +251,228 @@ function strictFilter(items: APIItem[], catId: string, p: StrictFilterPrefs): AP
       const r = result.filter(i => ((i as any).metacritic ?? 0) >= 80);
       if (r.length > 0) result = r;
     }
-  }
-
-  if (catId === 'listen' && p.listenType && p.listenType !== 'Ambos') {
-    const r = result.filter(i => (i as any).type === p.listenType);
-    if (r.length > 0) result = r;
-  }
-
-  if (catId === 'read' && p.readPeso && p.readPeso !== 'mistura') {
-    if (p.readPeso === 'leve') {
-      const r = result.filter(i => !((i as any).pages) || (i as any).pages <= 250);
+    if (p.playJogadores && p.playJogadores !== 'Qualquer') {
+      const r = result.filter(i => {
+        const tags = ((i as any).tags || []) as string[];
+        const gameModes = ((i as any).gameModes || []) as string[];
+        const all = [...tags, ...gameModes.map(m => m.toLowerCase())];
+        if (p.playJogadores === 'Solo') return all.some(t => t.includes('singleplayer') || t.includes('single player') || t.includes('single-player'));
+        if (p.playJogadores === 'Co-op' || p.playJogadores === 'co-op') return all.some(t => t.includes('co-op') || t.includes('cooperative') || t.includes('co-operative'));
+        if (p.playJogadores === 'Versus') return all.some(t => t.includes('multiplayer') || t.includes('pvp') || t.includes('versus'));
+        return true;
+      });
       if (r.length > 0) result = r;
-    } else if (p.readPeso === 'denso') {
-      const r = result.filter(i => ((i as any).pages ?? 0) >= 300);
+    }
+    if (p.playOnline && p.playOnline !== 'Qualquer') {
+      const r = result.filter(i => {
+        const tags = ((i as any).tags || []) as string[];
+        const gameModes = ((i as any).gameModes || []) as string[];
+        const all = [...tags, ...gameModes.map(m => m.toLowerCase())];
+        if (p.playOnline === 'Online') return all.some(t => t.includes('online'));
+        if (p.playOnline === 'Offline') return all.some(t => t.includes('singleplayer') || t.includes('offline'));
+        if (p.playOnline === 'Co-op local') return all.some(t => t.includes('local-co-op') || t.includes('local co-op') || t.includes('split screen'));
+        return true;
+      });
+      if (r.length > 0) result = r;
+    }
+    if (p.playDuracaoJogo && p.playDuracaoJogo !== 'Qualquer') {
+      const r = result.filter(i => {
+        const pt = (i as any).playtime as number | null;
+        if (pt === null || pt === undefined) return true;
+        if (p.playDuracaoJogo === 'Rápido (-30min)') return pt <= 5;
+        if (p.playDuracaoJogo === 'Normal (30-90min)') return pt > 5 && pt <= 30;
+        if (p.playDuracaoJogo === 'Longo (+90min)') return pt > 30;
+        return true;
+      });
       if (r.length > 0) result = r;
     }
   }
-
-  if (catId === 'eat' && p.eatRestrictions?.length && !p.eatRestrictions.includes('nenhuma')) {
-    if (p.eatRestrictions.includes('vegetariano') || p.eatRestrictions.includes('vegan')) {
+  if (catId === 'listen') {
+    if (p.listenType && p.listenType !== 'Ambos' && p.listenType !== 'Qualquer') {
+      const typeMap: Record<string, string[]> = {
+        'Álbum': ['Álbum', 'Album'],
+        'Single/EP': ['Track', 'Single'],
+        'Podcast': ['Podcast'],
+      };
+      const validTypes = typeMap[p.listenType] || [p.listenType];
+      const r = result.filter(i => validTypes.includes((i as any).type || ''));
+      if (r.length > 0) result = r;
+    }
+    if (p.listenMomento && p.listenMomento !== 'Qualquer') {
+      const momentoGenreMap: Record<string, string[]> = {
+        'Trabalhar/Focar': ['classical', 'lo-fi', 'ambient', 'clássica', 'ambiental'],
+        'Treinar': ['rock', 'hip-hop', 'metal', 'electronic', 'electrónica', 'funk'],
+        'Relaxar': ['jazz', 'ambient', 'soul', 'bossa nova', 'ambiental', 'lo-fi'],
+        'Adormecer': ['ambient', 'classical', 'clássica', 'ambiental'],
+        'Conduzir': ['rock', 'pop', 'hip-hop', 'country'],
+        'Festejar': ['pop', 'hip-hop', 'electronic', 'electrónica', 'funk', 'reggae'],
+      };
+      const preferredGenres = momentoGenreMap[p.listenMomento] || [];
+      if (preferredGenres.length > 0) {
+        const boosted = result.filter(i => {
+          const g = ((i as any).genre || '').toLowerCase();
+          return preferredGenres.some(pg => g.includes(pg));
+        });
+        const rest = result.filter(i => {
+          const g = ((i as any).genre || '').toLowerCase();
+          return !preferredGenres.some(pg => g.includes(pg));
+        });
+        result = [...boosted, ...rest];
+      }
+    }
+    if (p.listenNovidade && p.listenNovidade !== 'Qualquer') {
+      if (p.listenNovidade === 'Descobrir algo novo') {
+        const r = result.filter(i => (i as any).isUnderground === true || ((i as any).playcount ?? 9999999) < 500000);
+        if (r.length > 0) result = r;
+      } else if (p.listenNovidade === 'Artistas conhecidos') {
+        const r = result.filter(i => (i as any).isUnderground !== true);
+        if (r.length > 0) result = r;
+      }
+    }
+    if (p.listenDuracao && p.listenDuracao !== 'Qualquer') {
+      const r = result.filter(i => {
+        const dur = (i as any).duration as number | null;
+        if (!dur) return true;
+        const mins = dur / 60000;
+        if (p.listenDuracao === 'Curto (-20min)') return mins < 5;
+        if (p.listenDuracao === 'Normal (20-60min)') return mins >= 5 && mins <= 60;
+        if (p.listenDuracao === 'Longo (+60min)') return mins > 60;
+        return true;
+      });
+      if (r.length > 0) result = r;
+    }
+  }
+  if (catId === 'read') {
+    if (p.readTipo && p.readTipo !== 'Ambos' && p.readTipo !== 'Qualquer') {
+      const r = result.filter(i => {
+        const genre = ((i as any).genre || '').toLowerCase();
+        const genres = ((i as any).genres || '') as string;
+        const gs = (typeof genres === 'string' ? genres : Array.isArray(genres) ? (genres as string[]).join(' ') : '').toLowerCase();
+        const subjects = ((i as any).subjects || []) as string[];
+        const subStr = subjects.join(' ').toLowerCase();
+        if (p.readTipo === 'BD/Manga') {
+          return genre.includes('manga') || genre.includes('comic') || genre.includes('graphic') || genre.includes('bd') ||
+                 gs.includes('manga') || gs.includes('comic') || subStr.includes('manga') || subStr.includes('comic');
+        }
+        if (p.readTipo === 'Livro') {
+          return !genre.includes('manga') && !genre.includes('comic') && !genre.includes('graphic');
+        }
+        return true;
+      });
+      if (r.length > 0) result = r;
+    }
+    if (p.readPeso && p.readPeso !== 'mistura' && p.readPeso !== 'Qualquer') {
+      const r = result.filter(i => {
+        const pages = (i as any).pages as number | null;
+        if (!pages) return true;
+        if (p.readPeso === 'leve' || p.readPeso === 'Leve') return pages <= 250;
+        if (p.readPeso === 'denso' || p.readPeso === 'Denso') return pages >= 300;
+        return true;
+      });
+      if (r.length > 0) result = r;
+    }
+    if (p.readComprimento && p.readComprimento !== 'Qualquer') {
+      const r = result.filter(i => {
+        const pages = (i as any).pages as number | null;
+        if (!pages) return true;
+        if (p.readComprimento === 'Curto (-200p)') return pages < 200;
+        if (p.readComprimento === 'Normal (200-400p)') return pages >= 200 && pages <= 400;
+        if (p.readComprimento === 'Épico (+400p)') return pages > 400;
+        return true;
+      });
+      if (r.length > 0) result = r;
+    }
+  }
+  if (catId === 'eat') {
+    if (p.eatRestrictions?.length && !p.eatRestrictions.includes('nenhuma')) {
+      if (p.eatRestrictions.includes('vegetariano') || p.eatRestrictions.includes('vegan')) {
+        const r = result.filter(i => {
+          const cat = ((i as any).category || '').toLowerCase();
+          return cat.includes('vegetarian') || cat.includes('vegan') || cat.includes('salad') || cat.includes('pasta') || cat.includes('dessert');
+        });
+        if (r.length > 0) result = r;
+      }
+    }
+    if (p.eatCozinha?.length) {
+      const cozinhas = p.eatCozinha.map(c => c.toLowerCase());
       const r = result.filter(i => {
         const cat = ((i as any).category || '').toLowerCase();
-        return cat.includes('vegetarian') || cat.includes('vegan') ||
-               cat.includes('salad') || cat.includes('pasta') || cat.includes('dessert');
+        const area = ((i as any).area || '').toLowerCase();
+        const genre = ((i as any).genre || '').toLowerCase();
+        return cozinhas.some(c => cat.includes(c) || area.includes(c) || genre.includes(c));
       });
       if (r.length > 0) result = r;
     }
   }
-
-  if (catId === 'visit' && p.visitDistancia === 'perto') {
-    const r = result.filter(i => ((i as any).distance ?? 99999) <= 2000);
-    if (r.length > 0) result = r;
+  if (catId === 'visit') {
+    if (p.visitDistancia === 'perto' || p.visitDistancia === 'Perto (-2km)') {
+      const r = result.filter(i => ((i as any).distance ?? 99999) <= 2000);
+      if (r.length > 0) result = r;
+    }
+    if (p.visitAltura && p.visitAltura !== 'Qualquer') {
+      const alturaCategoryBoost: Record<string, string[]> = {
+        'Manhã': ['café', 'bakery', 'museum', 'park', 'garden', 'mercado'],
+        'Tarde': ['museum', 'park', 'gallery', 'shop', 'natureza', 'miradouro'],
+        'Noite': ['bar', 'restaurant', 'nightlife', 'concert', 'teatro', 'cinema'],
+      };
+      const preferred = alturaCategoryBoost[p.visitAltura] || [];
+      if (preferred.length > 0) {
+        const boosted = result.filter(i => {
+          const cat = ((i as any).category || '').toLowerCase();
+          return preferred.some(pp => cat.includes(pp));
+        });
+        const rest = result.filter(i => {
+          const cat = ((i as any).category || '').toLowerCase();
+          return !preferred.some(pp => cat.includes(pp));
+        });
+        if (boosted.length > 0) result = [...boosted, ...rest];
+      }
+    }
   }
-
   if (catId === 'do') {
-    if (p.doContexto && p.doContexto !== 'qualquer') {
+    if (p.doContexto && p.doContexto !== 'qualquer' && p.doContexto !== 'Qualquer') {
       const r = result.filter(i => {
         const genre = ((i as any).genre || '').toLowerCase();
-        if (p.doContexto === 'solo') return genre.includes('solo') || genre.includes('individual');
-        if (p.doContexto === 'a_dois') return genre.includes('dois') || genre.includes('casal');
-        if (p.doContexto === 'grupo') return genre.includes('grupo') || genre.includes('social');
+        const type = ((i as any).type || '').toLowerCase();
+        if (p.doContexto === 'solo' || p.doContexto === 'Sozinho') return genre.includes('solo') || genre.includes('individual') || type.includes('solo');
+        if (p.doContexto === 'a_dois' || p.doContexto === 'A dois') return genre.includes('dois') || genre.includes('casal') || genre.includes('couple');
+        if (p.doContexto === 'grupo' || p.doContexto === 'Em grupo') return genre.includes('grupo') || genre.includes('social') || genre.includes('group');
         return true;
       });
       if (r.length > 0) result = r;
     }
-    if (p.doLocal && p.doLocal !== 'qualquer') {
+    if (p.doLocal && p.doLocal !== 'qualquer' && p.doLocal !== 'Qualquer') {
       const r = result.filter(i => {
         const genre = ((i as any).genre || '').toLowerCase();
-        if (p.doLocal === 'interior') return genre.includes('casa') || genre.includes('interior');
-        if (p.doLocal === 'exterior') return genre.includes('natureza') || genre.includes('exterior');
+        if (p.doLocal === 'interior' || p.doLocal === 'Em casa') return genre.includes('casa') || genre.includes('interior') || genre.includes('home');
+        if (p.doLocal === 'exterior' || p.doLocal === 'Lá fora') return genre.includes('natureza') || genre.includes('exterior') || genre.includes('outdoor');
         return true;
       });
       if (r.length > 0) result = r;
     }
-    if (p.doCusto === 'gratuito') {
+    if (p.doCusto === 'gratuito' || p.doCusto === 'Gratuito') {
       const r = result.filter(i => !((i as any).custo) || (i as any).custo === 'gratuito');
       if (r.length > 0) result = r;
     }
   }
-
+  if (catId === 'learn') {
+    if (p.learnNivel && p.learnNivel !== 'Qualquer') {
+      const nivelKeywords: Record<string, string[]> = {
+        'Iniciante': ['iniciante', 'beginner', 'básico', 'introdução', 'introduction', 'para começar', 'zero'],
+        'Intermédio': ['intermédio', 'intermediate', 'médio'],
+        'Avançado': ['avançado', 'advanced', 'expert', 'pro', 'masterclass'],
+      };
+      const keywords = nivelKeywords[p.learnNivel] || [];
+      if (keywords.length > 0) {
+        const r = result.filter(i => {
+          const title = ((i as any).title || '').toLowerCase();
+          const desc = ((i as any).description || (i as any).desc || '').toLowerCase();
+          return keywords.some(k => title.includes(k) || desc.includes(k));
+        });
+        if (r.length > 5) result = r;
+      }
+    }
+  }
   return result;
 }
 
@@ -801,24 +1029,34 @@ export default function Suggest({
           if (pType === 'Tabuleiro') {
             setApiItems([]);
           } else {
+            const pJogadores = isDone ? (playPrefs!.jogadores || undefined) : undefined;
+            const pOnline = isDone ? (playPrefs!.online || undefined) : undefined;
+            const pDuracao = isDone ? (playPrefs!.duracao || undefined) : undefined;
+
             const rawgFilters = {
               genres: isDone ? (playPrefs!.genres || []) : [],
               platforms: profile.platforms || [],
               dificuldade: isDone ? (playPrefs!.dificuldade || 'normal') : ('normal' as const),
               type: 'Videojogo' as const,
+              jogadores: pJogadores,
+              online: pOnline,
+              duracaoJogo: pDuracao,
             };
             const igdbGenres = isDone ? (playPrefs!.genres || []) : [];
 
             // RAWG + IGDB em paralelo (mainstream + indie/underground)
             const [rawgPages, igdbMainstream, igdbIndie] = await Promise.all([
               Promise.all([1,2,3].map(pg => discoverRAWG({...rawgFilters, page: pg}))),
-              discoverIGDB({ genres: igdbGenres, tier: 'mainstream', limit: 50 }),
-              discoverIGDB({ genres: igdbGenres, tier: 'indie', limit: 50 }),
+              discoverIGDB({ genres: igdbGenres, tier: 'mainstream', limit: 50, jogadores: pJogadores }),
+              discoverIGDB({ genres: igdbGenres, tier: 'indie', limit: 50, jogadores: pJogadores }),
             ]);
 
             const allItems = [...rawgPages.flat(), ...igdbMainstream, ...igdbIndie];
             const filtered = strictFilter(allItems, 'play', {
               playDificuldade: isDone ? playPrefs!.dificuldade : undefined,
+              playJogadores: pJogadores,
+              playOnline: pOnline,
+              playDuracaoJogo: pDuracao,
               excluded: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
             });
             const playFinal = isDone ? filtered : apply7030(filtered);
@@ -859,6 +1097,9 @@ export default function Suggest({
           const combined = [...itunesItems, ...lastfmItems];
           const filtered = strictFilter(combined, 'listen', {
             listenType: isDone && listenPrefs!.type !== 'Ambos' ? listenPrefs!.type : undefined,
+            listenMomento: isDone ? (listenPrefs!.momento || undefined) : undefined,
+            listenNovidade: isDone ? (listenPrefs!.novidade || undefined) : undefined,
+            listenDuracao: isDone ? (listenPrefs!.duracao || undefined) : undefined,
             excluded: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
           });
           const listenFinal = isDone ? (filtered.length > 0 ? filtered : combined) : apply7030(combined);
@@ -869,12 +1110,18 @@ export default function Suggest({
         else if (cat.id === 'read') {
           const isDone = readPrefs?.done === true;
           const genres = isDone ? (readPrefs!.genres || []) : [];
+          const rLingua = isDone ? (readPrefs!.lingua || undefined) : undefined;
+          const rTipo = isDone ? (readPrefs!.type || 'Ambos') : 'Ambos';
+          const rComprimento = isDone ? (readPrefs!.comprimento || undefined) : undefined;
+          // GBFilters type: 'Livro' | 'Artigo' | 'Ambos' — BD/Manga maps to 'Livro'
+          const gbType = rTipo === 'BD/Manga' ? 'Livro' : rTipo as 'Livro' | 'Artigo' | 'Ambos';
 
           const [gbItems, olItems] = await Promise.all([
             discoverBooksMultiPage(
               { genres,
-                type: (isDone ? (readPrefs!.type || 'Ambos') : 'Ambos') as any,
-                peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura' },
+                type: gbType,
+                peso: isDone ? (readPrefs!.peso || 'mistura') : 'mistura',
+                lingua: rLingua },
               [0, 20, 40, 60, 80]
             ),
             discoverOpenLibrary({ genres, tier: 'all', limit: 40 }),
@@ -882,6 +1129,9 @@ export default function Suggest({
           const items = [...gbItems, ...olItems];
           const filtered = strictFilter(items, 'read', {
             readPeso: isDone && readPrefs!.peso !== 'mistura' ? readPrefs!.peso : undefined,
+            readTipo: isDone && rTipo !== 'Ambos' ? rTipo : undefined,
+            readComprimento: rComprimento,
+            readLingua: rLingua,
             excluded: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
           });
           const readFinal = isDone ? (filtered.length > 0 ? filtered : items) : apply7030(items);
@@ -1161,11 +1411,17 @@ export default function Suggest({
         setCurrentPage(nextPage + 2);
 
       } else if (cat.id === 'play') {
+        const lmJogadores = (playPrefs as any)?.jogadores || undefined;
+        const lmOnline = (playPrefs as any)?.online || undefined;
+        const lmDuracao = (playPrefs as any)?.duracao || undefined;
         const playFilters = {
           genres: (playPrefs as any)?.genres || [],
           platforms: profile.platforms || [],
           dificuldade: (playPrefs as any)?.dificuldade || ('normal' as const),
           type: 'Videojogo' as const,
+          jogadores: lmJogadores,
+          online: lmOnline,
+          duracaoJogo: lmDuracao,
         };
         const [r1, r2, r3] = await Promise.all([
           discoverRAWG({ ...playFilters, page: nextPage }),
@@ -1175,6 +1431,9 @@ export default function Suggest({
         const moreRaw = [...r1, ...r2, ...r3];
         const moreFiltered = strictFilter(moreRaw, 'play', {
           playDificuldade: (playPrefs as any)?.dificuldade,
+          playJogadores: lmJogadores,
+          playOnline: lmOnline,
+          playDuracaoJogo: lmDuracao,
           excluded: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
         });
         setApiItems(prev => {
@@ -1195,6 +1454,9 @@ export default function Suggest({
         });
         const moreFiltered = strictFilter(moreRaw, 'listen', {
           listenType: (listenPrefs as any).type !== 'Ambos' ? (listenPrefs as any).type : undefined,
+          listenMomento: (listenPrefs as any).momento || undefined,
+          listenNovidade: (listenPrefs as any).novidade || undefined,
+          listenDuracao: (listenPrefs as any).duracao || undefined,
           excluded: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
         });
         setApiItems(prev => {
@@ -1206,16 +1468,24 @@ export default function Suggest({
 
       } else if (cat.id === 'read' && readPrefs) {
         const startIndex = nextPage * 20;
+        const lmReadTipo = (readPrefs as any)?.type || 'Ambos';
+        const lmReadLingua = (readPrefs as any)?.lingua || undefined;
+        const lmReadComprimento = (readPrefs as any)?.comprimento || undefined;
+        const lmGbType = lmReadTipo === 'BD/Manga' ? 'Livro' : (lmReadTipo as 'Livro' | 'Artigo' | 'Ambos');
         const moreRaw = await discoverBooksMultiPage(
           {
             genres: (readPrefs as any).genres || [],
-            type: (readPrefs as any).type || 'Ambos',
+            type: lmGbType,
             peso: (readPrefs as any).peso || 'mistura',
+            lingua: lmReadLingua,
           },
           [startIndex]
         );
         const moreFiltered = strictFilter(moreRaw, 'read', {
           readPeso: (readPrefs as any).peso !== 'mistura' ? (readPrefs as any).peso : undefined,
+          readTipo: lmReadTipo !== 'Ambos' ? lmReadTipo : undefined,
+          readComprimento: lmReadComprimento,
+          readLingua: lmReadLingua,
           excluded: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
         });
         setApiItems(prev => {

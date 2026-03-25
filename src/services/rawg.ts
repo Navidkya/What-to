@@ -10,6 +10,9 @@ export interface RAWGItem {
   platforms: string[];
   description: string;
   metacritic: number | null;
+  tags: string[];
+  playtime: number | null;
+  esrb: string | null;
 }
 
 export interface RAWGFilters {
@@ -18,6 +21,9 @@ export interface RAWGFilters {
   dificuldade: 'casual' | 'normal' | 'desafiante';
   type: 'Videojogo' | 'Tabuleiro' | 'Ambos';
   page?: number;
+  jogadores?: string;      // 'solo' | 'co-op' | 'versus' | 'local-coop'
+  online?: string;         // 'online' | 'offline' | 'local'
+  duracaoJogo?: string;    // 'curto' | 'normal' | 'longo'
 }
 
 // Mapa de géneros para RAWG slugs
@@ -94,6 +100,15 @@ export async function discoverRAWG(filters: RAWGFilters): Promise<RAWGItem[]> {
       params.set('tags', 'difficult');
     }
 
+    // Jogadores → tags
+    if (filters.jogadores === 'solo') {
+      params.set('tags', 'singleplayer');
+    } else if (filters.jogadores === 'co-op') {
+      params.set('tags', 'co-op,local-co-op,online-co-op');
+    } else if (filters.jogadores === 'versus') {
+      params.set('tags', 'multiplayer,pvp');
+    }
+
     const res = await fetch(`${RAWG_BASE}/games?${params.toString()}`);
     if (!res.ok) return [];
 
@@ -107,10 +122,13 @@ export async function discoverRAWG(filters: RAWGFilters): Promise<RAWGItem[]> {
         genres?: Array<{ name: string }>;
         platforms?: Array<{ platform: { name: string } }>;
         metacritic?: number;
+        tags?: Array<{ slug: string }>;
+        playtime?: number;
+        esrb_rating?: { name: string };
       }>;
     };
 
-    const items: RAWGItem[] = (data.results || []).map(r => ({
+    let items: RAWGItem[] = (data.results || []).map(r => ({
       id: r.id,
       title: r.name,
       coverUrl: r.background_image || null,
@@ -120,7 +138,15 @@ export async function discoverRAWG(filters: RAWGFilters): Promise<RAWGItem[]> {
       platforms: (r.platforms || []).map(p => p.platform.name).slice(0, 3),
       description: `${(r.genres || []).map(g => g.name).join(', ')} · ${r.released?.substring(0, 4) || ''}`,
       metacritic: r.metacritic || null,
+      tags: (r.tags || []).map((t: { slug: string }) => t.slug).slice(0, 10),
+      playtime: r.playtime || null,
+      esrb: r.esrb_rating?.name || null,
     }));
+
+    // Filtro por duração pós-fetch
+    if (filters.duracaoJogo === 'curto') items = items.filter(i => i.playtime === null || i.playtime <= 5);
+    if (filters.duracaoJogo === 'normal') items = items.filter(i => i.playtime === null || (i.playtime > 5 && i.playtime <= 30));
+    if (filters.duracaoJogo === 'longo') items = items.filter(i => i.playtime === null || i.playtime > 30);
 
     return items;
   } catch {

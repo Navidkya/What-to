@@ -132,45 +132,45 @@ export interface WatchPrefs {
   done: boolean;
   type: string;
   genres: string[];
-  conQuem?: string;
-  humor?: string;
   duration: string;
   discovery: string;
   origem?: string;
   lingua?: string;
   epoca?: string;
   minRating?: string;
+  conQuem?: string;
+  humor?: string;
   classificacao?: string;
-  gatilhos?: string[];
-  reassistir?: string;
+  gatilhos?: string;
+  reassistir?: boolean;
 }
 
 export interface ListenPrefs {
   done: boolean;
-  type: 'Álbum' | 'Single' | 'Podcast' | 'Audiobook' | 'Radio' | 'Live' | 'Ambos';
+  type: 'Álbum' | 'Single/EP' | 'Podcast' | 'Ambos';
   genres: string[];
   energia: 'relaxante' | 'energetico' | 'mistura';
   momento?: string;
-  lingua?: string;
   duracao?: string;
   novidade?: string;
+  lingua?: string;
 }
 
 export interface ReadPrefs {
   done: boolean;
-  type: 'Livro' | 'Artigo' | 'BD' | 'Newsletter' | 'Ensaio' | 'Conto' | 'Ambos';
+  type: 'Livro' | 'BD/Manga' | 'Ambos';
   genres: string[];
   peso: 'leve' | 'denso' | 'mistura';
   comprimento?: string;
   lingua?: string;
-  formato?: string;
-  standalone?: string;
   tempoReal?: string;
+  formato?: string;
+  standalone?: boolean;
 }
 
 export interface PlayPrefs {
   done: boolean;
-  type: 'Videojogo' | 'Tabuleiro' | 'Cartas' | 'RPGMesa' | 'Mobile' | 'Arcade' | 'Ambos';
+  type: 'Videojogo' | 'Mobile' | 'Arcade' | 'Tabuleiro' | 'Ambos';
   genres: string[];
   dificuldade: 'casual' | 'normal' | 'desafiante';
   jogadores?: string;
@@ -181,13 +181,13 @@ export interface PlayPrefs {
 
 export interface LearnPrefs {
   done: boolean;
-  formato: 'video' | 'curso' | 'artigo' | 'podcast' | 'livro' | 'Ambos';
+  formato: 'video' | 'Ambos';
   genres: string[];
   duracao: 'curta' | 'normal' | 'longa';
   nivel?: string;
+  lingua?: string;
   gratis?: boolean;
   certificado?: boolean;
-  lingua?: string;
   objetivo?: string;
 }
 
@@ -197,10 +197,10 @@ export interface VisitPrefs {
   distancia: 'perto' | 'proximo' | 'qualquer';
   custo: 'gratuito' | 'baixo' | 'qualquer';
   altura?: string;
-  conQuem?: string;
-  interior?: string;
-  tempoVisita?: string;
   acessivel?: boolean;
+  conQuem?: string;
+  interior?: boolean;
+  tempoVisita?: string;
   reserva?: string;
   mobilidade?: string;
 }

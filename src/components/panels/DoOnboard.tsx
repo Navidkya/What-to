@@ -16,11 +16,6 @@ export default function DoOnboard({ isOpen, currentPrefs, onClose }: Props) {
   const [onde, setOnde] = useState<string[]>(currentPrefs.local && currentPrefs.local !== 'qualquer' ? [currentPrefs.local] : []);
   const [advanced, setAdvanced] = useState(false);
   const [custo, setCusto] = useState<string[]>(currentPrefs.custo && currentPrefs.custo !== 'qualquer' ? [currentPrefs.custo] : []);
-  const [duracao, setDuracao] = useState<string[]>(currentPrefs.duracao ? [currentPrefs.duracao] : []);
-  const [energia, setEnergia] = useState<string[]>(currentPrefs.energia ? [currentPrefs.energia] : []);
-  const [objetivo, setObjetivo] = useState<string[]>(currentPrefs.objetivo ? [currentPrefs.objetivo] : []);
-  const [meteorologia, setMeteorologia] = useState<string[]>(currentPrefs.meteorologia ? [currentPrefs.meteorologia] : []);
-  const [animais, setAnimais] = useState(currentPrefs.animais || false);
 
   const btn = (active: boolean) => ({
     borderRadius: 20, padding: '6px 14px', fontSize: 13, cursor: 'pointer',
@@ -40,11 +35,6 @@ export default function DoOnboard({ isOpen, currentPrefs, onClose }: Props) {
       contexto: (cq[0] as DoPrefs['contexto']) || 'qualquer',
       local: (on[0] as DoPrefs['local']) || 'qualquer',
       custo: (cu[0] as DoPrefs['custo']) || 'qualquer',
-      duracao: duracao.filter(v => v !== 'Qualquer')[0],
-      energia: energia.filter(v => v !== 'Qualquer')[0],
-      objetivo: objetivo.filter(v => v !== 'Qualquer')[0],
-      meteorologia: meteorologia.filter(v => v !== 'Qualquer')[0],
-      animais,
     });
   };
 
@@ -88,37 +78,6 @@ export default function DoOnboard({ isOpen, currentPrefs, onClose }: Props) {
             <button key={v} style={btn(custo.includes(v) || (v === 'Qualquer' && custo.length === 0))} onClick={() => setCusto(prev => toggleVal(prev, v))}>{v}</button>
           ))}
         </div>
-
-        <div style={lbl}>Duração</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Rápido (-1h)','Meio-dia','Dia inteiro'].map(v => (
-            <button key={v} style={btn(duracao.includes(v) || (v === 'Qualquer' && duracao.length === 0))} onClick={() => setDuracao(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Energia necessária</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Baixa','Média','Alta'].map(v => (
-            <button key={v} style={btn(energia.includes(v) || (v === 'Qualquer' && energia.length === 0))} onClick={() => setEnergia(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Objectivo</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Descansar','Ser produtivo','Socializar','Aventura','Criatividade'].map(v => (
-            <button key={v} style={btn(objetivo.includes(v) || (v === 'Qualquer' && objetivo.length === 0))} onClick={() => setObjetivo(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Meteorologia</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Para dias de chuva','Para dias de sol'].map(v => (
-            <button key={v} style={btn(meteorologia.includes(v) || (v === 'Qualquer' && meteorologia.length === 0))} onClick={() => setMeteorologia(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Pet friendly</div>
-        <button style={btn(animais)} onClick={() => setAnimais(v => !v)}>Aceita animais</button>
       </>)}
 
       <button onClick={save} style={{ marginTop: 24, width: '100%', padding: '14px', background: 'rgba(200,155,60,0.9)', border: 'none', borderRadius: 12, color: '#0b0d12', fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>

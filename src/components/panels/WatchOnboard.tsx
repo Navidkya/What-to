@@ -21,16 +21,12 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: Props) {
   if (!isOpen) return null;
   const [types, setTypes] = useState<string[]>(currentPrefs.type ? [currentPrefs.type] : []);
   const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
-  const [conQuem, setConQuem] = useState<string[]>(currentPrefs.conQuem ? [currentPrefs.conQuem] : []);
-  const [humor, setHumor] = useState<string[]>(currentPrefs.humor ? [currentPrefs.humor] : []);
   const [advanced, setAdvanced] = useState(false);
   const [duration, setDuration] = useState<string[]>(currentPrefs.duration ? [currentPrefs.duration] : []);
   const [origem, setOrigem] = useState<string[]>(currentPrefs.origem ? [currentPrefs.origem] : []);
   const [lingua, setLingua] = useState<string[]>(currentPrefs.lingua ? [currentPrefs.lingua] : []);
   const [epoca, setEpoca] = useState<string[]>(currentPrefs.epoca && currentPrefs.epoca !== 'qualquer' ? [currentPrefs.epoca] : []);
   const [minRating, setMinRating] = useState<string[]>(currentPrefs.minRating ? [currentPrefs.minRating] : []);
-  const [classificacao, setClassificacao] = useState<string[]>(currentPrefs.classificacao ? [currentPrefs.classificacao] : []);
-  const [reassistir, setReassistir] = useState<string[]>(currentPrefs.reassistir ? [currentPrefs.reassistir] : []);
 
   const activeTypes = types.filter(t => t !== 'Qualquer');
   const genreOptions = activeTypes.length === 1 ? (GENRE_MAP[activeTypes[0]] || GENRE_MAP.default) : GENRE_MAP.default;
@@ -52,16 +48,12 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: Props) {
       done: true,
       type: t.length === 1 ? t[0] : (t.length > 1 ? t.join(',') : 'Ambos'),
       genres: genres.filter(v => v !== 'Qualquer'),
-      conQuem: conQuem.filter(v => v !== 'Qualquer')[0],
-      humor: humor.filter(v => v !== 'Qualquer')[0],
       duration: duration.filter(v => v !== 'Qualquer')[0] || 'normal',
       discovery: 'mistura',
       origem: origem.filter(v => v !== 'Qualquer')[0],
       lingua: lingua.filter(v => v !== 'Qualquer')[0],
       epoca: epoca.filter(v => v !== 'Qualquer')[0] || 'qualquer',
       minRating: minRating.filter(v => v !== 'Qualquer')[0],
-      classificacao: classificacao.filter(v => v !== 'Qualquer')[0],
-      reassistir: reassistir.filter(v => v !== 'Qualquer')[0],
     });
   };
 
@@ -84,20 +76,6 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: Props) {
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
         {['Qualquer', ...genreOptions].map(v => (
           <button key={v} style={btn(genres.includes(v) || (v === 'Qualquer' && genres.length === 0))} onClick={() => setGenres(prev => toggleVal(prev, v))}>{v}</button>
-        ))}
-      </div>
-
-      <div style={lbl}>Com quem</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-        {['Qualquer','Sozinho','A dois','Família','Grupo'].map(v => (
-          <button key={v} style={btn(conQuem.includes(v) || (v === 'Qualquer' && conQuem.length === 0))} onClick={() => setConQuem(prev => toggleVal(prev, v))}>{v}</button>
-        ))}
-      </div>
-
-      <div style={lbl}>Humor</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-        {['Qualquer','Sério','Leve'].map(v => (
-          <button key={v} style={btn(humor.includes(v) || (v === 'Qualquer' && humor.length === 0))} onClick={() => setHumor(prev => toggleVal(prev, v))}>{v}</button>
         ))}
       </div>
 
@@ -138,20 +116,6 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: Props) {
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
           {['Qualquer','7+','8+','8.5+'].map(v => (
             <button key={v} style={btn(minRating.includes(v) || (v === 'Qualquer' && minRating.length === 0))} onClick={() => setMinRating(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Classificação etária</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Todas as idades','M/12','M/16','M/18'].map(v => (
-            <button key={v} style={btn(classificacao.includes(v) || (v === 'Qualquer' && classificacao.length === 0))} onClick={() => setClassificacao(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Reassistir</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Novo para mim','Posso rever'].map(v => (
-            <button key={v} style={btn(reassistir.includes(v) || (v === 'Qualquer' && reassistir.length === 0))} onClick={() => setReassistir(prev => toggleVal(prev, v))}>{v}</button>
           ))}
         </div>
       </>)}

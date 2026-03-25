@@ -16,10 +16,7 @@ export default function LearnOnboard({ isOpen, currentPrefs, onClose }: Props) {
   const [duracao, setDuracao] = useState<string[]>(currentPrefs.duracao ? [currentPrefs.duracao] : []);
   const [advanced, setAdvanced] = useState(false);
   const [nivel, setNivel] = useState<string[]>(currentPrefs.nivel ? [currentPrefs.nivel] : []);
-  const [gratis, setGratis] = useState(currentPrefs.gratis || false);
-  const [certificado, setCertificado] = useState(currentPrefs.certificado || false);
   const [lingua, setLingua] = useState<string[]>(currentPrefs.lingua ? [currentPrefs.lingua] : []);
-  const [objetivo, setObjetivo] = useState<string[]>(currentPrefs.objetivo ? [currentPrefs.objetivo] : []);
 
   const TEMAS = ['IA','Design','Programação','Negócios','Psicologia','Ciência','Arte','Línguas','Meditação','Filosofia','História','Marketing','Matemática','Física','Economia','Fotografia','Música','Culinária','Fitness','Finanças'];
 
@@ -31,9 +28,6 @@ export default function LearnOnboard({ isOpen, currentPrefs, onClose }: Props) {
     fontFamily: "'Outfit', sans-serif", fontWeight: active ? 600 : 400, margin: '3px',
   });
   const lbl = { fontSize: 12, color: '#8a94a8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '16px 0 8px' };
-  const togBtn = (active: boolean, label: string, onClick: () => void) => (
-    <button onClick={onClick} style={{ ...btn(active), marginRight: 8 }}>{label}</button>
-  );
 
   const save = () => {
     const f = formatos.filter(v => v !== 'Qualquer');
@@ -44,10 +38,7 @@ export default function LearnOnboard({ isOpen, currentPrefs, onClose }: Props) {
       genres: genres.filter(v => v !== 'Qualquer'),
       duracao: (d[0] as LearnPrefs['duracao']) || 'normal',
       nivel: nivel.filter(v => v !== 'Qualquer')[0],
-      gratis,
-      certificado,
       lingua: lingua.filter(v => v !== 'Qualquer')[0],
-      objetivo: objetivo.filter(v => v !== 'Qualquer')[0],
     });
   };
 
@@ -61,7 +52,7 @@ export default function LearnOnboard({ isOpen, currentPrefs, onClose }: Props) {
 
       <div style={lbl}>Tipo de conteúdo</div>
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-        {['Qualquer','Vídeo/YouTube','Curso Online','Artigo/Blog','Podcast','Livro Técnico','Documentário'].map(v => (
+        {['Qualquer','Vídeo/YouTube','Documentário'].map(v => (
           <button key={v} style={btn(formatos.includes(v) || (v === 'Qualquer' && formatos.length === 0))} onClick={() => setFormatos(prev => toggleVal(prev, v))}>{v}</button>
         ))}
       </div>
@@ -92,23 +83,10 @@ export default function LearnOnboard({ isOpen, currentPrefs, onClose }: Props) {
           ))}
         </div>
 
-        <div style={lbl}>Opções</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {togBtn(gratis, 'Gratuito', () => setGratis(g => !g))}
-          {togBtn(certificado, 'Com certificado', () => setCertificado(c => !c))}
-        </div>
-
         <div style={lbl}>Língua</div>
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
           {['Qualquer','Português','Inglês'].map(v => (
             <button key={v} style={btn(lingua.includes(v) || (v === 'Qualquer' && lingua.length === 0))} onClick={() => setLingua(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Objectivo</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Curiosidade','Para o trabalho','Projecto pessoal','Mudar de carreira'].map(v => (
-            <button key={v} style={btn(objetivo.includes(v) || (v === 'Qualquer' && objetivo.length === 0))} onClick={() => setObjetivo(prev => toggleVal(prev, v))}>{v}</button>
           ))}
         </div>
       </>)}

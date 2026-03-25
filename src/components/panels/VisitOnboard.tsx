@@ -13,14 +13,9 @@ export default function VisitOnboard({ isOpen, currentPrefs, onClose }: Props) {
   if (!isOpen) return null;
   const [tipo, setTipo] = useState<string[]>(currentPrefs.tipo || []);
   const [distancia, setDistancia] = useState<string[]>(currentPrefs.distancia && currentPrefs.distancia !== 'qualquer' ? [currentPrefs.distancia] : []);
-  const [conQuem, setConQuem] = useState<string[]>(currentPrefs.conQuem ? [currentPrefs.conQuem] : []);
   const [advanced, setAdvanced] = useState(false);
   const [custo, setCusto] = useState<string[]>(currentPrefs.custo && currentPrefs.custo !== 'qualquer' ? [currentPrefs.custo] : []);
   const [altura, setAltura] = useState<string[]>(currentPrefs.altura ? [currentPrefs.altura] : []);
-  const [interior, setInterior] = useState<string[]>(currentPrefs.interior ? [currentPrefs.interior] : []);
-  const [tempoVisita, setTempoVisita] = useState<string[]>(currentPrefs.tempoVisita ? [currentPrefs.tempoVisita] : []);
-  const [mobilidade, setMobilidade] = useState<string[]>(currentPrefs.mobilidade ? [currentPrefs.mobilidade] : []);
-  const [reserva, setReserva] = useState<string[]>(currentPrefs.reserva ? [currentPrefs.reserva] : []);
   const [acessivel, setAcessivel] = useState(currentPrefs.acessivel || false);
 
   const btn = (active: boolean) => ({
@@ -40,12 +35,7 @@ export default function VisitOnboard({ isOpen, currentPrefs, onClose }: Props) {
       tipo: tipo.filter(v => v !== 'Qualquer'),
       distancia: (d[0] as VisitPrefs['distancia']) || 'qualquer',
       custo: (c[0] as VisitPrefs['custo']) || 'qualquer',
-      conQuem: conQuem.filter(v => v !== 'Qualquer')[0],
       altura: altura.filter(v => v !== 'Qualquer')[0],
-      interior: interior.filter(v => v !== 'Qualquer')[0],
-      tempoVisita: tempoVisita.filter(v => v !== 'Qualquer')[0],
-      mobilidade: mobilidade.filter(v => v !== 'Qualquer')[0],
-      reserva: reserva.filter(v => v !== 'Qualquer')[0],
       acessivel,
     });
   };
@@ -72,13 +62,6 @@ export default function VisitOnboard({ isOpen, currentPrefs, onClose }: Props) {
         ))}
       </div>
 
-      <div style={lbl}>Com quem</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-        {['Qualquer','Sozinho','A dois','Família','Grupo'].map(v => (
-          <button key={v} style={btn(conQuem.includes(v) || (v === 'Qualquer' && conQuem.length === 0))} onClick={() => setConQuem(prev => toggleVal(prev, v))}>{v}</button>
-        ))}
-      </div>
-
       <button onClick={() => setAdvanced(a => !a)} style={{ background: 'none', border: 'none', color: '#8a94a8', fontSize: 13, cursor: 'pointer', padding: '12px 0 4px', width: '100%', textAlign: 'left' }}>
         {advanced ? '▲ Menos opções' : '▼ Mais opções'}
       </button>
@@ -95,34 +78,6 @@ export default function VisitOnboard({ isOpen, currentPrefs, onClose }: Props) {
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
           {['Qualquer','Manhã','Tarde','Noite'].map(v => (
             <button key={v} style={btn(altura.includes(v) || (v === 'Qualquer' && altura.length === 0))} onClick={() => setAltura(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Interior/Exterior</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Interior','Exterior'].map(v => (
-            <button key={v} style={btn(interior.includes(v) || (v === 'Qualquer' && interior.length === 0))} onClick={() => setInterior(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Tempo de visita</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','-1 hora','1-3 horas','Dia inteiro'].map(v => (
-            <button key={v} style={btn(tempoVisita.includes(v) || (v === 'Qualquer' && tempoVisita.length === 0))} onClick={() => setTempoVisita(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Mobilidade</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','A pé','De carro','Transporte público'].map(v => (
-            <button key={v} style={btn(mobilidade.includes(v) || (v === 'Qualquer' && mobilidade.length === 0))} onClick={() => setMobilidade(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Reserva</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Não necessária','Aceita reservas'].map(v => (
-            <button key={v} style={btn(reserva.includes(v) || (v === 'Qualquer' && reserva.length === 0))} onClick={() => setReserva(prev => toggleVal(prev, v))}>{v}</button>
           ))}
         </div>
 

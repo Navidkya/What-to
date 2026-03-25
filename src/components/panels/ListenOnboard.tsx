@@ -22,11 +22,10 @@ export default function ListenOnboard({ isOpen, currentPrefs, onClose }: Props) 
   const [advanced, setAdvanced] = useState(false);
   const [momento, setMomento] = useState<string[]>(currentPrefs.momento ? [currentPrefs.momento] : []);
   const [duracao, setDuracao] = useState<string[]>(currentPrefs.duracao ? [currentPrefs.duracao] : []);
-  const [lingua, setLingua] = useState<string[]>(currentPrefs.lingua ? [currentPrefs.lingua] : []);
   const [novidade, setNovidade] = useState<string[]>(currentPrefs.novidade ? [currentPrefs.novidade] : []);
 
   const isPodcast = types.includes('Podcast');
-  const isMusic = types.some(t => ['Álbum','Single','Live'].includes(t));
+  const isMusic = types.some(t => ['Álbum','Single/EP'].includes(t));
   const genreOptions = isPodcast && !isMusic ? GENRE_MAP.podcast : isMusic && !isPodcast ? GENRE_MAP.music : [...GENRE_MAP.music, ...GENRE_MAP.podcast];
 
   const btn = (active: boolean) => ({
@@ -48,7 +47,6 @@ export default function ListenOnboard({ isOpen, currentPrefs, onClose }: Props) 
       energia: (e[0] as ListenPrefs['energia']) || 'mistura',
       momento: momento.filter(v => v !== 'Qualquer')[0],
       duracao: duracao.filter(v => v !== 'Qualquer')[0],
-      lingua: lingua.filter(v => v !== 'Qualquer')[0],
       novidade: novidade.filter(v => v !== 'Qualquer')[0],
     });
   };
@@ -63,7 +61,7 @@ export default function ListenOnboard({ isOpen, currentPrefs, onClose }: Props) 
 
       <div style={lbl}>Tipo</div>
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-        {['Qualquer','Álbum','Single/EP','Podcast','Audiobook','Rádio','Live/Concerto'].map(v => (
+        {['Qualquer','Álbum','Single/EP','Podcast'].map(v => (
           <button key={v} style={btn(types.includes(v) || (v === 'Qualquer' && types.length === 0))} onClick={() => setTypes(prev => toggleVal(prev, v))}>{v}</button>
         ))}
       </div>
@@ -102,13 +100,6 @@ export default function ListenOnboard({ isOpen, currentPrefs, onClose }: Props) 
             ))}
           </div>
         </>)}
-
-        <div style={lbl}>Língua</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Português','Inglês'].map(v => (
-            <button key={v} style={btn(lingua.includes(v) || (v === 'Qualquer' && lingua.length === 0))} onClick={() => setLingua(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
 
         <div style={lbl}>Novidade</div>
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>

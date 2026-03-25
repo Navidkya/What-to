@@ -11,7 +11,7 @@ function toggleVal(arr: string[], val: string): string[] {
 
 const GENRE_MAP: Record<string, string[]> = {
   'Livro': ['Ficção','Romance','Sci-Fi','Fantasia','Terror','Thriller','Histórica','Aventura','Distopia','Humor','Faroeste','Satíra','Policíaco','Biográfico','Ciência','Tecnologia','Psicologia','Negócios','História','Arte','Filosofia','Sociedade'],
-  'BD': ['Manga','Comic','Graphic Novel','Superhéroi','Shonen','Shojo','Seinen'],
+  'BD/Manga': ['Manga','Comic','Graphic Novel','Superhéroi','Shonen','Shojo','Seinen'],
   'default': ['Ficção','Não-ficção','Ciência','Psicologia','Negócios','História','Fantasia','Romance','Thriller','Tecnologia'],
 };
 
@@ -23,8 +23,6 @@ export default function ReadOnboard({ isOpen, currentPrefs, onClose }: Props) {
   const [advanced, setAdvanced] = useState(false);
   const [tempoReal, setTempoReal] = useState<string[]>(currentPrefs.tempoReal ? [currentPrefs.tempoReal] : []);
   const [comprimento, setComprimento] = useState<string[]>(currentPrefs.comprimento ? [currentPrefs.comprimento] : []);
-  const [formato, setFormato] = useState<string[]>(currentPrefs.formato ? [currentPrefs.formato] : []);
-  const [standalone, setStandalone] = useState<string[]>(currentPrefs.standalone ? [currentPrefs.standalone] : []);
   const [lingua, setLingua] = useState<string[]>(currentPrefs.lingua ? [currentPrefs.lingua] : []);
 
   const activeTypes = types.filter(t => t !== 'Qualquer');
@@ -49,8 +47,6 @@ export default function ReadOnboard({ isOpen, currentPrefs, onClose }: Props) {
       peso: (p[0] as ReadPrefs['peso']) || 'mistura',
       tempoReal: tempoReal.filter(v => v !== 'Qualquer')[0],
       comprimento: comprimento.filter(v => v !== 'Qualquer')[0],
-      formato: formato.filter(v => v !== 'Qualquer')[0],
-      standalone: standalone.filter(v => v !== 'Qualquer')[0],
       lingua: lingua.filter(v => v !== 'Qualquer')[0],
     });
   };
@@ -65,7 +61,7 @@ export default function ReadOnboard({ isOpen, currentPrefs, onClose }: Props) {
 
       <div style={lbl}>Tipo</div>
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-        {['Qualquer','Livro','Artigo','BD/Manga','Newsletter','Ensaio','Conto'].map(v => (
+        {['Qualquer','Livro','BD/Manga'].map(v => (
           <button key={v} style={btn(types.includes(v) || (v === 'Qualquer' && types.length === 0))} onClick={() => setTypes(prev => toggleVal(prev, v))}>{v}</button>
         ))}
       </div>
@@ -100,20 +96,6 @@ export default function ReadOnboard({ isOpen, currentPrefs, onClose }: Props) {
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
           {['Qualquer','Curto (-200p)','Normal (200-400p)','Épico (+400p)'].map(v => (
             <button key={v} style={btn(comprimento.includes(v) || (v === 'Qualquer' && comprimento.length === 0))} onClick={() => setComprimento(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Formato</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Físico','E-book','Audiobook'].map(v => (
-            <button key={v} style={btn(formato.includes(v) || (v === 'Qualquer' && formato.length === 0))} onClick={() => setFormato(prev => toggleVal(prev, v))}>{v}</button>
-          ))}
-        </div>
-
-        <div style={lbl}>Série vs standalone</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {['Qualquer','Livro único','Série/Saga'].map(v => (
-            <button key={v} style={btn(standalone.includes(v) || (v === 'Qualquer' && standalone.length === 0))} onClick={() => setStandalone(prev => toggleVal(prev, v))}>{v}</button>
           ))}
         </div>
 

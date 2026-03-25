@@ -51,6 +51,8 @@ export interface IGDBItem {
   summary: string;
   type: 'Videojogo';
   isIndie: boolean;
+  gameModes: string[];
+  themes: string[];
 }
 
 export interface IGDBFilters {
@@ -58,6 +60,8 @@ export interface IGDBFilters {
   tier: 'mainstream' | 'indie' | 'underground' | 'all';
   limit?: number;
   offset?: number;
+  jogadores?: string;    // 'solo' | 'co-op' | 'versus'
+  online?: string;
 }
 
 const IGDB_GENRE_MAP: Record<string, number> = {
@@ -100,6 +104,15 @@ export async function discoverIGDB(filters: IGDBFilters): Promise<IGDBItem[]> {
       whereClause += ` & genres = (${genreIds.join(',')})`;
     }
 
+    // Filtro por jogadores via game_modes
+    if (filters.jogadores === 'solo') {
+      whereClause += ' & game_modes = (1)';
+    } else if (filters.jogadores === 'co-op') {
+      whereClause += ' & game_modes = (3)';
+    } else if (filters.jogadores === 'versus') {
+      whereClause += ' & game_modes = (2)';
+    }
+
     const limit = filters.limit || 50;
     const offset = filters.offset || 0;
 
@@ -107,7 +120,7 @@ export async function discoverIGDB(filters: IGDBFilters): Promise<IGDBItem[]> {
     const sort = sortOptions[Math.floor(Math.random() * sortOptions.length)];
 
     const body = `
-      fields name, cover.url, rating, first_release_date, genres.name, summary, involved_companies.company.name;
+      fields name, cover.url, rating, first_release_date, genres.name, summary, game_modes.name, themes.name;
       where ${whereClause};
       sort ${sort};
       limit ${limit};
@@ -134,6 +147,8 @@ export async function discoverIGDB(filters: IGDBFilters): Promise<IGDBItem[]> {
       first_release_date?: number;
       genres?: Array<{ name: string }>;
       summary?: string;
+      game_modes?: Array<{ name: string }>;
+      themes?: Array<{ name: string }>;
     }>;
 
     return data.map(r => ({
@@ -150,6 +165,8 @@ export async function discoverIGDB(filters: IGDBFilters): Promise<IGDBItem[]> {
       summary: r.summary?.substring(0, 150) || '',
       type: 'Videojogo' as const,
       isIndie: filters.tier === 'indie' || filters.tier === 'underground',
+      gameModes: (r.game_modes || []).map((m: { name: string }) => m.name),
+      themes: (r.themes || []).map((t: { name: string }) => t.name),
     }));
   } catch { return []; }
 }

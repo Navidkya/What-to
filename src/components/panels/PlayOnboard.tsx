@@ -64,7 +64,7 @@ export default function PlayOnboard({ isOpen, currentPrefs, onClose }: Props) {
 
       <div style={lbl}>Tipo</div>
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-        {['Qualquer','Videojogo','Tabuleiro','Jogo de Cartas','RPG de Mesa','Mobile','Arcade'].map(v => (
+        {['Qualquer','Videojogo','Mobile','Arcade'].map(v => (
           <button key={v} style={btn(types.includes(v) || (v === 'Qualquer' && types.length === 0))} onClick={() => setTypes(prev => toggleVal(prev, v))}>{v}</button>
         ))}
       </div>

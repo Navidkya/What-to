@@ -17,6 +17,7 @@ export interface GBFilters {
   genres: string[];
   type: 'Livro' | 'Artigo' | 'Ambos';
   peso: 'leve' | 'denso' | 'mistura';
+  lingua?: string;   // 'Português' | 'Inglês' | undefined
 }
 
 const GENRE_QUERY_MAP: Record<string, string> = {
@@ -73,6 +74,8 @@ export async function discoverBooksMultiPage(
         params.set('startIndex', String(startIndex));
         params.set('orderBy', 'relevance');
         params.set('printType', filters.type === 'Artigo' ? 'magazines' : 'books');
+        if (filters.lingua === 'Português') params.set('langRestrict', 'pt');
+        else if (filters.lingua === 'Inglês') params.set('langRestrict', 'en');
         const res = await fetch(`https://www.googleapis.com/books/v1/volumes?${params.toString()}`);
         if (!res.ok) return [];
         const data = await res.json() as {
@@ -130,6 +133,8 @@ export async function discoverBooks(filters: GBFilters): Promise<GBItem[]> {
     params.set('maxResults', '20');
     params.set('orderBy', 'relevance');
     params.set('printType', filters.type === 'Artigo' ? 'magazines' : 'books');
+    if (filters.lingua === 'Português') params.set('langRestrict', 'pt');
+    else if (filters.lingua === 'Inglês') params.set('langRestrict', 'en');
 
     const res = await fetch(`${GB_BASE}/volumes?${params.toString()}`);
     if (!res.ok) return [];
