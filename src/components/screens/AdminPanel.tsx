@@ -36,7 +36,11 @@ export default function AdminPanel() {
   const [pass, setPass] = useState('');
   const [loginErr, setLoginErr] = useState('');
 
-  const [tab, setTab] = useState<'codes' | 'metrics'>('codes');
+  const [tab, setTab] = useState<'codes' | 'metrics' | 'influencers'>('codes');
+  const [influencers, setInfluencers] = useState<any[]>([]);
+  const [infSuggestions, setInfSuggestions] = useState<Record<string, any[]>>({});
+  const [selectedInf, setSelectedInf] = useState<string | null>(null);
+  const [infLoading, setInfLoading] = useState(false);
   const [stats, setStats] = useState<DashStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
@@ -54,9 +58,8 @@ export default function AdminPanel() {
   }, [authed]);
 
   useEffect(() => {
-    if (authed && tab === 'metrics') {
-      loadStats();
-    }
+    if (authed && tab === 'metrics') loadStats();
+    if (authed && tab === 'influencers') loadInfluencers();
   }, [authed, tab]);
 
   const loadCodes = async () => {
@@ -257,6 +260,24 @@ export default function AdminPanel() {
     }
   };
 
+  const loadInfluencers = async () => {
+    setInfLoading(true);
+    try {
+      const { data: infs } = await supabase.from('influencers').select('*').order('created_at', { ascending: false });
+      setInfluencers(infs || []);
+      if (infs && infs.length > 0) {
+        const suggMap: Record<string, any[]> = {};
+        for (const inf of infs) {
+          const { data: suggs } = await supabase.from('influencer_suggestions')
+            .select('*').eq('influencer_id', inf.id).order('created_at', { ascending: false });
+          suggMap[inf.id] = suggs || [];
+        }
+        setInfSuggestions(suggMap);
+      }
+    } catch (e) { console.error(e); }
+    finally { setInfLoading(false); }
+  };
+
   const handleLogin = () => {
     if (user === ADMIN_USER && pass === ADMIN_PASS) {
       setAuthed(true);
@@ -335,14 +356,14 @@ export default function AdminPanel() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {(['codes', 'metrics'] as const).map(t => (
+        {(['codes', 'influencers', 'metrics'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             ...btn,
             background: tab === t ? '#C89B3C' : '#161820',
             color: tab === t ? '#0B0D12' : '#e8e0d0',
             border: tab === t ? 'none' : '1px solid #2a2d3a',
           }}>
-            {t === 'codes' ? 'Códigos de Convite' : 'Métricas'}
+            {t === 'codes' ? 'Códigos de Convite' : t === 'influencers' ? 'Influencers' : 'Métricas'}
           </button>
         ))}
       </div>
@@ -432,6 +453,82 @@ export default function AdminPanel() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── TAB INFLUENCERS ── */}
+      {tab === 'influencers' && (
+        <div>
+          {infLoading && <div style={{ textAlign: 'center', padding: 40, opacity: 0.6 }}>A carregar…</div>}
+          {!infLoading && influencers.map(inf => {
+            const tierBadge = inf.tier === 'gold' ? '✦ Gold' : inf.tier === 'silver' ? '◈ Silver' : '✦ Base';
+            const tierColor = inf.tier === 'gold' ? '#C89B3C' : inf.tier === 'silver' ? '#a0c4ff' : '#8a94a8';
+            const suggs = infSuggestions[inf.id] || [];
+            const isOpen = selectedInf === inf.id;
+            return (
+              <div key={inf.id} style={card}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                  onClick={() => setSelectedInf(isOpen ? null : inf.id)}
+                >
+                  <div>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: '#f5f1eb' }}>{inf.name}</span>
+                    <span style={{ marginLeft: 8, fontSize: 12, color: '#8a94a8' }}>@{inf.handle}</span>
+                    <span style={{ marginLeft: 8, fontSize: 11, color: tierColor, background: 'rgba(255,255,255,0.06)', borderRadius: 4, padding: '2px 6px' }}>{tierBadge}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#8a94a8' }}>{suggs.length} sugestões</span>
+                    <span style={{ fontSize: 14, opacity: 0.5 }}>{isOpen ? '▲' : '▼'}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 4 }}>
+                  {inf.platform} · {inf.email || 'sem email'}
+                </div>
+                {isOpen && (
+                  <div style={{ marginTop: 12 }}>
+                    {suggs.length === 0 && <div style={{ fontSize: 13, opacity: 0.5 }}>Sem sugestões activas.</div>}
+                    {suggs.map((s: any) => {
+                      const isActive = s.active && new Date(s.expires_at) > new Date();
+                      return (
+                        <div key={s.id} style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10, marginTop: 10 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: '#f5f1eb' }}>{s.title}</div>
+                              <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 2 }}>
+                                {s.cat_id} · {s.type} · {s.genre}
+                              </div>
+                              {s.description && <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 4, lineHeight: 1.5 }}>{s.description}</div>}
+                              <div style={{ fontSize: 11, marginTop: 4 }}>
+                                <span style={{ color: isActive ? '#5ec97a' : '#e07b7b' }}>
+                                  {isActive ? '● Activa' : '● Expirada'}
+                                </span>
+                                <span style={{ color: '#8a94a8', marginLeft: 8 }}>
+                                  até {new Date(s.expires_at).toLocaleDateString('pt-PT')}
+                                </span>
+                                <span style={{ color: tierColor, marginLeft: 8 }}>{tierBadge}</span>
+                              </div>
+                            </div>
+                            <button
+                              style={{ ...btn, background: '#e07b7b', padding: '4px 10px', fontSize: 11, marginLeft: 8, flexShrink: 0 }}
+                              onClick={async () => {
+                                await supabase.from('influencer_suggestions').delete().eq('id', s.id);
+                                loadInfluencers();
+                              }}
+                            >
+                              Apagar
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {!infLoading && influencers.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 40, opacity: 0.5 }}>Sem influencers registados.</div>
+          )}
         </div>
       )}
 

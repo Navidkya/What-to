@@ -1635,15 +1635,8 @@ export default function Suggest({
   return (
     <div className={`screen${isActive ? ' active' : ''}`} id="suggest">
       <div className="tb">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button className="tbi" onClick={onBack}>←</button>
-          {onReopenOnboard && (
-            <button className="tbi" style={{ fontSize: 11, padding: '4px 8px', opacity: 0.75 }} onClick={onReopenOnboard}>Filtros</button>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span className="tb-lbl" style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', letterSpacing: '0.04em' }}>What to {cat.name}</span>
-        </div>
+        <button className="tbi" onClick={onBack}>←</button>
+        <span className="tb-lbl" style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', letterSpacing: '0.04em' }}>What to {cat.name}</span>
         <button className="tbi" onClick={onOpenWishlist}>♡</button>
       </div>
 
@@ -1719,8 +1712,19 @@ export default function Suggest({
                 )}
                 {!hasImg && <span className="cin-em">{displayEmoji}</span>}
                 <div className="cin-overlay-netflix" />
-                {/* Category badge top-left */}
-                <div className="cin-badge">{getCatIcon(cat.id)} {cat.name}</div>
+                {/* Category badge top-left + botão filtros */}
+                <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 3 }}>
+                  <div className="cin-badge">{getCatIcon(cat.id)} {cat.name}</div>
+                  {onReopenOnboard && (
+                    <button
+                      onClick={e => { e.stopPropagation(); onReopenOnboard(); }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(11,13,18,0.7)', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 20, padding: '3px 10px', fontSize: 11, color: 'rgba(200,155,60,0.9)', cursor: 'pointer', backdropFilter: 'blur(4px)', fontFamily: "'Outfit', sans-serif", letterSpacing: '0.04em' }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+                      Filtros
+                    </button>
+                  )}
+                </div>
                 {/* Source badge top-right — always visible */}
                 <div className={
                   displayData?.influencer?.tier === 'gold' ? 'inf-badge inf-badge-gold' :
@@ -1762,6 +1766,21 @@ export default function Suggest({
                       {displayRating}
                     </span>
                   )}
+                  {/* Artista (listen/read) */}
+                  {(() => {
+                    const artist = (apiItemsRef.current[activeIdx] as any)?.artist;
+                    return artist ? <span className="cin-tag">{artist}</span> : null;
+                  })()}
+                  {/* Playtime (play) */}
+                  {(() => {
+                    const pt = (apiItemsRef.current[activeIdx] as any)?.playtime;
+                    return pt ? <span className="cin-tag">~{pt}h</span> : null;
+                  })()}
+                  {/* Plataformas (play) */}
+                  {(() => {
+                    const pl = (apiItemsRef.current[activeIdx] as any)?.platformsList as string[] | undefined;
+                    return pl?.length ? <span className="cin-tag">{pl.slice(0,2).join(' · ')}</span> : null;
+                  })()}
                 </div>
 
                 <div className="cin-desc">{displayDesc}</div>
@@ -1913,9 +1932,26 @@ export default function Suggest({
               </div>
               {infoDesc && (
                 <p style={{ fontSize: 14, color: 'var(--tx)', opacity: 0.85, lineHeight: 1.6, marginBottom: 12 }}>
-                  {infoDesc}
+                  {infoDesc.length > 300 ? infoDesc : infoDesc}
                 </p>
               )}
+              {(() => {
+                const item = apiItemsRef.current[activeIdx] as any;
+                const artist = item?.artist;
+                const playtime = item?.playtime;
+                const platforms = item?.platformsList as string[] | undefined;
+                const pageCount = item?.pageCount;
+                const voteCount = item?.voteCount;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                    {artist && <div style={{ fontSize: 13, color: 'var(--mu)' }}>✦ {artist}</div>}
+                    {playtime && <div style={{ fontSize: 13, color: 'var(--mu)' }}>⏱ ~{playtime} horas de jogo</div>}
+                    {pageCount && <div style={{ fontSize: 13, color: 'var(--mu)' }}>📄 {pageCount} páginas</div>}
+                    {platforms?.length ? <div style={{ fontSize: 13, color: 'var(--mu)' }}>🎮 {platforms.join(' · ')}</div> : null}
+                    {voteCount && <div style={{ fontSize: 13, color: 'var(--mu)' }}>👥 {voteCount.toLocaleString()} votos</div>}
+                  </div>
+                );
+              })()}
               {infoCast.length > 0 && (
                 <div style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
                   {infoCast.join(' · ')}
