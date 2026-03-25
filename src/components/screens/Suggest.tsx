@@ -1765,7 +1765,7 @@ export default function Suggest({
                 <div className="cin-desc">{displayDesc}</div>
 
                 {(() => {
-                  const castToShow = displayData?.cast?.length ? displayData.cast : data?.tmdb?.cast;
+                  const castToShow = displayData?.cast?.length ? displayData.cast : null;
                   return castToShow && castToShow.length > 0 ? (
                     <div className="cin-cast">{castToShow.slice(0, 3).join(' · ')}</div>
                   ) : null;
