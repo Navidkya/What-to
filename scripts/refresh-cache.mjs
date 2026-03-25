@@ -41,7 +41,42 @@ async function getIGDBToken() {
 async function refreshWatch() {
   console.log('\n WATCH');
   const items = [];
-  // Mainstream
+  // Helper: mapear genre_ids para nomes portugueses
+  const GENRE_MAP_MOVIE = {28:'Ação',12:'Aventura',16:'Animação',35:'Comédia',80:'Crime',99:'Documentário',18:'Drama',10751:'Família',14:'Fantasia',36:'História',27:'Terror',10402:'Música',9648:'Mistério',10749:'Romance',878:'Sci-Fi',10770:'TV Movie',53:'Suspense',10752:'Guerra',37:'Faroeste'};
+  const GENRE_MAP_TV = {10759:'Ação',16:'Animação',35:'Comédia',80:'Crime',99:'Documentário',18:'Drama',10751:'Família',10762:'Infantil',14:'Fantasia',36:'Histórico',27:'Terror',10402:'Música',9648:'Mistério',10763:'Notícias',10764:'Reality',10765:'Sci-Fi',10766:'Soap',10767:'Talk',10768:'Guerra',37:'Faroeste'};
+  const processResult = (i, t, tierName) => {
+    const genreMap = t === 'movie' ? GENRE_MAP_MOVIE : GENRE_MAP_TV;
+    const genreIds = i.genre_ids || [];
+    const genreNames = genreIds.map(id => genreMap[id]).filter(Boolean);
+    const isAnime = genreIds.includes(16) && t === 'tv';
+    const isDoc = genreIds.includes(99);
+    return {
+      cat_id: 'watch',
+      title: i.title || i.name,
+      description: i.overview?.substring(0, 300) || null,
+      img: i.backdrop_path ? `https://image.tmdb.org/t/p/w780${i.backdrop_path}` : i.poster_path ? `https://image.tmdb.org/t/p/w500${i.poster_path}` : null,
+      rating: i.vote_average ? Math.round(i.vote_average * 10) / 10 : null,
+      year: (i.release_date || i.first_air_date || '').substring(0, 4) || null,
+      type: t === 'movie' ? 'Filme' : 'Serie',
+      genre: genreNames[0] || (isDoc ? 'Documentário' : 'Drama'),
+      genres: genreNames,
+      genre_ids: genreIds,
+      original_language: i.original_language || null,
+      vote_count: i.vote_count || null,
+      is_anime: isAnime,
+      is_documentary: isDoc,
+      runtime: null,
+      cast_list: [],
+      trailer_key: null,
+      url: null,
+      emoji: t === 'movie' ? '🎬' : '📺',
+      source_api: 'tmdb',
+      external_id: `${t}-${i.id}`,
+      tier: tierName,
+      last_seen_at: new Date().toISOString(),
+    };
+  };
+  // Mainstream: 15 páginas × 2 tipos
   for (let p = 1; p <= 15; p++) {
     for (const t of ['movie', 'tv']) {
       try {
@@ -49,23 +84,13 @@ async function refreshWatch() {
         const d = await r.json();
         for (const i of (d.results || [])) {
           if (!i.title && !i.name) continue;
-          items.push({
-            cat_id: 'watch', title: i.title || i.name,
-            description: i.overview?.substring(0, 300) || null,
-            img: i.backdrop_path ? `https://image.tmdb.org/t/p/w780${i.backdrop_path}` : i.poster_path ? `https://image.tmdb.org/t/p/w500${i.poster_path}` : null,
-            rating: i.vote_average ? Math.round(i.vote_average * 10) / 10 : null,
-            year: (i.release_date || i.first_air_date || '').substring(0, 4) || null,
-            type: t === 'movie' ? 'Filme' : 'Serie', genre: 'Drama', genres: [],
-            url: null, emoji: t === 'movie' ? '🎬' : '📺',
-            source_api: 'tmdb', external_id: `${t}-${i.id}`,
-            tier: 'mainstream', last_seen_at: new Date().toISOString(),
-          });
+          items.push(processResult(i, t, 'mainstream'));
         }
       } catch (e) { console.error(e.message); }
       await new Promise(r => setTimeout(r, 150));
     }
   }
-  // Underground
+  // Underground: 8 páginas × 2 tipos
   for (let p = 1; p <= 8; p++) {
     for (const t of ['movie', 'tv']) {
       try {
@@ -73,23 +98,13 @@ async function refreshWatch() {
         const d = await r.json();
         for (const i of (d.results || [])) {
           if (!i.title && !i.name) continue;
-          items.push({
-            cat_id: 'watch', title: i.title || i.name,
-            description: i.overview?.substring(0, 300) || null,
-            img: i.backdrop_path ? `https://image.tmdb.org/t/p/w780${i.backdrop_path}` : null,
-            rating: i.vote_average ? Math.round(i.vote_average * 10) / 10 : null,
-            year: (i.release_date || i.first_air_date || '').substring(0, 4) || null,
-            type: t === 'movie' ? 'Filme' : 'Serie', genre: 'Underground', genres: [],
-            url: null, emoji: t === 'movie' ? '🎬' : '📺',
-            source_api: 'tmdb', external_id: `${t}-${i.id}`,
-            tier: 'underground', last_seen_at: new Date().toISOString(),
-          });
+          items.push(processResult(i, t, 'underground'));
         }
       } catch (e) { console.error(e.message); }
       await new Promise(r => setTimeout(r, 150));
     }
   }
-  // Cinema mundial
+  // Cinema mundial: 8 línguas × 3 páginas
   for (const lang of ['pt', 'fr', 'ko', 'ja', 'es', 'it', 'de', 'hi']) {
     for (let p = 1; p <= 3; p++) {
       try {
@@ -97,21 +112,45 @@ async function refreshWatch() {
         const d = await r.json();
         for (const i of (d.results || [])) {
           if (!i.title) continue;
-          items.push({
-            cat_id: 'watch', title: i.title,
-            description: i.overview?.substring(0, 300) || null,
-            img: i.backdrop_path ? `https://image.tmdb.org/t/p/w780${i.backdrop_path}` : null,
-            rating: i.vote_average ? Math.round(i.vote_average * 10) / 10 : null,
-            year: i.release_date?.substring(0, 4) || null,
-            type: 'Filme', genre: 'Cinema Mundial', genres: ['Cinema Mundial'],
-            url: null, emoji: '🎬',
-            source_api: 'tmdb', external_id: `movie-${i.id}`,
-            tier: 'underground', last_seen_at: new Date().toISOString(),
-          });
+          items.push(processResult(i, 'movie', 'underground'));
         }
       } catch (e) { console.error(e.message); }
       await new Promise(r => setTimeout(r, 150));
     }
+  }
+  // Buscar detalhes (cast + runtime + trailer) para os top 200 por vote_count
+  const topItems = [...items]
+    .filter(i => i.source_api === 'tmdb')
+    .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))
+    .slice(0, 200);
+  console.log(`  Buscando detalhes para ${topItems.length} items...`);
+  for (const item of topItems) {
+    try {
+      const match = item.external_id.match(/^(movie|tv)-(\d+)$/);
+      if (!match) continue;
+      const [, t, id] = match;
+      const [detailRes, creditsRes, videosRes] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/${t}/${id}?api_key=${TMDB_KEY}&language=pt-PT`),
+        fetch(`https://api.themoviedb.org/3/${t}/${id}/credits?api_key=${TMDB_KEY}`),
+        fetch(`https://api.themoviedb.org/3/${t}/${id}/videos?api_key=${TMDB_KEY}`),
+      ]);
+      const detail = detailRes.ok ? await detailRes.json() : null;
+      const credits = creditsRes.ok ? await creditsRes.json() : null;
+      const videos = videosRes.ok ? await videosRes.json() : null;
+      if (detail) {
+        item.runtime = t === 'movie'
+          ? detail.runtime || null
+          : detail.episode_run_time?.[0] || null;
+      }
+      if (credits?.cast) {
+        item.cast_list = credits.cast.slice(0, 5).map(c => c.name);
+      }
+      if (videos?.results) {
+        const trailer = videos.results.find(v => v.site === 'YouTube' && v.type === 'Trailer');
+        item.trailer_key = trailer?.key || null;
+      }
+    } catch (e) { /* silencioso */ }
+    await new Promise(r => setTimeout(r, 100));
   }
   await upsert(items);
   console.log(`  Total: ${items.length}`);
@@ -125,14 +164,21 @@ async function refreshPlay() {
       const r = await fetch(`https://api.rawg.io/api/games?key=${RAWG_KEY}&page_size=40&ordering=-rating&metacritic=65,100&page=${p}`);
       const d = await r.json();
       for (const i of (d.results || [])) {
+        const tags = (i.tags || []).map(t => t.slug).slice(0, 15);
+        const platformNames = (i.platforms || []).map(p => p.platform.name).slice(0, 5);
         items.push({
           cat_id: 'play', title: i.name,
           description: (i.genres || []).map(g => g.name).join(', '),
           img: i.background_image || null,
           rating: i.rating ? Math.round(i.rating * 10) / 10 : null,
           year: i.released?.substring(0, 4) || null,
-          type: 'Videojogo', genre: i.genres?.[0]?.name || 'Jogo',
+          type: 'Videojogo',
+          genre: i.genres?.[0]?.name || 'Jogo',
           genres: (i.genres || []).map(g => g.name).slice(0, 3),
+          play_tags: tags,
+          playtime: i.playtime || null,
+          platforms_list: platformNames,
+          game_modes: [],
           url: null, emoji: '🎮',
           source_api: 'rawg', external_id: String(i.id),
           tier: 'mainstream', last_seen_at: new Date().toISOString(),
@@ -151,7 +197,7 @@ async function refreshPlay() {
         const r = await fetch('https://api.igdb.com/v4/games', {
           method: 'POST',
           headers: { 'Client-ID': IGDB_CLIENT_ID, 'Authorization': `Bearer ${token}`, 'Content-Type': 'text/plain' },
-          body: `fields name,cover.url,rating,first_release_date,genres.name,summary; where ${where}; sort rating desc; limit 50; offset ${offset};`,
+          body: `fields name,cover.url,rating,first_release_date,genres.name,summary,game_modes.name,platforms.name; where ${tier === 'indie' ? 'rating > 70 & rating_count >= 10 & rating_count < 200 & cover != null' : 'rating > 75 & rating_count >= 5 & rating_count < 50 & cover != null'}; sort rating desc; limit 50; offset ${offset};`,
         });
         const d = await r.json();
         for (const i of (d || [])) {
@@ -161,8 +207,13 @@ async function refreshPlay() {
             img: i.cover?.url ? i.cover.url.replace('t_thumb', 't_cover_big').replace('http:', 'https:') : null,
             rating: i.rating ? Math.round(i.rating) / 10 : null,
             year: i.first_release_date ? new Date(i.first_release_date * 1000).getFullYear().toString() : null,
-            type: 'Videojogo', genre: i.genres?.[0]?.name || 'Indie',
+            type: 'Videojogo',
+            genre: i.genres?.[0]?.name || 'Indie',
             genres: (i.genres || []).map(g => g.name).slice(0, 3),
+            play_tags: [],
+            playtime: null,
+            game_modes: (i.game_modes || []).map(m => m.name),
+            platforms_list: (i.platforms || []).map(p => p.name).slice(0, 5),
             url: null, emoji: '🎮',
             source_api: 'igdb', external_id: String(i.id),
             tier, last_seen_at: new Date().toISOString(),
@@ -196,6 +247,8 @@ async function refreshListen() {
             source_api: 'lastfm',
             external_id: `album-${a.name}-${a.artist?.name}`.replace(/[^\w-]/g, '_').substring(0, 190),
             tier: 'mainstream', last_seen_at: new Date().toISOString(),
+            artist: a.artist?.name || null,
+            track_duration_ms: null,
           });
         }
       } catch (e) { console.error(e.message); }
@@ -219,6 +272,8 @@ async function refreshListen() {
           source_api: 'itunes', external_id: String(i.trackId),
           tier: q.includes('underground') ? 'underground' : 'mainstream',
           last_seen_at: new Date().toISOString(),
+          artist: i.artistName || null,
+          track_duration_ms: i.trackTimeMillis || null,
         });
       }
     } catch (e) { console.error(e.message); }
@@ -250,6 +305,10 @@ async function refreshRead() {
             url: info.previewLink || null, emoji: '📚',
             source_api: 'google_books', external_id: b.id,
             tier: 'mainstream', last_seen_at: new Date().toISOString(),
+            artist: info.authors?.join(', ') || null,
+            page_count: info.pageCount || null,
+            book_language: info.language || null,
+            subjects: (info.categories || []).slice(0, 5),
           });
         }
       } catch (e) { console.error(e.message); }
@@ -276,6 +335,10 @@ async function refreshRead() {
             external_id: w.key?.replace(/\//g, '_').substring(0, 190) || null,
             tier: (w.edition_count || 0) < 5 ? 'underground' : 'mainstream',
             last_seen_at: new Date().toISOString(),
+            artist: w.authors?.[0]?.name || null,
+            page_count: null,
+            book_language: null,
+            subjects: (w.subject || []).slice(0, 5),
           });
         }
       } catch (e) { console.error(e.message); }
