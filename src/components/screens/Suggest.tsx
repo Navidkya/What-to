@@ -1670,7 +1670,8 @@ export default function Suggest({
           const displayData = apiItem ? getDisplayData(apiItem, cat.id) : null;
 
           const displayTitle = displayData?.title ?? card.title;
-          const displayDesc = displayData?.desc ?? (data?.tmdb?.overview ? data.tmdb.overview.substring(0, 140) + (data.tmdb.overview.length > 140 ? '…' : '') : card.desc);
+          const rawDesc = displayData?.desc || (data?.tmdb?.overview || card.desc || '');
+          const displayDesc = rawDesc.length > 160 ? rawDesc.substring(0, 160) + '…' : rawDesc;
           const displayImg = displayData?.img ?? data?.tmdb?.backdropUrl ?? data?.tmdb?.posterUrl ?? data?.cover ?? '';
           const displayRating = displayData?.rating ?? data?.tmdb?.rating ?? card.rating ?? null;
           const displayYear = displayData?.year ?? data?.tmdb?.year ?? card.year ?? null;
@@ -1712,19 +1713,8 @@ export default function Suggest({
                 )}
                 {!hasImg && <span className="cin-em">{displayEmoji}</span>}
                 <div className="cin-overlay-netflix" />
-                {/* Category badge top-left + botão filtros */}
-                <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 3 }}>
-                  <div className="cin-badge">{getCatIcon(cat.id)} {cat.name}</div>
-                  {onReopenOnboard && (
-                    <button
-                      onClick={e => { e.stopPropagation(); onReopenOnboard(); }}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(11,13,18,0.7)', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 20, padding: '3px 10px', fontSize: 11, color: 'rgba(200,155,60,0.9)', cursor: 'pointer', backdropFilter: 'blur(4px)', fontFamily: "'Outfit', sans-serif", letterSpacing: '0.04em' }}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-                      Filtros
-                    </button>
-                  )}
-                </div>
+                {/* Category badge top-left */}
+                <div className="cin-badge">{getCatIcon(cat.id)} {cat.name}</div>
                 {/* Source badge top-right — always visible */}
                 <div className={
                   displayData?.influencer?.tier === 'gold' ? 'inf-badge inf-badge-gold' :
@@ -1781,12 +1771,23 @@ export default function Suggest({
                     const pl = (apiItemsRef.current[activeIdx] as any)?.platformsList as string[] | undefined;
                     return pl?.length ? <span className="cin-tag">{pl.slice(0,2).join(' · ')}</span> : null;
                   })()}
+                  {/* Botão filtros inline nas tags */}
+                  {onReopenOnboard && (
+                    <button
+                      onClick={e => { e.stopPropagation(); onReopenOnboard(); }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.4)', borderRadius: 20, padding: '3px 10px', fontSize: 11, color: 'rgba(200,155,60,0.9)', cursor: 'pointer', fontFamily: "'Outfit', sans-serif", letterSpacing: '0.04em' }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+                      Filtros
+                    </button>
+                  )}
                 </div>
 
                 <div className="cin-desc">{displayDesc}</div>
 
                 {(() => {
-                  const castToShow = displayData?.cast?.length ? displayData.cast : null;
+                  const directCast = (apiItemsRef.current[activeIdx] as any)?.castList as string[] | undefined;
+                  const castToShow = displayData?.cast?.length ? displayData.cast : (directCast?.length ? directCast : null);
                   return castToShow && castToShow.length > 0 ? (
                     <div className="cin-cast">{castToShow.slice(0, 3).join(' · ')}</div>
                   ) : null;
@@ -1902,22 +1903,38 @@ export default function Suggest({
         const activeApiItem = apiItemsRef.current[activeIdx] ?? null;
         const infoDisplayData = activeApiItem ? getDisplayData(activeApiItem, cat.id) : null;
         const infoTitle = infoDisplayData?.title || cards[0]?.title || '';
-        const infoDesc = infoDisplayData?.desc || '';
-        const infoCast = infoDisplayData?.cast || [];
-        const infoTrailerKey = infoDisplayData?.trailerKey || null;
+        const rawInfoDesc = infoDisplayData?.desc || (activeApiItem as any)?.description || '';
+        const directCastInfo = (activeApiItem as any)?.castList as string[] | undefined;
+        const infoCast = infoDisplayData?.cast?.length ? infoDisplayData.cast : (directCastInfo || []);
+        const infoTrailerKey = infoDisplayData?.trailerKey || (activeApiItem as any)?.trailerKey || null;
         const infoRating = infoDisplayData?.rating || null;
         const infoYear = infoDisplayData?.year || null;
         const infoType = infoDisplayData?.type || '';
         const infoGenres = infoDisplayData?.genres || [];
         const infoRuntime = infoDisplayData?.runtime || null;
         const infoUrl = infoDisplayData?.url || null;
+        const infoImg = infoDisplayData?.img || null;
+        const item = activeApiItem as any;
+        const artist = item?.artist;
+        const playtime = item?.playtime;
+        const platforms = item?.platformsList as string[] | undefined;
+        const pageCount = item?.pageCount;
+        const voteCount = item?.voteCount;
         return (
           <div className="quick-yes-overlay" onClick={() => setCardInfoOpen(false)}>
-            <div className="quick-yes-sheet" style={{ paddingBottom: 40 }} onClick={e => e.stopPropagation()}>
+            <div className="quick-yes-sheet" style={{ paddingBottom: 40, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
               <div className="qy-drag-bar" />
+              {/* Imagem */}
+              {infoImg && (
+                <div style={{ width: 'calc(100% + 32px)', marginLeft: -16, marginTop: -8, marginBottom: 16, height: 180, overflow: 'hidden', borderRadius: '12px 12px 0 0' }}>
+                  <img src={infoImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 20%' }} />
+                </div>
+              )}
+              {/* Título */}
               <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: 22, fontWeight: 600, color: 'var(--tx)', marginBottom: 8, lineHeight: 1.2 }}>
                 {infoTitle}
               </div>
+              {/* Tags */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                 {infoType && <span className="cin-tag cin-tag-type">{infoType}</span>}
                 {infoGenres.map((g, i) => <span key={i} className="cin-tag">{g}</span>)}
@@ -1929,34 +1946,28 @@ export default function Suggest({
                     {infoRating}
                   </span>
                 )}
+                {voteCount && <span className="cin-tag">{voteCount.toLocaleString()} votos</span>}
               </div>
-              {infoDesc && (
-                <p style={{ fontSize: 14, color: 'var(--tx)', opacity: 0.85, lineHeight: 1.6, marginBottom: 12 }}>
-                  {infoDesc.length > 300 ? infoDesc : infoDesc}
+              {/* Descrição completa */}
+              {rawInfoDesc && (
+                <p style={{ fontSize: 14, color: 'var(--tx)', opacity: 0.85, lineHeight: 1.65, marginBottom: 14 }}>
+                  {rawInfoDesc}
                 </p>
               )}
-              {(() => {
-                const item = apiItemsRef.current[activeIdx] as any;
-                const artist = item?.artist;
-                const playtime = item?.playtime;
-                const platforms = item?.platformsList as string[] | undefined;
-                const pageCount = item?.pageCount;
-                const voteCount = item?.voteCount;
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-                    {artist && <div style={{ fontSize: 13, color: 'var(--mu)' }}>✦ {artist}</div>}
-                    {playtime && <div style={{ fontSize: 13, color: 'var(--mu)' }}>⏱ ~{playtime} horas de jogo</div>}
-                    {pageCount && <div style={{ fontSize: 13, color: 'var(--mu)' }}>📄 {pageCount} páginas</div>}
-                    {platforms?.length ? <div style={{ fontSize: 13, color: 'var(--mu)' }}>🎮 {platforms.join(' · ')}</div> : null}
-                    {voteCount && <div style={{ fontSize: 13, color: 'var(--mu)' }}>👥 {voteCount.toLocaleString()} votos</div>}
-                  </div>
-                );
-              })()}
+              {/* Cast */}
               {infoCast.length > 0 && (
-                <div style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
+                <div style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12, lineHeight: 1.6 }}>
                   {infoCast.join(' · ')}
                 </div>
               )}
+              {/* Dados extra */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
+                {artist && <div style={{ fontSize: 13, color: 'var(--mu)' }}>✦ {artist}</div>}
+                {playtime && <div style={{ fontSize: 13, color: 'var(--mu)' }}>⏱ ~{playtime} horas de jogo</div>}
+                {pageCount && <div style={{ fontSize: 13, color: 'var(--mu)' }}>📄 {pageCount} páginas</div>}
+                {platforms?.length ? <div style={{ fontSize: 13, color: 'var(--mu)' }}>{platforms.join(' · ')}</div> : null}
+              </div>
+              {/* Botões acção */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                 {infoTrailerKey && (
                   <button className="trailer-btn" onClick={() => { window.open(`https://www.youtube.com/watch?v=${infoTrailerKey}`, '_blank', 'noopener,noreferrer'); }}>
@@ -1970,6 +1981,7 @@ export default function Suggest({
                   </button>
                 )}
               </div>
+              {/* Não / Sim */}
               <div style={{ display: 'flex', gap: 8, width: '100%' }}>
                 <button className="suggest-btn-skip" style={{ flex: 1 }} onClick={() => { setCardInfoOpen(false); doAdvance(); }}>
                   <span>←</span> Não
