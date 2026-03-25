@@ -912,7 +912,15 @@ export default function Suggest({
             const wMinRating = parseFloat((watchPrefs as any).minRating) || 0;
             const wEpoca = (watchPrefs as any).epoca || 'qualquer';
             const wOrigem = (watchPrefs as any).origem || 'Qualquer';
-            if (wType !== 'Ambos') cacheFilters.watchType = wType;
+            if (wType !== 'Ambos') {
+              const typeMap: Record<string, string> = {
+                'Série': 'Serie',
+                'Filme': 'Filme',
+                'Documentário': 'Documentário',
+                'Anime': 'Anime',
+              };
+              cacheFilters.watchType = typeMap[wType] || wType;
+            }
             const TMDB_GENRE_IDS: Record<string, number> = {
               'Ação':28,'Aventura':12,'Animação':16,'Comédia':35,'Crime':80,
               'Documentário':99,'Drama':18,'Fantasia':14,'Terror':27,'Mistério':9648,
