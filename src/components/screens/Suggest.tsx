@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { trackAsync } from '../../services/analytics';
 import type { Category, DataItem, Profile, TrackingMap, PrefsMap, WatchPrefs, EatPrefs, ListenPrefs, ReadPrefs, PlayPrefs, LearnPrefs, VisitPrefs, DoPrefs } from '../../types';
 import { DATA, GRAD, GENRES, TSTATE, TCOLOR, getPlatformId } from '../../data';
-import { fetchTMDB, discoverTMDB, discoverTMDBMultiPage, discoverTMDBUnderground, discoverTMDBWorldCinema, TMDB_GENRE_MAP, TMDB_TV_GENRE_MAP, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
+import { fetchTMDB, fetchTMDBById, discoverTMDB, discoverTMDBMultiPage, discoverTMDBUnderground, discoverTMDBWorldCinema, TMDB_GENRE_MAP, TMDB_TV_GENRE_MAP, type TMDBResult, type DiscoverItem, type DiscoverFilters } from '../../services/tmdb';
 import { fetchMeal, discoverMeals, type MealResult, type MealDiscoverItem } from '../../services/mealdb';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
 import { discoverRAWG, type RAWGItem } from '../../services/rawg';
@@ -898,22 +898,61 @@ export default function Suggest({
         // Tenta usar cache do Supabase primeiro
         const cacheCount = await getCacheCount(cat.id);
         if (cacheCount >= 50) {
-          const cached = await loadCachedSuggestions(cat.id, 300);
+          const cached = await loadCachedSuggestions(cat.id, 400);
           if (cached.length >= 20) {
-            // Mistura 70% mainstream + 20% underground + 10% random
             const mainstream = cached.filter(c => c.tier === 'mainstream');
             const underground = cached.filter(c => c.tier === 'underground');
-            const random = cached.filter(c => c.tier === 'random');
-
             const pool = [
               ...mainstream.sort(() => Math.random() - 0.5).slice(0, Math.ceil(cached.length * 0.7)),
               ...underground.sort(() => Math.random() - 0.5).slice(0, Math.ceil(cached.length * 0.2)),
-              ...random.sort(() => Math.random() - 0.5).slice(0, Math.ceil(cached.length * 0.1)),
             ].sort(() => Math.random() - 0.5);
-
-            setApiItems(pool);
+            // Aplicar filtros do utilizador ao cache
+            let filteredCache: typeof pool = pool;
+            if (cat.id === 'watch' && watchPrefs?.done) {
+              const wType = (watchPrefs as any).type || 'Ambos';
+              const wGenres: string[] = (watchPrefs as any).genres || [];
+              const wMinRating = parseFloat((watchPrefs as any).minRating) || 0;
+              const wEpoca = (watchPrefs as any).epoca || 'qualquer';
+              const selectedGenreIds = wGenres
+                .flatMap((g: string) => [TMDB_GENRE_MAP[g], TMDB_TV_GENRE_MAP[g]])
+                .filter((id): id is number => !!id);
+              filteredCache = strictFilter(pool, 'watch', {
+                watchType: wType !== 'Ambos' ? wType : undefined,
+                watchGenreIds: selectedGenreIds.length > 0 ? selectedGenreIds : undefined,
+                watchGenreTexts: wGenres.length > 0 ? wGenres : undefined,
+                watchMinRating: wMinRating > 0 ? wMinRating : undefined,
+                watchEpoca: wEpoca !== 'qualquer' ? wEpoca : undefined,
+                excluded: disliked.filter(d => d.startsWith('watch:')).map(d => d.split(':')[1]),
+              }) as typeof pool;
+            } else if (cat.id === 'play' && playPrefs?.done) {
+              filteredCache = strictFilter(pool, 'play', {
+                playDificuldade: playPrefs.dificuldade,
+                playJogadores: playPrefs.jogadores,
+                playOnline: playPrefs.online,
+                playDuracaoJogo: playPrefs.duracao,
+                playTipo: playPrefs.type !== 'Ambos' ? playPrefs.type : undefined,
+                excluded: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
+              }) as typeof pool;
+            } else if (cat.id === 'listen' && listenPrefs?.done) {
+              filteredCache = strictFilter(pool, 'listen', {
+                listenType: listenPrefs.type !== 'Ambos' ? listenPrefs.type : undefined,
+                listenMomento: (listenPrefs as any).momento,
+                listenNovidade: (listenPrefs as any).novidade,
+                excluded: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
+              }) as typeof pool;
+            } else if (cat.id === 'read' && readPrefs?.done) {
+              filteredCache = strictFilter(pool, 'read', {
+                readPeso: readPrefs.peso !== 'mistura' ? readPrefs.peso : undefined,
+                readTipo: readPrefs.type !== 'Ambos' ? readPrefs.type : undefined,
+                readComprimento: (readPrefs as any).comprimento,
+                excluded: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
+              }) as typeof pool;
+            }
+            // Se filtros eliminaram tudo, usar pool original (nunca loading eterno)
+            const finalCache = filteredCache.length >= 3 ? filteredCache : pool;
+            setApiItems(finalCache);
             setApiLoading(false);
-            return; // não vai às APIs directamente
+            return;
           }
         }
         // Cache insuficiente — vai às APIs normalmente
@@ -969,12 +1008,12 @@ export default function Suggest({
             });
             const watchFinal = filtered.length > 0 ? filtered : allItems;
 
-            // Adiciona underground e cinema mundial
-            const [underground, worldCinema] = await Promise.all([
-              discoverTMDBUnderground('movie', Math.floor(Math.random() * 10) + 1),
-              discoverTMDBWorldCinema('movie', Math.floor(Math.random() * 5) + 1),
-            ]);
-            const watchWithExtra = [...watchFinal, ...underground, ...worldCinema];
+            // Adiciona underground (sempre) e cinema mundial (só sem filtro de género)
+            const underground2 = await discoverTMDBUnderground('movie', Math.floor(Math.random() * 10) + 1);
+            const worldCinema2 = wGenres.length === 0
+              ? await discoverTMDBWorldCinema('movie', Math.floor(Math.random() * 5) + 1)
+              : [];
+            const watchWithExtra = [...watchFinal, ...underground2, ...worldCinema2];
             // Deduplica
             const seenIds = new Set<number>();
             const watchDeduped = watchWithExtra.filter(i => {
@@ -1253,9 +1292,20 @@ export default function Suggest({
 
       if (cat.id === 'watch') {
         const tmdbType = item.type === 'Filme' ? 'movie' : 'tv';
-        fetchTMDB(item.title, tmdbType).then(data => {
-          setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], tmdb: data } }));
-        }).catch(() => {});
+        // Para itens do cache: usa o ID directamente (evita match errado por título)
+        const apiItem = apiItemsRef.current.find(a => (a as any).title === item.title);
+        const externalId = apiItem && 'sourceApi' in apiItem ? (apiItem as any).sourceApi === 'tmdb' ? (apiItem as any).externalId || (apiItem as any).external_id : null : null;
+        const tmdbIdMatch = externalId ? externalId.toString().match(/^(?:movie|tv)-(\d+)$/) : null;
+        const tmdbId = tmdbIdMatch ? parseInt(tmdbIdMatch[1]) : null;
+        if (tmdbId) {
+          fetchTMDBById(tmdbId, tmdbType).then(data => {
+            setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], tmdb: data } }));
+          }).catch(() => {});
+        } else {
+          fetchTMDB(item.title, tmdbType).then(data => {
+            setCardDataMap(prev => ({ ...prev, [item.title]: { ...prev[item.title], tmdb: data } }));
+          }).catch(() => {});
+        }
       }
 
       if (cat.id === 'eat') {

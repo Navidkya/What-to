@@ -14,6 +14,7 @@ export interface CachedSuggestion {
   url: string | null;
   emoji: string;
   sourceApi: string;
+  externalId: string | null;
   tier: 'mainstream' | 'underground' | 'random';
   extraData?: Record<string, unknown>;
 }
@@ -49,6 +50,7 @@ export async function loadCachedSuggestions(
       url: r.url,
       emoji: r.emoji || '✦',
       sourceApi: r.source_api,
+      externalId: r.external_id || null,
       tier: r.tier,
       extraData: r.extra_data,
     }));

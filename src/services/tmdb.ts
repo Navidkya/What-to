@@ -107,6 +107,63 @@ export async function fetchTMDB(title: string, type: 'movie' | 'tv'): Promise<TM
   }
 }
 
+export async function fetchTMDBById(
+  tmdbId: number,
+  type: 'movie' | 'tv'
+): Promise<TMDBResult | null> {
+  const apiKey = import.meta.env.VITE_TMDB_KEY;
+  if (!apiKey) return null;
+  const cacheKey = `id_${type}_${tmdbId}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+  try {
+    const detailEndpoint = type === 'movie' ? `movie/${tmdbId}` : `tv/${tmdbId}`;
+    const [detailRes, creditsRes, videosRes] = await Promise.all([
+      fetch(`${TMDB_BASE}/${detailEndpoint}?api_key=${apiKey}&language=pt-PT`),
+      fetch(`${TMDB_BASE}/${detailEndpoint}/credits?api_key=${apiKey}`),
+      fetch(`${TMDB_BASE}/${detailEndpoint}/videos?api_key=${apiKey}`),
+    ]);
+    const detail = detailRes.ok ? await detailRes.json() as {
+      overview?: string;
+      runtime?: number;
+      episode_run_time?: number[];
+      poster_path?: string;
+      backdrop_path?: string;
+      vote_average?: number;
+      release_date?: string;
+      first_air_date?: string;
+    } : null;
+    if (!detail) return null;
+    const credits = creditsRes.ok ? await creditsRes.json() as {
+      cast?: Array<{ name: string }>;
+    } : null;
+    const videos = videosRes.ok ? await videosRes.json() as {
+      results?: Array<{ site: string; type: string; key: string }>;
+    } : null;
+    const runtime = type === 'movie'
+      ? detail.runtime ? `${detail.runtime} min` : null
+      : detail.episode_run_time?.[0] ? `${detail.episode_run_time[0]} min/ep` : null;
+    const cast = (credits?.cast || []).slice(0, 3).map(c => c.name);
+    const trailer = (videos?.results || []).find(
+      v => v.site === 'YouTube' && v.type === 'Trailer'
+    );
+    const tmdbResult: TMDBResult = {
+      posterUrl: detail.poster_path ? `${TMDB_IMG_POSTER}${detail.poster_path}` : null,
+      backdropUrl: detail.backdrop_path ? `${TMDB_IMG_BACKDROP}${detail.backdrop_path}` : null,
+      overview: detail.overview || null,
+      rating: detail.vote_average ? Math.round(detail.vote_average * 10) / 10 : null,
+      year: (detail.release_date || detail.first_air_date || '').substring(0, 4) || null,
+      runtime,
+      cast,
+      trailerKey: trailer?.key || null,
+    };
+    cacheSet(cacheKey, tmdbResult);
+    return tmdbResult;
+  } catch {
+    return null;
+  }
+}
+
 // ── TMDB Discover ──────────────────────────────────────────────────────────
 
 export const TMDB_GENRE_MAP: Record<string, number> = {
