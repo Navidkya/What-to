@@ -43,10 +43,11 @@ export default function WatchOnboard({ isOpen, currentPrefs, onClose }: Props) {
   const lbl = { fontSize: 12, color: '#8a94a8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '16px 0 8px' };
 
   const save = () => {
-    const t = types.filter(v => v !== 'Qualquer');
+    const t = types.filter(v => v !== 'Qualquer' && v !== 'Ambos');
+    const singleType = t.length === 1 ? t[0] : 'Ambos';
     onClose({
       done: true,
-      type: t.length === 1 ? t[0] : (t.length > 1 ? t.join(',') : 'Ambos'),
+      type: singleType,
       genres: genres.filter(v => v !== 'Qualquer'),
       duration: duration.filter(v => v !== 'Qualquer')[0] || 'normal',
       discovery: 'mistura',

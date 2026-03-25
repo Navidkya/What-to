@@ -1000,7 +1000,7 @@ export default function App() {
           <WatchOnboard
             isOpen={watchObOpen}
             currentPrefs={store.watchPrefs}
-            onClose={(prefs) => { store.updateWatchPrefs(prefs); if (prefs.done) { setTimeout(() => setSuggestKey(v => v + 1), 50); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'watch', value: { type: prefs.type, genres: prefs.genres } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'watch' }); } setWatchObOpen(false); }}
+            onClose={(prefs) => { const cleanedPrefs = { ...prefs, type: (prefs.type && prefs.type.includes(',')) ? 'Ambos' : prefs.type }; store.updateWatchPrefs(cleanedPrefs); if (cleanedPrefs.done) { setTimeout(() => setSuggestKey(v => v + 1), 50); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'watch', value: { type: cleanedPrefs.type, genres: cleanedPrefs.genres } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'watch' }); } setWatchObOpen(false); }}
           />
           <ListenOnboard
             isOpen={listenObOpen}

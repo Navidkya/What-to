@@ -1,2 +1,2 @@
 // App version — bump here for each major release
-export const APP_VERSION = 'V31';
+export const APP_VERSION = 'V32';
