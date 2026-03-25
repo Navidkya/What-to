@@ -23,7 +23,7 @@ async function upsert(items) {
   for (let i = 0; i < unique.length; i += 500) {
     const batch = unique.slice(i, i + 500);
     const { error } = await supabase.from('suggestions_cache')
-      .upsert(batch, { onConflict: 'cat_id,source_api,external_id', ignoreDuplicates: true });
+      .upsert(batch, { onConflict: 'cat_id,source_api,external_id', ignoreDuplicates: false });
     if (error) console.error('Upsert error:', error.message);
     else console.log(`  + ${batch.length} items (batch ${Math.floor(i/500)+1})`);
   }
