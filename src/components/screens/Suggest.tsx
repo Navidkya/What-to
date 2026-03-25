@@ -752,6 +752,7 @@ export default function Suggest({
   activeIdxRef.current = activeIdx;
 
   const [quickYesOpen, setQuickYesOpen] = useState(false);
+  const [cardInfoOpen, setCardInfoOpen] = useState(false);
   const [apiLoading, setApiLoading] = useState(false);
   const [apiItems, setApiItems] = useState<APIItem[]>([]);
   const apiItemsRef = useRef<APIItem[]>([]);
@@ -1630,8 +1631,7 @@ export default function Suggest({
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span style={{ fontSize: 15 }}>{cat.icon}</span>
-          <span className="tb-lbl">What to {cat.name}</span>
+          <span className="tb-lbl" style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', letterSpacing: '0.04em' }}>What to {cat.name}</span>
         </div>
         <button className="tbi" onClick={onOpenWishlist}>♡</button>
       </div>
@@ -1693,7 +1693,7 @@ export default function Suggest({
               }}
             >
               {/* Poster background */}
-              <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>
+              <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }} onClick={e => { e.stopPropagation(); setCardInfoOpen(true); }}>
                 {hasImg && (
                   <img
                     key={`${displayImg}-${activeIdx}`}
@@ -1720,15 +1720,6 @@ export default function Suggest({
                    displayData?.influencer?.tier === 'silver' ? `◈ Silver · @${displayData.influencer.handle}` :
                    <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>What to</span>}
                 </div>
-                {/* Logo What to */}
-                {!displayData?.influencer && (
-                  <div className="cin-whatto-badge">
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                    </svg>
-                    what<em>to</em>
-                  </div>
-                )}
               </div>
 
               {/* Content overlay */}
@@ -1875,6 +1866,75 @@ export default function Suggest({
           </button>
         </div>
       </div>
+
+      {/* Card Info Drawer */}
+      {cardInfoOpen && (() => {
+        const activeApiItem = apiItemsRef.current[activeIdx] ?? null;
+        const infoDisplayData = activeApiItem ? getDisplayData(activeApiItem, cat.id) : null;
+        const infoTitle = infoDisplayData?.title || cards[0]?.title || '';
+        const infoDesc = infoDisplayData?.desc || '';
+        const infoCast = infoDisplayData?.cast || [];
+        const infoTrailerKey = infoDisplayData?.trailerKey || null;
+        const infoRating = infoDisplayData?.rating || null;
+        const infoYear = infoDisplayData?.year || null;
+        const infoType = infoDisplayData?.type || '';
+        const infoGenres = infoDisplayData?.genres || [];
+        const infoRuntime = infoDisplayData?.runtime || null;
+        const infoUrl = infoDisplayData?.url || null;
+        return (
+          <div className="quick-yes-overlay" onClick={() => setCardInfoOpen(false)}>
+            <div className="quick-yes-sheet" style={{ paddingBottom: 40 }} onClick={e => e.stopPropagation()}>
+              <div className="qy-drag-bar" />
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: 22, fontWeight: 600, color: 'var(--tx)', marginBottom: 8, lineHeight: 1.2 }}>
+                {infoTitle}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {infoType && <span className="cin-tag cin-tag-type">{infoType}</span>}
+                {infoGenres.map((g, i) => <span key={i} className="cin-tag">{g}</span>)}
+                {infoYear && <span className="cin-tag">{infoYear}</span>}
+                {infoRuntime && <span className="cin-tag">{infoRuntime}</span>}
+                {infoRating && (
+                  <span className="cin-tag cin-tag-rating">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="#C89B3C" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    {infoRating}
+                  </span>
+                )}
+              </div>
+              {infoDesc && (
+                <p style={{ fontSize: 14, color: 'var(--tx)', opacity: 0.85, lineHeight: 1.6, marginBottom: 12 }}>
+                  {infoDesc}
+                </p>
+              )}
+              {infoCast.length > 0 && (
+                <div style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
+                  {infoCast.join(' · ')}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                {infoTrailerKey && (
+                  <button className="trailer-btn" onClick={() => { window.open(`https://www.youtube.com/watch?v=${infoTrailerKey}`, '_blank', 'noopener,noreferrer'); }}>
+                    ▶ Trailer
+                  </button>
+                )}
+                {infoUrl && (
+                  <button className="pb" onClick={() => { window.open(infoUrl, '_blank', 'noopener,noreferrer'); }}>
+                    <span className="dot" style={{ background: '#C89B3C' }} />
+                    {cat.id === 'learn' ? 'Ver no YouTube' : cat.id === 'listen' ? 'Ouvir' : cat.id === 'read' ? 'Ler' : 'Abrir'}
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+                <button className="suggest-btn-skip" style={{ flex: 1 }} onClick={() => { setCardInfoOpen(false); doAdvance(); }}>
+                  <span>←</span> Não
+                </button>
+                <button className="suggest-btn-yes-v2" style={{ flex: 1, flexDirection: 'row', gap: 6 }} onClick={() => { setCardInfoOpen(false); setQuickYesOpen(true); }}>
+                  Sim →
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* PROBLEMA 4 — Quick Yes panel */}
       {quickYesOpen && (() => {
