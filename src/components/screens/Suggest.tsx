@@ -1253,8 +1253,19 @@ export default function Suggest({
       await load();
       try {
         const infAll = await loadActiveSuggestions();
+        const wType = cat.id === 'watch' && watchPrefs?.done ? ((watchPrefs as any).type || 'Ambos') : 'Ambos';
         const infForCat = infAll
-          .filter(s => s.catId === cat.id && s.active && new Date(s.expiresAt) > new Date())
+          .filter(s => {
+            if (s.catId !== cat.id || !s.active || new Date(s.expiresAt) <= new Date()) return false;
+            if (cat.id === 'watch' && wType !== 'Ambos') {
+              const sType = (s.type || '').toLowerCase();
+              if (wType === 'Filme') return sType === 'filme' || sType === 'movie';
+              if (wType === 'Série') return sType === 'série' || sType === 'serie' || sType === 'tv';
+              if (wType === 'Documentário') return sType.includes('documentário') || sType.includes('documentary');
+              if (wType === 'Anime') return sType.includes('anime');
+            }
+            return true;
+          })
           .sort((a, b) => {
             const tierOrder = { gold: 0, silver: 1, base: 2 };
             return (tierOrder[a.influencerTier] ?? 3) - (tierOrder[b.influencerTier] ?? 3);
