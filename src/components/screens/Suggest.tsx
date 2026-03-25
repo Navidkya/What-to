@@ -17,8 +17,7 @@ import { discoverLastFM, type LastFMItem } from '../../services/lastfm';
 import { discoverITunes, type iTunesItem } from '../../services/itunes';
 import { discoverOpenLibrary, type OLBook } from '../../services/openLibraryDiscover';
 import { discoverEventbrite, type EventbriteItem } from '../../services/eventbrite';
-import { loadCachedSuggestions, getCacheCount } from '../../services/suggestionCache';
-import type { CachedSuggestion } from '../../services/suggestionCache';
+import { loadCachedSuggestions, getCacheCount, type CachedSuggestion, type CacheFilters } from '../../services/suggestionCache';
 
 const SUGGEST_FALLBACKS: Record<string, string> = {
   watch:  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=90',
@@ -551,6 +550,9 @@ interface DisplayData {
   url: string | null;
   emoji: string;
   influencer?: { name: string; handle: string; tier: string };
+  cast?: string[];
+  trailerKey?: string | null;
+  runtime?: string | null;
 }
 
 function getDisplayData(item: APIItem, catId: string): DisplayData | null {
@@ -706,6 +708,9 @@ function getDisplayData(item: APIItem, catId: string): DisplayData | null {
       genres: i.genres.length > 0 ? i.genres : [i.genre].filter(Boolean),
       url: i.url,
       emoji: i.emoji,
+      cast: i.castList || [],
+      trailerKey: i.trailerKey || null,
+      runtime: i.runtime ? (i.type === 'Serie' ? `${i.runtime} min/ep` : `${i.runtime} min`) : null,
     };
   }
   return null;
@@ -898,59 +903,79 @@ export default function Suggest({
         // Tenta usar cache do Supabase primeiro
         const cacheCount = await getCacheCount(cat.id);
         if (cacheCount >= 50) {
-          const cached = await loadCachedSuggestions(cat.id, 400);
-          if (cached.length >= 20) {
-            const mainstream = cached.filter(c => c.tier === 'mainstream');
-            const underground = cached.filter(c => c.tier === 'underground');
-            const pool = [
-              ...mainstream.sort(() => Math.random() - 0.5).slice(0, Math.ceil(cached.length * 0.7)),
-              ...underground.sort(() => Math.random() - 0.5).slice(0, Math.ceil(cached.length * 0.2)),
-            ].sort(() => Math.random() - 0.5);
-            // Aplicar filtros do utilizador ao cache
-            let filteredCache: typeof pool = pool;
-            if (cat.id === 'watch' && watchPrefs?.done) {
-              const wType = (watchPrefs as any).type || 'Ambos';
-              const wGenres: string[] = (watchPrefs as any).genres || [];
-              const wMinRating = parseFloat((watchPrefs as any).minRating) || 0;
-              const wEpoca = (watchPrefs as any).epoca || 'qualquer';
-              const selectedGenreIds = wGenres
-                .flatMap((g: string) => [TMDB_GENRE_MAP[g], TMDB_TV_GENRE_MAP[g]])
-                .filter((id): id is number => !!id);
-              filteredCache = strictFilter(pool, 'watch', {
-                watchType: wType !== 'Ambos' ? wType : undefined,
-                watchGenreIds: selectedGenreIds.length > 0 ? selectedGenreIds : undefined,
-                watchGenreTexts: wGenres.length > 0 ? wGenres : undefined,
-                watchMinRating: wMinRating > 0 ? wMinRating : undefined,
-                watchEpoca: wEpoca !== 'qualquer' ? wEpoca : undefined,
-                excluded: disliked.filter(d => d.startsWith('watch:')).map(d => d.split(':')[1]),
-              }) as typeof pool;
-            } else if (cat.id === 'play' && playPrefs?.done) {
-              filteredCache = strictFilter(pool, 'play', {
-                playDificuldade: playPrefs.dificuldade,
-                playJogadores: playPrefs.jogadores,
-                playOnline: playPrefs.online,
-                playDuracaoJogo: playPrefs.duracao,
-                playTipo: playPrefs.type !== 'Ambos' ? playPrefs.type : undefined,
-                excluded: disliked.filter(d => d.startsWith('play:')).map(d => d.split(':')[1]),
-              }) as typeof pool;
-            } else if (cat.id === 'listen' && listenPrefs?.done) {
-              filteredCache = strictFilter(pool, 'listen', {
-                listenType: listenPrefs.type !== 'Ambos' ? listenPrefs.type : undefined,
-                listenMomento: (listenPrefs as any).momento,
-                listenNovidade: (listenPrefs as any).novidade,
-                excluded: disliked.filter(d => d.startsWith('listen:')).map(d => d.split(':')[1]),
-              }) as typeof pool;
-            } else if (cat.id === 'read' && readPrefs?.done) {
-              filteredCache = strictFilter(pool, 'read', {
-                readPeso: readPrefs.peso !== 'mistura' ? readPrefs.peso : undefined,
-                readTipo: readPrefs.type !== 'Ambos' ? readPrefs.type : undefined,
-                readComprimento: (readPrefs as any).comprimento,
-                excluded: disliked.filter(d => d.startsWith('read:')).map(d => d.split(':')[1]),
-              }) as typeof pool;
+          const cacheFilters: CacheFilters = {
+            excludeTitles: disliked.filter(d => d.startsWith(cat.id + ':')).map(d => d.split(':')[1]),
+          };
+          if (cat.id === 'watch' && watchPrefs?.done) {
+            const wType = (watchPrefs as any).type || 'Ambos';
+            const wGenres: string[] = (watchPrefs as any).genres || [];
+            const wMinRating = parseFloat((watchPrefs as any).minRating) || 0;
+            const wEpoca = (watchPrefs as any).epoca || 'qualquer';
+            const wOrigem = (watchPrefs as any).origem || 'Qualquer';
+            if (wType !== 'Ambos') cacheFilters.watchType = wType;
+            const TMDB_GENRE_IDS: Record<string, number> = {
+              'Ação':28,'Aventura':12,'Animação':16,'Comédia':35,'Crime':80,
+              'Documentário':99,'Drama':18,'Fantasia':14,'Terror':27,'Mistério':9648,
+              'Romance':10749,'Sci-Fi':878,'Suspense':53,'Thriller':53,'Histórico':36,
+              'Música':10402,'Guerra':10752,'Faroeste':37,'Musical':10402,'Biográfico':36,
+            };
+            const genreIds = wGenres.map((g: string) => TMDB_GENRE_IDS[g]).filter(Boolean) as number[];
+            if (genreIds.length > 0) cacheFilters.watchGenreIds = genreIds;
+            if (wMinRating > 0) cacheFilters.watchMinRating = wMinRating;
+            if (wEpoca === 'Recente (+2015)') cacheFilters.watchMinYear = 2015;
+            else if (wEpoca === 'Anos 2000-2015') { cacheFilters.watchMinYear = 2000; cacheFilters.watchMaxYear = 2014; }
+            else if (wEpoca === 'Anos 90 (1980-2000)') { cacheFilters.watchMinYear = 1980; cacheFilters.watchMaxYear = 1999; }
+            else if (wEpoca === 'Anos 70-80') { cacheFilters.watchMinYear = 1960; cacheFilters.watchMaxYear = 1979; }
+            else if (wEpoca === 'Clássico (-1960)') cacheFilters.watchMaxYear = 1959;
+            const origemLang: Record<string, string> = {
+              'Americano': 'en', 'Português': 'pt', 'Latino': 'es',
+              'Europeu': 'fr', 'Asiático': 'ko',
+            };
+            if (wOrigem !== 'Qualquer' && origemLang[wOrigem]) {
+              cacheFilters.watchLanguage = origemLang[wOrigem];
             }
-            // Se filtros eliminaram tudo, usar pool original (nunca loading eterno)
-            const finalCache = filteredCache.length >= 3 ? filteredCache : pool;
-            setApiItems(finalCache);
+          }
+          else if (cat.id === 'play' && playPrefs?.done) {
+            const pJogadores = playPrefs.jogadores;
+            const pOnline = playPrefs.online;
+            const pDuracao = playPrefs.duracao;
+            if (pJogadores === 'Solo') {
+              cacheFilters.playTags = ['singleplayer'];
+              cacheFilters.playGameModes = ['Single player'];
+            } else if (pJogadores === 'Co-op' || pJogadores === 'co-op') {
+              cacheFilters.playTags = ['co-op', 'local-co-op', 'online-co-op'];
+              cacheFilters.playGameModes = ['Co-operative'];
+            } else if (pJogadores === 'Versus') {
+              cacheFilters.playTags = ['multiplayer', 'pvp'];
+              cacheFilters.playGameModes = ['Multiplayer'];
+            }
+            if (pOnline === 'Online') cacheFilters.playTags = [...(cacheFilters.playTags || []), 'online'];
+            else if (pOnline === 'Co-op local') cacheFilters.playTags = [...(cacheFilters.playTags || []), 'local-co-op'];
+            if (pDuracao === 'Rápido (-30min)') { cacheFilters.playMinPlaytime = 0; cacheFilters.playMaxPlaytime = 5; }
+            else if (pDuracao === 'Normal (30-90min)') { cacheFilters.playMinPlaytime = 5; cacheFilters.playMaxPlaytime = 30; }
+            else if (pDuracao === 'Longo (+90min)') cacheFilters.playMinPlaytime = 30;
+            if (playPrefs.type === 'Mobile') cacheFilters.playPlatforms = ['Android', 'iOS'];
+          }
+          else if (cat.id === 'listen' && listenPrefs?.done) {
+            if (listenPrefs.type !== 'Ambos') cacheFilters.listenType = listenPrefs.type;
+            if (listenPrefs.genres?.length > 0) cacheFilters.listenGenre = listenPrefs.genres[0];
+            const lDuracao = (listenPrefs as any).duracao;
+            if (lDuracao === 'Curto (-20min)') cacheFilters.listenMaxDurationMs = 300000;
+            else if (lDuracao === 'Normal (20-60min)') { cacheFilters.listenMinDurationMs = 300000; cacheFilters.listenMaxDurationMs = 3600000; }
+            else if (lDuracao === 'Longo (+60min)') cacheFilters.listenMinDurationMs = 3600000;
+          }
+          else if (cat.id === 'read' && readPrefs?.done) {
+            if (readPrefs.type !== 'Ambos') cacheFilters.readType = readPrefs.type;
+            if ((readPrefs as any).lingua === 'Português') cacheFilters.readLanguage = 'pt';
+            else if ((readPrefs as any).lingua === 'Inglês') cacheFilters.readLanguage = 'en';
+            const comprimento = (readPrefs as any).comprimento;
+            if (comprimento === 'Curto (-200p)') cacheFilters.readMaxPages = 200;
+            else if (comprimento === 'Normal (200-400p)') { cacheFilters.readMinPages = 200; cacheFilters.readMaxPages = 400; }
+            else if (comprimento === 'Épico (+400p)') cacheFilters.readMinPages = 400;
+          }
+          const cached = await loadCachedSuggestions(cat.id, 150, cacheFilters);
+          if (cached.length >= 3) {
+            setApiItems(cached);
             setApiLoading(false);
             return;
           }
@@ -1715,7 +1740,9 @@ export default function Suggest({
                   {/* Ano */}
                   {displayYear && <span className="cin-tag">{displayYear}</span>}
                   {/* Duração */}
-                  {data?.tmdb?.runtime && <span className="cin-tag">{data.tmdb.runtime}</span>}
+                  {(displayData?.runtime || data?.tmdb?.runtime) && (
+                    <span className="cin-tag">{displayData?.runtime || data?.tmdb?.runtime}</span>
+                  )}
                   {/* Rating */}
                   {displayRating && (
                     <span className="cin-tag cin-tag-rating">
@@ -1729,9 +1756,12 @@ export default function Suggest({
 
                 <div className="cin-desc">{displayDesc}</div>
 
-                {data?.tmdb?.cast && data.tmdb.cast.length > 0 && (
-                  <div className="cin-cast">{data.tmdb.cast.slice(0, 3).join(' · ')}</div>
-                )}
+                {(() => {
+                  const castToShow = displayData?.cast?.length ? displayData.cast : data?.tmdb?.cast;
+                  return castToShow && castToShow.length > 0 ? (
+                    <div className="cin-cast">{castToShow.slice(0, 3).join(' · ')}</div>
+                  ) : null;
+                })()}
 
                 {data?.meal?.ingredients && data.meal.ingredients.length > 0 && (
                   <div className="cin-ings">
@@ -1759,9 +1789,9 @@ export default function Suggest({
                       {cat.id === 'visit' ? 'Ver no Maps' : cat.id === 'learn' ? 'Ver no YouTube' : cat.id === 'listen' ? 'Abrir no Deezer' : cat.id === 'read' ? 'Pré-visualizar' : 'Abrir'}
                     </button>
                   )}
-                  {data?.tmdb?.trailerKey && (
+                  {(displayData?.trailerKey || data?.tmdb?.trailerKey) && (
                     <button className="trailer-btn"
-                      onClick={e => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${data.tmdb!.trailerKey}`, '_blank', 'noopener,noreferrer'); }}
+                      onClick={e => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${displayData?.trailerKey || data.tmdb!.trailerKey}`, '_blank', 'noopener,noreferrer'); }}
                     >
                       ▶ Trailer
                     </button>
