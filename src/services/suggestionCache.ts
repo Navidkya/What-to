@@ -193,15 +193,65 @@ export async function loadCachedSuggestions(
     console.log('[CACHE] catId:', catId, 'filters:', JSON.stringify(filters));
     const { data, error } = await query;
     if (error || !data) return [];
-    const shuffled = data
-      .map((r: any) => mapRow(r))
-      .sort(() => Math.random() - 0.5)
-      .slice(0, limit);
+    let mapped = data.map((r: any) => mapRow(r));
+
+    // Filtragem pós-query para genre_ids vazios ou nulos
+    // O PostgreSQL overlaps() com array vazio retorna true — temos de filtrar manualmente
+    if (catId === 'watch' && filters?.watchGenreIds?.length) {
+      const requiredIds = filters.watchGenreIds;
+      const GENRE_NAMES: Record<number, string[]> = {
+        28: ['ação','action','acao'],
+        12: ['aventura','adventure'],
+        16: ['animação','animation','animacao'],
+        35: ['comédia','comedy','comedia'],
+        80: ['crime'],
+        99: ['documentário','documentary','documentario'],
+        18: ['drama'],
+        14: ['fantasia','fantasy'],
+        27: ['terror','horror','medo'],
+        9648: ['mistério','mystery','misterio'],
+        10749: ['romance'],
+        878: ['sci-fi','ficção científica','ficcao cientifica','science fiction','ciência ficção'],
+        53: ['suspense','thriller'],
+        36: ['histórico','history','historico'],
+        10402: ['música','music','musica'],
+        10752: ['guerra','war'],
+        37: ['faroeste','western'],
+      };
+
+      // Separa items com genre_ids preenchidos dos que têm vazio
+      const withIds = mapped.filter(i => i.genreIds && i.genreIds.length > 0);
+      const withoutIds = mapped.filter(i => !i.genreIds || i.genreIds.length === 0);
+
+      // Para items com genre_ids: verifica overlaps real
+      const passingWithIds = withIds.filter(i =>
+        requiredIds.some(rid => i.genreIds.includes(rid))
+      );
+
+      // Para items sem genre_ids: tenta match por texto em genre/genres
+      const passingWithoutIds = withoutIds.filter(i => {
+        const genreTexts = [
+          i.genre?.toLowerCase() || '',
+          ...(i.genres || []).map((g: string) => g.toLowerCase()),
+        ];
+        return requiredIds.some(rid => {
+          const names = GENRE_NAMES[rid] || [];
+          return names.some(name => genreTexts.some(gt => gt.includes(name)));
+        });
+      });
+
+      // Items sem genre_ids que passaram por texto vão para o fim (match menos seguro)
+      mapped = [...passingWithIds, ...passingWithoutIds];
+    }
+
     if (filters?.excludeTitles?.length) {
       const ex = new Set(filters.excludeTitles.map((t: string) => t.toLowerCase()));
-      return shuffled.filter((i: CachedSuggestion) => !ex.has(i.title.toLowerCase()));
+      mapped = mapped.filter(i => !ex.has(i.title.toLowerCase()));
     }
-    return shuffled;
+
+    return mapped
+      .sort(() => Math.random() - 0.5)
+      .slice(0, limit);
   } catch { return []; }
 }
 export async function getCacheCount(catId: string): Promise<number> {
