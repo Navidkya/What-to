@@ -1649,6 +1649,45 @@ export default function Suggest({
         ))}
       </div>
 
+      {cat.id === 'watch' && watchPrefs?.done && (() => {
+        const activeTags: string[] = [];
+        const wType = (watchPrefs as any).type;
+        const wGenres: string[] = (watchPrefs as any).genres || [];
+        const wOrigem = (watchPrefs as any).origem;
+        const wLingua = (watchPrefs as any).lingua;
+        const wEpoca = (watchPrefs as any).epoca;
+        const wMinRating = (watchPrefs as any).minRating;
+        const wDuration = (watchPrefs as any).duration;
+
+        if (wType && wType !== 'Ambos' && wType !== 'qualquer') activeTags.push(wType);
+        wGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
+        if (wOrigem && wOrigem !== 'Qualquer') activeTags.push(wOrigem);
+        if (wLingua && wLingua !== 'Qualquer') activeTags.push(wLingua);
+        if (wEpoca && wEpoca !== 'qualquer' && wEpoca !== 'Qualquer') activeTags.push(wEpoca);
+        if (wMinRating && wMinRating !== 'Qualquer') activeTags.push(`★ ${wMinRating}`);
+        if (wDuration && wDuration !== 'normal' && wDuration !== 'Qualquer') activeTags.push(wDuration);
+
+        if (activeTags.length === 0) return null;
+        return (
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 6,
+            padding: '6px 16px 2px',
+            overflowX: 'auto',
+          }}>
+            {activeTags.map((tag, i) => (
+              <span key={i} style={{
+                fontSize: 11, padding: '3px 10px',
+                background: 'rgba(200,155,60,0.12)',
+                border: '1px solid rgba(200,155,60,0.3)',
+                borderRadius: 20, color: 'rgba(200,155,60,0.85)',
+                fontFamily: "'Outfit',sans-serif",
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}>{tag}</span>
+            ))}
+          </div>
+        );
+      })()}
+
       <div className="carousel-viewport">
         {apiLoading && (
           <div className="discover-loading">
@@ -1688,6 +1727,7 @@ export default function Suggest({
             <div
               className="cin-card"
               style={{ cursor: 'default', userSelect: 'none' }}
+              onClick={() => setCardInfoOpen(true)}
               onMouseDown={e => { mouseDragStartX.current = e.clientX; mouseDragging.current = false; }}
               onMouseUp={e => {
                 if (mouseDragStartX.current === null) return;
@@ -1698,7 +1738,7 @@ export default function Suggest({
               }}
             >
               {/* Poster background */}
-              <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }} onClick={e => { e.stopPropagation(); setCardInfoOpen(true); }}>
+              <div className="cin-poster" style={hasImg ? undefined : { background: `linear-gradient(${GRAD[cat.id] || '135deg,#111,#222'})` }}>
                 {hasImg && (
                   <img
                     key={`${displayImg}-${activeIdx}`}
