@@ -1026,8 +1026,26 @@ export default function Suggest({
             else if (comprimento === 'Épico (+400p)') cacheFilters.readMinPages = 400;
           }
           const cached = await loadCachedSuggestions(cat.id, 150, cacheFilters);
-          if (cached.length >= 3) {
-            setApiItems(cached);
+          const normalizedCached = cached.map(item => {
+            if (item.catId !== 'watch') return item;
+            // Corrige type com base nos dados reais do cache
+            let correctedType = item.type;
+            if (item.isDocumentary) {
+              correctedType = 'Documentário';
+            } else if (item.isAnime) {
+              correctedType = 'Anime';
+            } else if (item.type === 'Filme' || item.type === 'Movie') {
+              // Verifica se genre_ids contém ids típicos de séries TV
+              const tvOnlyIds = [10759, 10762, 10763, 10764, 10765, 10766, 10767, 10768];
+              const hasTvId = item.genreIds?.some(id => tvOnlyIds.includes(id));
+              if (hasTvId) correctedType = 'Serie';
+            } else if (item.type === 'Serie' || item.type === 'Série') {
+              correctedType = 'Serie';
+            }
+            return { ...item, type: correctedType };
+          });
+          if (normalizedCached.length >= 3) {
+            setApiItems(normalizedCached);
             setApiLoading(false);
             return;
           }
@@ -1327,25 +1345,28 @@ export default function Suggest({
           watchEpoca: wEpocaInf !== 'qualquer' && wEpocaInf !== 'Qualquer' ? wEpocaInf : undefined,
           excluded: disliked.filter(d => d.startsWith(cat.id + ':')).map(d => d.split(':')[1]),
         };
-        const filteredInfluencers = strictFilter(infForCat, cat.id, strictPrefs);
-        const toInject = filteredInfluencers.length > 0 ? filteredInfluencers : infForCat;
-        if (toInject.length > 0) {
-          setApiItems(prev => {
-            if (prev.length === 0) return toInject;
-            const result = [...prev];
-            const positions = [2, 5, 7, 8, 14];
-            let inserted = 0;
-            for (const pos of positions) {
-              if (inserted >= toInject.length) break;
-              if (pos <= result.length) {
-                result.splice(pos, 0, toInject[inserted++]);
-              } else {
-                result.push(toInject[inserted++]);
-              }
-            }
-            return result;
-          });
+        const filteredInf = strictFilter(infForCat, cat.id, strictPrefs);
+        // sem fallback — se vazio, não injected nada
+        const toInject = filteredInf.slice(0, 5);
+        if (toInject.length === 0) {
+          setApiItems(prev => prev.length === 0 ? [] : prev);
+          return;
         }
+        setApiItems(prev => {
+          if (prev.length === 0) return toInject;
+          const result = [...prev];
+          const positions = [2, 5, 7, 8, 14];
+          let inserted = 0;
+          for (const pos of positions) {
+            if (inserted >= toInject.length) break;
+            if (pos <= result.length) {
+              result.splice(pos, 0, toInject[inserted++]);
+            } else {
+              result.push(toInject[inserted++]);
+            }
+          }
+          return result;
+        });
       } catch { /* ignore */ }
     };
 
@@ -1728,7 +1749,11 @@ export default function Suggest({
           const displayData = apiItem ? getDisplayData(apiItem, cat.id) : null;
 
           const displayTitle = displayData?.title ?? card.title;
-          const rawDesc = displayData?.desc || (data?.tmdb?.overview || card.desc || '');
+          // Descrição: cache tem prioridade absoluta para evitar dados cruzados
+          const cacheDescription = apiItemsRef.current[activeIdx] && 'sourceApi' in (apiItemsRef.current[activeIdx] as any)
+            ? (apiItemsRef.current[activeIdx] as any).description || null
+            : null;
+          const rawDesc = cacheDescription || displayData?.desc || data?.tmdb?.overview || card.desc || '';
           const displayDesc = rawDesc.length > 160 ? rawDesc.substring(0, 160) + '…' : rawDesc;
           const displayImg = displayData?.img ?? data?.tmdb?.backdropUrl ?? data?.tmdb?.posterUrl ?? data?.cover ?? '';
           const displayRating = displayData?.rating ?? data?.tmdb?.rating ?? card.rating ?? null;
@@ -2034,7 +2059,11 @@ export default function Suggest({
         const activeApiItem = apiItemsRef.current[activeIdx] ?? null;
         const infoDisplayData = activeApiItem ? getDisplayData(activeApiItem, cat.id) : null;
         const infoTitle = infoDisplayData?.title || cards[0]?.title || '';
-        const rawInfoDesc = infoDisplayData?.desc || (activeApiItem as any)?.description || '';
+        // Descrição: cache tem prioridade absoluta para evitar dados cruzados
+        const cacheInfoDescription = activeApiItem && 'sourceApi' in (activeApiItem as any)
+          ? (activeApiItem as any).description || null
+          : null;
+        const rawInfoDesc = cacheInfoDescription || infoDisplayData?.desc || (activeApiItem as any)?.description || '';
         const directCastInfo = (activeApiItem as any)?.castList as string[] | undefined;
         const infoCast = infoDisplayData?.cast?.length ? infoDisplayData.cast : (directCastInfo || []);
         const infoTrailerKey = infoDisplayData?.trailerKey || (activeApiItem as any)?.trailerKey || null;
