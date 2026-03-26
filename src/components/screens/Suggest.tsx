@@ -2003,14 +2003,14 @@ export default function Suggest({
         const qyEmoji = qyDisplayData?.emoji || cards[activeIdx]?.emoji || '✦';
         const actionUrl = qyDisplayData?.url || cards[activeIdx]?.platforms?.[0]?.url || null;
 
-        const openLabel = cat.id === 'watch' ? '▶ Ver na plataforma'
-          : cat.id === 'listen' ? '🎵 Ouvir'
-          : cat.id === 'read' ? '📖 Ler agora'
-          : cat.id === 'play' ? '🎮 Jogar'
-          : cat.id === 'learn' ? '▶ Ver vídeo'
-          : cat.id === 'visit' ? '🗺 Ver no mapa'
-          : cat.id === 'eat' ? '🍽️ Ver receita'
-          : '▶ Abrir';
+        const openLabel = cat.id === 'watch' ? 'Ver na plataforma'
+          : cat.id === 'listen' ? 'Ouvir'
+          : cat.id === 'read' ? 'Ler agora'
+          : cat.id === 'play' ? 'Jogar'
+          : cat.id === 'learn' ? 'Ver vídeo'
+          : cat.id === 'visit' ? 'Ver no mapa'
+          : cat.id === 'eat' ? 'Ver receita'
+          : 'Abrir';
 
         const now = new Date();
         const start = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
@@ -2028,7 +2028,9 @@ export default function Suggest({
               </div>
 
               <button className="qy-btn qy-now" onClick={() => { acceptedRef.current = true; trackAsync({ userId, eventType: 'suggest_accept', catId: cat.id, value: { cards_skipped: skipCountRef.current, action: 'agora' } }); skipCountRef.current = 0; onOpenReact(); setQuickYesOpen(false); }}>
-                <span>▶</span>
+                <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius:8, background:'rgba(200,155,60,0.15)', flexShrink:0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#C89B3C" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </span>
                 <div>
                   <div className="qy-btn-title">Sim, agora!</div>
                   <div className="qy-btn-sub">Abre e acompanha em tempo real</div>
@@ -2037,7 +2039,9 @@ export default function Suggest({
 
               {actionUrl && (
                 <button className="qy-btn qy-open" onClick={() => { window.open(actionUrl, '_blank'); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
-                  <span>{cat.id === 'watch' ? '📺' : cat.id === 'listen' ? '🎵' : cat.id === 'visit' ? '🗺' : '🔗'}</span>
+                  <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius:8, background:'rgba(106,180,224,0.12)', flexShrink:0 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(106,180,224,0.9)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 2l-4 5-4-5"/></svg>
+                  </span>
                   <div>
                     <div className="qy-btn-title">{openLabel}</div>
                     <div className="qy-btn-sub">Abre directamente</div>
@@ -2046,7 +2050,9 @@ export default function Suggest({
               )}
 
               <button className="qy-btn qy-later" onClick={() => { acceptedRef.current = true; trackAsync({ userId, eventType: 'suggest_accept', catId: cat.id, value: { cards_skipped: skipCountRef.current, action: 'mais_tarde' } }); skipCountRef.current = 0; if (_onSwipeYes) _onSwipeYes(); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
-                <span>✅</span>
+                <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius:8, background:'rgba(94,201,122,0.12)', flexShrink:0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(94,201,122,0.9)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span>
                 <div>
                   <div className="qy-btn-title">Sim, mais tarde</div>
                   <div className="qy-btn-sub">Fica marcado para hoje</div>
@@ -2054,7 +2060,9 @@ export default function Suggest({
               </button>
 
               <button className="qy-btn qy-schedule" onClick={() => { window.open(calendarUrl, '_blank'); setQuickYesOpen(false); setTimeout(() => doAdvance(), 300); }}>
-                <span>🗓</span>
+                <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius:8, background:'rgba(156,165,185,0.1)', flexShrink:0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(156,165,185,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
                 <div>
                   <div className="qy-btn-title">Escolher hora</div>
                   <div className="qy-btn-sub">Abre o Google Calendar</div>
