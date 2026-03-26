@@ -50,6 +50,7 @@ interface Props {
   onAddToHistory?: (entry: { title: string; emoji: string; cat: string; catId: string; action: 'agora' | 'hoje' | 'save' | 'skip'; date: string; type: string; genre: string }) => void;
   onOpenMessages?: (friendId: string, friendName: string) => void;
   onAddToTracking?: (key: string, data: { title: string; emoji: string; cat: string; catId: string; state: 'watching' }) => void;
+  unreadMessages?: number;
 }
 
 
@@ -103,7 +104,7 @@ function getCatIconSvg(catId: string) {
   }
 }
 
-export default function FeedScreen({ profile: _profile, history: _history, isActive, onToast, userId: _userId, onAddToHistory, onOpenMessages, onAddToTracking }: Props) {
+export default function FeedScreen({ profile: _profile, history: _history, isActive, onToast, userId: _userId, onAddToHistory, onOpenMessages, onAddToTracking, unreadMessages = 0 }: Props) {
   const [cards, setCards] = useState<FeedCard[]>([]);
   const [personPopup, setPersonPopup] = useState<{
     name: string; handle?: string; platform?: string; tier?: string;
@@ -357,7 +358,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
         <button
           onClick={() => setSidebarOpen(o => !o)}
           style={{ background: 'none', border: 'none', cursor: 'pointer',
-            color: 'rgba(200,155,60,0.6)', padding: 4 }}
+            color: 'rgba(200,155,60,0.6)', padding: 4, position: 'relative' }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -365,6 +366,17 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
+          {unreadMessages > 0 && (
+            <div style={{
+              position: 'absolute', top: 0, right: 0,
+              background: '#C89B3C', color: '#0B0D12',
+              borderRadius: '50%', width: 12, height: 12,
+              fontSize: 8, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {unreadMessages > 9 ? '9+' : unreadMessages}
+            </div>
+          )}
         </button>
 
         {sidebarOpen && (

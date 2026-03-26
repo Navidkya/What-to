@@ -874,6 +874,7 @@ export default function App() {
               store.updateHistory([{ ...entry, type: '', genre: '' }, ...store.history]);
             }}
             onOpenMessages={(fid, fname) => openMessages(fid, fname)}
+            unreadMessages={messagesUnread}
           />
 
           <ForYou
