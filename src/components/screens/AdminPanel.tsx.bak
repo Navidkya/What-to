@@ -1,317 +1,558 @@
 import { useState, useEffect } from 'react';
-import { createInviteCode, listInviteCodes, updateInviteCode, removeInviteCode } from '../../services/influencers';
+import { listInviteCodes, createInviteCode, updateInviteCode, removeInviteCode } from '../../services/influencers';
+import type { InviteCode } from '../../services/influencers';
 import { supabase } from '../../lib/supabase';
 
-const ADMIN_USER = 'Navidkia';
-const ADMIN_PASS = 'Leste1825!';
+// Credenciais via variáveis de ambiente (não ficam no bundle)
+const ADMIN_USER = import.meta.env.VITE_ADMIN_USER || 'Navidkia';
+const ADMIN_PASS = import.meta.env.VITE_ADMIN_PASS || 'Leste1825!';
 
-const TIER_COLORS = {
-  gold:   { bg: 'rgba(200,155,60,0.15)',  border: 'rgba(200,155,60,0.4)',   color: '#C89B3C' },
-  silver: { bg: 'rgba(156,165,185,0.1)',  border: 'rgba(156,165,185,0.3)', color: '#9ca5b9' },
-  base:   { bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)', color: '#f5f1eb' },
-};
-
-interface InviteCode {
-  id: string; code: string; name: string; handle: string;
-  tier: string; platform: string; used: boolean; usedAt: string | null;
-  usedBy?: string; createdAt: string;
+// ── Tipos para o dashboard ────────────────────────────────────────────────
+interface DashStats {
+  totalUsers: number;
+  activeToday: number;
+  activeWeek: number;
+  activeMonth: number;
+  topCats: Array<{ catId: string; count: number }>;
+  acceptRateByCat: Array<{ catId: string; opens: number; accepts: number; rate: number }>;
+  peakHours: Array<{ hour: number; count: number }>;
+  topSuggestions: Array<{ title: string; catId: string; count: number }>;
+  deviceSplit: Array<{ device: string; count: number }>;
+  osSplit: Array<{ os: string; count: number }>;
+  avgSessionSeconds: number;
+  influencerConversion: Array<{ handle: string; views: number; accepts: number; rate: number }>;
 }
 
-interface UsedByInfo { name: string; handle: string; }
+const CAT_NAMES: Record<string, string> = {
+  watch: 'Ver', eat: 'Comer', read: 'Ler', listen: 'Ouvir',
+  play: 'Jogar', learn: 'Aprender', visit: 'Visitar', do: 'Fazer',
+};
 
 export default function AdminPanel() {
-  const [authed, setAuthed]       = useState(false);
-  const [user, setUser]           = useState('');
-  const [pass, setPass]           = useState('');
-  const [codes, setCodes]         = useState<InviteCode[]>([]);
-  const [loading, setLoading]     = useState(false);
+  const [authed, setAuthed] = useState(false);
+  const [user, setUser] = useState('');
+  const [pass, setPass] = useState('');
+  const [loginErr, setLoginErr] = useState('');
 
-  // Create form
-  const [newCode, setNewCode]     = useState('');
-  const [newName, setNewName]     = useState('');
-  const [newHandle, setNewHandle] = useState('');
-  const [newTier, setNewTier]     = useState<'base' | 'silver' | 'gold'>('gold');
-  const [newPlatform, setNewPlatform] = useState('instagram');
-  const [creating, setCreating]   = useState(false);
-  const [msg, setMsg]             = useState('');
+  const [tab, setTab] = useState<'codes' | 'metrics'>('codes');
+  const [stats, setStats] = useState<DashStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
 
-  // Edit state
-  const [editingId, setEditingId]     = useState<string | null>(null);
-  const [editCode, setEditCode]       = useState('');
-  const [editName, setEditName]       = useState('');
-  const [editHandle, setEditHandle]   = useState('');
-  const [editTier, setEditTier]       = useState<'base' | 'silver' | 'gold'>('gold');
-  const [editPlatform, setEditPlatform] = useState('instagram');
-  const [saving, setSaving]           = useState(false);
-  const [usedByInfo, setUsedByInfo]   = useState<Record<string, UsedByInfo>>({});
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '11px 14px', borderRadius: 10,
-    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-    color: '#f5f1eb', fontFamily: "'Outfit', sans-serif", fontSize: 13,
-    outline: 'none', boxSizing: 'border-box',
-  };
-
-  const loadCodes = async () => {
-    setLoading(true);
-    const data = await listInviteCodes();
-    setCodes(data);
-    setLoading(false);
-  };
+  // Códigos de convite
+  const [codes, setCodes] = useState<InviteCode[]>([]);
+  const [form, setForm] = useState({ code: '', name: '', handle: '', tier: 'base', platform: 'instagram' });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ code: '', name: '', handle: '', tier: 'base', platform: 'instagram' });
+  const [usedByInfo, setUsedByInfo] = useState<Record<string, { name: string; handle: string }>>({});
 
   useEffect(() => {
-    if (authed) loadCodes();
+    if (authed) {
+      loadCodes();
+    }
   }, [authed]);
 
-  // Busca info do influencer para códigos usados
   useEffect(() => {
-    const usedCodes = codes.filter(c => c.used && c.usedBy);
-    if (usedCodes.length === 0) return;
-    Promise.all(
-      usedCodes.map(async c => {
-        const { data } = await supabase
-          .from('influencers')
-          .select('name, handle')
-          .eq('user_id', c.usedBy)
-          .single();
-        return { id: c.usedBy!, name: (data?.name as string) || '', handle: (data?.handle as string) || '' };
-      })
-    ).then(results => {
-      const map: Record<string, UsedByInfo> = {};
-      results.forEach(r => { if (r.id) map[r.id] = { name: r.name, handle: r.handle }; });
-      setUsedByInfo(map);
-    }).catch(() => {});
-  }, [codes]);
+    if (authed && tab === 'metrics') {
+      loadStats();
+    }
+  }, [authed, tab]);
+
+  const loadCodes = async () => {
+    const list = await listInviteCodes();
+    setCodes(list);
+    const info: Record<string, { name: string; handle: string }> = {};
+    for (const c of list) {
+      if (c.usedBy) {
+        try {
+          const { data } = await supabase.from('influencers').select('name,handle').eq('user_id', c.usedBy).single();
+          if (data) info[c.id] = { name: data.name as string, handle: data.handle as string };
+        } catch { /* ignore */ }
+      }
+    }
+    setUsedByInfo(info);
+  };
+
+  const loadStats = async () => {
+    setStatsLoading(true);
+    try {
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      // Utilizadores activos
+      const [todayRes, weekRes, monthRes] = await Promise.all([
+        supabase.from('analytics_events').select('user_id', { count: 'exact' })
+          .gte('created_at', todayStr).not('user_id', 'is', null),
+        supabase.from('analytics_events').select('user_id', { count: 'exact' })
+          .gte('created_at', weekAgo).not('user_id', 'is', null),
+        supabase.from('analytics_events').select('user_id', { count: 'exact' })
+          .gte('created_at', monthAgo).not('user_id', 'is', null),
+      ]);
+
+      // Total profiles
+      const { count: totalUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+
+      // Top categorias (suggest_open)
+      const { data: catData } = await supabase.from('analytics_events')
+        .select('cat_id').eq('event_type', 'suggest_open').not('cat_id', 'is', null);
+      const catCount: Record<string, number> = {};
+      (catData || []).forEach((r: any) => { catCount[r.cat_id] = (catCount[r.cat_id] || 0) + 1; });
+      const topCats = Object.entries(catCount)
+        .map(([catId, count]) => ({ catId, count }))
+        .sort((a, b) => b.count - a.count);
+
+      // Taxa de aceitação por categoria
+      const { data: opensData } = await supabase.from('analytics_events')
+        .select('cat_id').eq('event_type', 'suggest_open').not('cat_id', 'is', null);
+      const { data: acceptsData } = await supabase.from('analytics_events')
+        .select('cat_id').eq('event_type', 'suggest_accept').not('cat_id', 'is', null);
+      const opens: Record<string, number> = {};
+      const accepts: Record<string, number> = {};
+      (opensData || []).forEach((r: any) => { opens[r.cat_id] = (opens[r.cat_id] || 0) + 1; });
+      (acceptsData || []).forEach((r: any) => { accepts[r.cat_id] = (accepts[r.cat_id] || 0) + 1; });
+      const acceptRateByCat = Object.keys(opens).map(catId => ({
+        catId,
+        opens: opens[catId] || 0,
+        accepts: accepts[catId] || 0,
+        rate: opens[catId] ? Math.round((accepts[catId] || 0) / opens[catId] * 100) : 0,
+      })).sort((a, b) => b.rate - a.rate);
+
+      // Hora de pico
+      const { data: hourData } = await supabase.from('analytics_events')
+        .select('value').eq('event_type', 'suggest_open');
+      const hourCount: Record<number, number> = {};
+      (hourData || []).forEach((r: any) => {
+        const h = r.value?.hour_of_day;
+        if (typeof h === 'number') hourCount[h] = (hourCount[h] || 0) + 1;
+      });
+      const peakHours = Object.entries(hourCount)
+        .map(([hour, count]) => ({ hour: parseInt(hour), count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // Top sugestões aceites
+      const { data: topSuggData } = await supabase.from('analytics_events')
+        .select('cat_id, value').eq('event_type', 'suggest_accept');
+      const suggCount: Record<string, { catId: string; count: number }> = {};
+      (topSuggData || []).forEach((r: any) => {
+        const title = r.value?.title;
+        if (title) {
+          if (!suggCount[title]) suggCount[title] = { catId: r.cat_id, count: 0 };
+          suggCount[title].count++;
+        }
+      });
+      const topSuggestions = Object.entries(suggCount)
+        .map(([title, { catId, count }]) => ({ title, catId, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      // Device e OS split
+      const { data: sessionData } = await supabase.from('user_sessions').select('device_type, os');
+      const devCount: Record<string, number> = {};
+      const osCount: Record<string, number> = {};
+      (sessionData || []).forEach((r: any) => {
+        if (r.device_type) devCount[r.device_type] = (devCount[r.device_type] || 0) + 1;
+        if (r.os) osCount[r.os] = (osCount[r.os] || 0) + 1;
+      });
+      const deviceSplit = Object.entries(devCount).map(([device, count]) => ({ device, count }));
+      const osSplit = Object.entries(osCount).map(([os, count]) => ({ os, count }));
+
+      // Duração média de sessão
+      const { data: durData } = await supabase.from('user_sessions')
+        .select('duration_seconds').not('duration_seconds', 'is', null);
+      const durations = (durData || []).map((r: any) => r.duration_seconds).filter(Boolean);
+      const avgSessionSeconds = durations.length
+        ? Math.round(durations.reduce((a: number, b: number) => a + b, 0) / durations.length)
+        : 0;
+
+      // Conversão influencers
+      const { data: infViewData } = await supabase.from('analytics_events')
+        .select('value').eq('event_type', 'influencer_view');
+      const { data: infAcceptData } = await supabase.from('analytics_events')
+        .select('value').eq('event_type', 'influencer_accept');
+      const infViews: Record<string, number> = {};
+      const infAccepts: Record<string, number> = {};
+      (infViewData || []).forEach((r: any) => {
+        const h = r.value?.handle;
+        if (h) infViews[h] = (infViews[h] || 0) + 1;
+      });
+      (infAcceptData || []).forEach((r: any) => {
+        const h = r.value?.handle;
+        if (h) infAccepts[h] = (infAccepts[h] || 0) + 1;
+      });
+      const influencerConversion = Object.keys(infViews).map(handle => ({
+        handle,
+        views: infViews[handle] || 0,
+        accepts: infAccepts[handle] || 0,
+        rate: infViews[handle] ? Math.round((infAccepts[handle] || 0) / infViews[handle] * 100) : 0,
+      })).sort((a, b) => b.views - a.views);
+
+      setStats({
+        totalUsers: totalUsers || 0,
+        activeToday: todayRes.count || 0,
+        activeWeek: weekRes.count || 0,
+        activeMonth: monthRes.count || 0,
+        topCats,
+        acceptRateByCat,
+        peakHours,
+        topSuggestions,
+        deviceSplit,
+        osSplit,
+        avgSessionSeconds,
+        influencerConversion,
+      });
+    } catch (e) {
+      console.error('Stats error:', e);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
   const handleLogin = () => {
     if (user === ADMIN_USER && pass === ADMIN_PASS) {
       setAuthed(true);
+      setLoginErr('');
     } else {
-      setMsg('Credenciais incorrectas');
+      setLoginErr('Credenciais incorrectas');
     }
   };
 
   const handleCreate = async () => {
-    if (!newCode.trim() || !newName.trim() || !newHandle.trim()) {
-      setMsg('Preenche todos os campos'); return;
-    }
-    setCreating(true);
-    const result = await createInviteCode({
-      code: newCode, name: newName, handle: newHandle,
-      tier: newTier, platform: newPlatform,
-    });
-    if (result.ok) {
-      setMsg('✓ Código criado!');
-      setNewCode(''); setNewName(''); setNewHandle('');
-      await loadCodes();
-    } else {
-      setMsg(result.error || 'Erro ao criar código');
-    }
-    setCreating(false);
+    if (!form.code || !form.name || !form.handle) return;
+    await createInviteCode({ ...form, tier: form.tier as 'gold' | 'silver' | 'base' });
+    setForm({ code: '', name: '', handle: '', tier: 'base', platform: 'instagram' });
+    loadCodes();
   };
 
   const openEdit = (c: InviteCode) => {
-    setEditingId(c.id);
-    setEditCode(c.code);
-    setEditName(c.name);
-    setEditHandle(c.handle);
-    setEditTier(c.tier as 'base' | 'silver' | 'gold');
-    setEditPlatform(c.platform);
+    setEditId(c.id);
+    setEditForm({ code: c.code, name: c.name, handle: c.handle, tier: c.tier, platform: c.platform });
   };
 
   const handleSaveEdit = async () => {
-    if (!editingId) return;
-    setSaving(true);
-    const result = await updateInviteCode(editingId, {
-      code: editCode, name: editName, handle: editHandle,
-      tier: editTier, platform: editPlatform,
-    });
-    if (result.ok) {
-      setEditingId(null);
-      await loadCodes();
-    } else {
-      setMsg(result.error || 'Erro ao guardar');
-    }
-    setSaving(false);
+    if (!editId) return;
+    await updateInviteCode(editId, { ...editForm, tier: editForm.tier as 'gold' | 'silver' | 'base' });
+    setEditId(null);
+    loadCodes();
   };
 
   const handleRemove = async (id: string) => {
-    const result = await removeInviteCode(id);
-    if (result.ok) {
-      await loadCodes();
-    } else {
-      setMsg(result.error || 'Erro ao remover');
-    }
+    await removeInviteCode(id);
+    loadCodes();
   };
 
-  if (!authed) return (
-    <div style={{ position: 'fixed', inset: 0, background: '#0B0D12', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 28px' }}>
-      <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontWeight: 700, color: '#C89B3C', marginBottom: 8 }}>Admin</div>
-      <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.5)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 32 }}>What to</div>
-      <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input value={user} onChange={e => setUser(e.target.value)} placeholder="Utilizador" style={inputStyle} />
-        <input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="Password"
-          onKeyDown={e => { if (e.key === 'Enter') handleLogin(); }} style={inputStyle} />
-        {msg && <div style={{ fontSize: 12, color: '#e07070', textAlign: 'center' }}>{msg}</div>}
-        <button onClick={handleLogin} style={{ padding: '13px', background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', borderRadius: 12, color: '#0B0D12', fontWeight: 700, fontSize: 14, fontFamily: "'Outfit', sans-serif", cursor: 'pointer' }}>
-          Entrar
-        </button>
+  const s: React.CSSProperties = {
+    background: '#0B0D12', color: '#e8e0d0', minHeight: '100vh',
+    fontFamily: 'Outfit, sans-serif', padding: '24px 16px',
+  };
+  const inp: React.CSSProperties = {
+    background: '#161820', border: '1px solid #2a2d3a', borderRadius: 8,
+    color: '#e8e0d0', padding: '8px 12px', fontSize: 14, width: '100%', boxSizing: 'border-box',
+  };
+  const btn: React.CSSProperties = {
+    background: '#C89B3C', color: '#0B0D12', border: 'none', borderRadius: 8,
+    padding: '8px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+  };
+  const card: React.CSSProperties = {
+    background: '#161820', borderRadius: 12, padding: '16px', marginBottom: 12,
+  };
+  const statCard: React.CSSProperties = {
+    background: '#161820', borderRadius: 12, padding: '16px',
+    textAlign: 'center' as const, flex: 1, minWidth: 120,
+  };
+
+  if (!authed) {
+    return (
+      <div style={{ ...s, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '100%', maxWidth: 320 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 24, textAlign: 'center' }}>
+            ✦ Admin
+          </div>
+          <input style={{ ...inp, marginBottom: 12 }} placeholder="Utilizador"
+            value={user} onChange={e => setUser(e.target.value)} />
+          <input style={{ ...inp, marginBottom: 16 }} placeholder="Password"
+            type="password" value={pass} onChange={e => setPass(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleLogin()} />
+          {loginErr && <div style={{ color: '#e07b7b', fontSize: 13, marginBottom: 12 }}>{loginErr}</div>}
+          <button style={{ ...btn, width: '100%' }} onClick={handleLogin}>Entrar</button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#0B0D12', overflowY: 'auto', padding: '0 0 40px' }}>
-      <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', padding: '0 20px' }}>
+    <div style={s}>
+      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>✦ Admin Panel</div>
 
-        {/* Header */}
-        <div style={{ padding: '48px 0 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 24 }}>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, fontStyle: 'italic', color: '#f5f1eb' }}>
-            Painel de Admin
-          </div>
-          <div style={{ fontSize: 12, color: 'rgba(156,165,185,0.5)', marginTop: 4 }}>Gestão de códigos de convite</div>
-        </div>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        {(['codes', 'metrics'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            ...btn,
+            background: tab === t ? '#C89B3C' : '#161820',
+            color: tab === t ? '#0B0D12' : '#e8e0d0',
+            border: tab === t ? 'none' : '1px solid #2a2d3a',
+          }}>
+            {t === 'codes' ? 'Códigos de Convite' : 'Métricas'}
+          </button>
+        ))}
+      </div>
 
-        {/* Criar código */}
-        <div style={{ background: 'rgba(200,155,60,0.06)', border: '1px solid rgba(200,155,60,0.2)', borderRadius: 16, padding: 20, marginBottom: 24 }}>
-          <div style={{ fontSize: 12, color: 'rgba(156,165,185,0.5)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>Novo código de convite</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <input
-              value={newCode}
-              onChange={e => setNewCode(e.target.value.toUpperCase())}
-              placeholder="CÓDIGO (ex: MARIA-GOLD-WT24)"
-              style={{ ...inputStyle, fontFamily: 'monospace', letterSpacing: 1 }}
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nome do influencer" style={{ ...inputStyle, flex: 1 }} />
-              <input value={newHandle} onChange={e => setNewHandle(e.target.value)} placeholder="@handle" style={{ ...inputStyle, flex: 1 }} />
+      {/* ── TAB CÓDIGOS ── */}
+      {tab === 'codes' && (
+        <div>
+          {/* Form criar */}
+          <div style={card}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: '#C89B3C' }}>
+              Novo código
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select value={newTier} onChange={e => setNewTier(e.target.value as 'base' | 'silver' | 'gold')} style={{ ...inputStyle, flex: 1 }}>
-                <option value="gold">Gold</option>
-                <option value="silver">Silver</option>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input style={inp} placeholder="Código (ex: CREATOR2025)" value={form.code}
+                onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} />
+              <input style={inp} placeholder="Nome do influencer" value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              <input style={inp} placeholder="@handle" value={form.handle}
+                onChange={e => setForm(f => ({ ...f, handle: e.target.value }))} />
+              <select style={inp} value={form.tier} onChange={e => setForm(f => ({ ...f, tier: e.target.value }))}>
                 <option value="base">Base</option>
+                <option value="silver">Silver</option>
+                <option value="gold">Gold</option>
               </select>
-              <select value={newPlatform} onChange={e => setNewPlatform(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+              <select style={inp} value={form.platform} onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}>
                 <option value="instagram">Instagram</option>
                 <option value="tiktok">TikTok</option>
                 <option value="youtube">YouTube</option>
-                <option value="other">Outro</option>
+                <option value="outro">Outro</option>
               </select>
+              <button style={btn} onClick={handleCreate}>Criar código</button>
             </div>
-            {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#5ec97a' : '#e07070' }}>{msg}</div>}
-            <button
-              onClick={handleCreate}
-              disabled={creating}
-              style={{ padding: '12px', background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', borderRadius: 10, color: '#0B0D12', fontWeight: 700, fontSize: 13, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', opacity: creating ? 0.7 : 1 }}
-            >
-              {creating ? '...' : '✦ Activar código'}
-            </button>
           </div>
-        </div>
 
-        {/* Lista de códigos */}
-        <div style={{ fontSize: 12, color: 'rgba(156,165,185,0.5)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-          Códigos criados · {codes.length}
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: 'rgba(156,165,185,0.4)', fontSize: 13 }}>A carregar...</div>
-        ) : codes.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: 'rgba(156,165,185,0.3)', fontSize: 13 }}>Ainda sem códigos criados</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {codes.map(c => {
-              const tc = TIER_COLORS[c.tier as keyof typeof TIER_COLORS] || TIER_COLORS.base;
-              const isEditing = editingId === c.id;
-
-              return (
-                <div
-                  key={c.id}
-                  style={{
-                    background: c.used ? 'rgba(255,255,255,0.02)' : tc.bg,
-                    border: `1px solid ${c.used ? 'rgba(255,255,255,0.06)' : tc.border}`,
-                    borderRadius: 14,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* Row principal */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', opacity: c.used && !isEditing ? 0.5 : 1 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: c.used ? 'rgba(156,165,185,0.5)' : tc.color, letterSpacing: 1 }}>
-                          {c.code}
-                        </span>
-                        <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 20, background: tc.bg, border: `1px solid ${tc.border}`, color: tc.color, textTransform: 'uppercase', letterSpacing: 1 }}>
-                          {c.tier}
-                        </span>
-                        {c.used && <span style={{ fontSize: 9, color: 'rgba(156,165,185,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>usado</span>}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.6)' }}>
-                        {c.name} · {c.handle} · {c.platform}
-                      </div>
-                      {c.used && usedByInfo[c.usedBy || ''] && (
-                        <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.5)', marginTop: 3 }}>
-                          👤 {usedByInfo[c.usedBy || ''].name} · @{usedByInfo[c.usedBy || ''].handle}
-                        </div>
-                      )}
+          {/* Lista de códigos */}
+          {codes.map(c => (
+            <div key={c.id} style={card}>
+              {editId === c.id ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input style={inp} value={editForm.code}
+                    onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))} />
+                  <input style={inp} value={editForm.name}
+                    onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                  <input style={inp} value={editForm.handle}
+                    onChange={e => setEditForm(f => ({ ...f, handle: e.target.value }))} />
+                  <select style={inp} value={editForm.tier}
+                    onChange={e => setEditForm(f => ({ ...f, tier: e.target.value }))}>
+                    <option value="base">Base</option>
+                    <option value="silver">Silver</option>
+                    <option value="gold">Gold</option>
+                  </select>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button style={btn} onClick={handleSaveEdit}>Guardar</button>
+                    <button style={{ ...btn, background: '#2a2d3a', color: '#e8e0d0' }}
+                      onClick={() => setEditId(null)}>Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span style={{ color: '#C89B3C', fontWeight: 700, fontSize: 15 }}>{c.code}</span>
+                      <span style={{ marginLeft: 8, fontSize: 12, opacity: 0.6,
+                        background: '#2a2d3a', borderRadius: 4, padding: '2px 6px' }}>
+                        {c.tier}
+                      </span>
                     </div>
-                    {/* Botões ação */}
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      {!c.used && (
-                        <button
-                          onClick={() => isEditing ? setEditingId(null) : openEdit(c)}
-                          style={{ padding: '5px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'rgba(156,165,185,0.7)', fontSize: 11, fontFamily: "'Outfit',sans-serif", cursor: 'pointer' }}
-                        >
-                          {isEditing ? 'Cancelar' : 'Editar'}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleRemove(c.id)}
-                        style={{ padding: '5px 10px', background: 'rgba(224,112,112,0.08)', border: '1px solid rgba(224,112,112,0.2)', borderRadius: 8, color: '#e07070', fontSize: 11, fontFamily: "'Outfit',sans-serif", cursor: 'pointer' }}
-                      >
-                        Remover
-                      </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button style={{ ...btn, padding: '4px 10px', fontSize: 12 }}
+                        onClick={() => openEdit(c)}>Editar</button>
+                      <button style={{ ...btn, background: '#e07b7b', padding: '4px 10px', fontSize: 12 }}
+                        onClick={() => handleRemove(c.id)}>Remover</button>
                     </div>
                   </div>
-
-                  {/* Form de edição inline */}
-                  {isEditing && (
-                    <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div style={{ paddingTop: 12, fontSize: 11, color: 'rgba(156,165,185,0.5)', letterSpacing: 1, textTransform: 'uppercase' }}>Editar código</div>
-                      <input value={editCode} onChange={e => setEditCode(e.target.value.toUpperCase())} placeholder="Código" style={{ ...inputStyle, fontFamily: 'monospace', letterSpacing: 1 }} />
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nome" style={{ ...inputStyle, flex: 1 }} />
-                        <input value={editHandle} onChange={e => setEditHandle(e.target.value)} placeholder="@handle" style={{ ...inputStyle, flex: 1 }} />
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <select value={editTier} onChange={e => setEditTier(e.target.value as 'base' | 'silver' | 'gold')} style={{ ...inputStyle, flex: 1 }}>
-                          <option value="gold">Gold</option>
-                          <option value="silver">Silver</option>
-                          <option value="base">Base</option>
-                        </select>
-                        <select value={editPlatform} onChange={e => setEditPlatform(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
-                          <option value="instagram">Instagram</option>
-                          <option value="tiktok">TikTok</option>
-                          <option value="youtube">YouTube</option>
-                          <option value="other">Outro</option>
-                        </select>
-                      </div>
-                      <button
-                        onClick={handleSaveEdit}
-                        disabled={saving}
-                        style={{ padding: '10px', background: 'linear-gradient(135deg,#C89B3C,#a87535)', border: 'none', borderRadius: 10, color: '#0B0D12', fontWeight: 700, fontSize: 13, fontFamily: "'Outfit',sans-serif", cursor: 'pointer', opacity: saving ? 0.7 : 1 }}
-                      >
-                        {saving ? '...' : '✓ Guardar'}
-                      </button>
+                  <div style={{ fontSize: 13, opacity: 0.7, marginTop: 6 }}>
+                    {c.name} · @{c.handle} · {c.platform}
+                  </div>
+                  {c.used && (
+                    <div style={{ fontSize: 12, marginTop: 4, color: '#5ec97a' }}>
+                      ✓ Usado{usedByInfo[c.id] ? ` por ${usedByInfo[c.id].name} (@${usedByInfo[c.id].handle})` : ''}
                     </div>
                   )}
+                  {!c.used && (
+                    <div style={{ fontSize: 12, marginTop: 4, opacity: 0.4 }}>Ainda não usado</div>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── TAB MÉTRICAS ── */}
+      {tab === 'metrics' && (
+        <div>
+          {statsLoading && (
+            <div style={{ textAlign: 'center', padding: 40, opacity: 0.6 }}>A carregar métricas…</div>
+          )}
+          {!statsLoading && stats && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {/* Utilizadores activos */}
+              <div>
+                <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Utilizadores
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Total', value: stats.totalUsers },
+                    { label: 'Hoje', value: stats.activeToday },
+                    { label: 'Semana', value: stats.activeWeek },
+                    { label: 'Mês', value: stats.activeMonth },
+                    { label: 'Sessão média', value: stats.avgSessionSeconds > 0
+                      ? `${Math.floor(stats.avgSessionSeconds / 60)}m ${stats.avgSessionSeconds % 60}s` : '—' },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={statCard}>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: '#C89B3C' }}>{value}</div>
+                      <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Categorias mais abertas */}
+              <div style={card}>
+                <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Categorias mais abertas
+                </div>
+                {stats.topCats.map(({ catId, count }) => (
+                  <div key={catId} style={{ display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 14 }}>{CAT_NAMES[catId] || catId}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ height: 6, borderRadius: 3, background: '#C89B3C',
+                        width: Math.max(20, (count / (stats.topCats[0]?.count || 1)) * 120) }} />
+                      <span style={{ fontSize: 13, opacity: 0.7, minWidth: 30, textAlign: 'right' }}>{count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Taxa de aceitação */}
+              <div style={card}>
+                <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Taxa de aceitação por categoria
+                </div>
+                {stats.acceptRateByCat.map(({ catId, opens, accepts, rate }) => (
+                  <div key={catId} style={{ display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 14 }}>{CAT_NAMES[catId] || catId}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ height: 6, borderRadius: 3,
+                        background: rate > 30 ? '#5ec97a' : rate > 15 ? '#C89B3C' : '#e07b7b',
+                        width: Math.max(20, rate * 2) }} />
+                      <span style={{ fontSize: 13, opacity: 0.7, minWidth: 60, textAlign: 'right' }}>
+                        {rate}% ({accepts}/{opens})
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Horas de pico */}
+              <div style={card}>
+                <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Horas de pico
+                </div>
+                {stats.peakHours.map(({ hour, count }) => (
+                  <div key={hour} style={{ display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 14 }}>{hour}h00</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ height: 6, borderRadius: 3, background: '#C89B3C',
+                        width: Math.max(20, (count / (stats.peakHours[0]?.count || 1)) * 120) }} />
+                      <span style={{ fontSize: 13, opacity: 0.7 }}>{count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Top sugestões */}
+              <div style={card}>
+                <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Top 10 sugestões aceites
+                </div>
+                {stats.topSuggestions.map(({ title, catId, count }, i) => (
+                  <div key={title} style={{ display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', marginBottom: 8 }}>
+                    <div>
+                      <span style={{ opacity: 0.4, fontSize: 12, marginRight: 8 }}>#{i + 1}</span>
+                      <span style={{ fontSize: 14 }}>{title}</span>
+                      <span style={{ fontSize: 11, opacity: 0.5, marginLeft: 6 }}>
+                        {CAT_NAMES[catId] || catId}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 13, opacity: 0.7, color: '#C89B3C', fontWeight: 600 }}>
+                      {count}×
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Device e OS */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ ...card, flex: 1, marginBottom: 0 }}>
+                  <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Dispositivo
+                  </div>
+                  {stats.deviceSplit.map(({ device, count }) => (
+                    <div key={device} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13 }}>{device}</span>
+                      <span style={{ fontSize: 13, color: '#C89B3C' }}>{count}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ ...card, flex: 1, marginBottom: 0 }}>
+                  <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Sistema
+                  </div>
+                  {stats.osSplit.map(({ os, count }) => (
+                    <div key={os} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13 }}>{os}</span>
+                      <span style={{ fontSize: 13, color: '#C89B3C' }}>{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Conversão influencers */}
+              {stats.influencerConversion.length > 0 && (
+                <div style={card}>
+                  <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Conversão de influencers
+                  </div>
+                  {stats.influencerConversion.map(({ handle, views, accepts, rate }) => (
+                    <div key={handle} style={{ display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: 14 }}>@{handle}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ height: 6, borderRadius: 3,
+                          background: rate > 20 ? '#5ec97a' : '#C89B3C',
+                          width: Math.max(20, rate * 2) }} />
+                        <span style={{ fontSize: 13, opacity: 0.7 }}>
+                          {rate}% ({accepts}/{views})
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button style={{ ...btn, marginTop: 8 }} onClick={loadStats}>
+                ↻ Actualizar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

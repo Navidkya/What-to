@@ -70,6 +70,8 @@ export default function App() {
   const [messagesFriendName, setMessagesFriendName] = useState<string | undefined>();
   const [messagesUnread, setMessagesUnread] = useState(0);
   const [pendingSuggestionShare, setPendingSuggestionShare] = useState<any>(null);
+  const [forYouInitialCatId, setForYouInitialCatId] = useState<string | undefined>();
+  const [forYouInitialTitle, setForYouInitialTitle] = useState<string | undefined>();
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -192,6 +194,12 @@ export default function App() {
     setMessagesFriendName(friendName);
     setMessagesUnread(0);
     navTo('messages');
+  }, [navTo]);
+
+  const openForYou = useCallback((catId: string, title: string) => {
+    setForYouInitialCatId(catId);
+    setForYouInitialTitle(title);
+    navTo('para-ti');
   }, [navTo]);
 
   // Tratar link de convite (?add=username)
@@ -697,6 +705,7 @@ export default function App() {
                   store.updateTracking({});
                   store.updateHistory(store.history.filter(h => h.action !== 'hoje'));
                 }}
+                onOpenForYou={openForYou}
               />
             </div>
             <div className="h-pane">
@@ -877,6 +886,8 @@ export default function App() {
             onNav={navTo}
             onUpdateLists={store.updateUserLists}
             onToast={toast}
+            initialCatId={forYouInitialCatId}
+            initialTitle={forYouInitialTitle}
           />
 
           {/* Bottom Nav */}

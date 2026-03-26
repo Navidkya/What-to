@@ -190,18 +190,61 @@ function strictFilter(items: APIItem[], catId: string, p: StrictFilterPrefs): AP
       });
     }
     if (p.watchGenreIds?.length || p.watchGenreTexts?.length) {
-      const ids = new Set(p.watchGenreIds || []);
       const texts = (p.watchGenreTexts || []).map(g => g.toLowerCase());
-      const filtered = result.filter(i => {
+      const totalGenreFilters = texts.length > 0 ? texts.length : (p.watchGenreIds?.length || 0);
+      const threshold = totalGenreFilters > 4 ? 0.75 : 1.0;
+
+      const withScore = result.map(i => {
+        // Normaliza géneros do item para array de strings
+        let itemGenreTexts: string[] = [];
         if ('sourceApi' in i) {
           const g = ((i as any).genre || '').toLowerCase();
-          const gs = ((i as any).genres || '') as string;
-          const genreStr = (typeof gs === 'string' ? gs : '').toLowerCase();
-          return texts.some(t => g.includes(t) || genreStr.includes(t));
+          const gs = (i as any).genres;
+          if (Array.isArray(gs)) {
+            itemGenreTexts = gs.map((x: string) => (x || '').toLowerCase());
+          } else if (typeof gs === 'string') {
+            itemGenreTexts = gs.split(',').map((x: string) => x.trim().toLowerCase());
+          }
+          if (g && !itemGenreTexts.includes(g)) itemGenreTexts.push(g);
+        } else {
+          // Items sem sourceApi (ex: InfluencerSuggestion) têm genre/genres root-level
+          const g = ((i as any).genre || '').toLowerCase();
+          const gs = (i as any).genres;
+          if (Array.isArray(gs)) {
+            itemGenreTexts = gs.map((x: string) => (x || '').toLowerCase());
+          } else if (typeof gs === 'string' && gs) {
+            itemGenreTexts = gs.split(',').map((x: string) => x.trim().toLowerCase());
+          }
+          if (g && !itemGenreTexts.includes(g)) itemGenreTexts.push(g);
         }
-        return (i as DiscoverItem).genreIds?.some(id => ids.has(id));
+        const itemGenreIds = 'genreIds' in i ? ((i as DiscoverItem).genreIds || []) : [];
+
+        // Calcula quantos filtros de género o item satisfaz
+        let matched = 0;
+        const total = texts.length > 0 ? texts.length : (p.watchGenreIds?.length || 0);
+        if (texts.length > 0) {
+          matched = texts.filter(t => itemGenreTexts.some(ig => ig.includes(t))).length;
+        } else {
+          matched = (p.watchGenreIds || []).filter(id => itemGenreIds.includes(id)).length;
+        }
+
+        // Verifica se campos de género são null (dado em falta no cache)
+        const hasNullGenre = 'sourceApi' in i && !((i as any).genre) && !((i as any).genres?.length);
+
+        return { item: i, matchRatio: total > 0 ? matched / total : 1, hasNullGenre };
       });
-      if (filtered.length > 0) result = filtered;
+
+      // Items que passam o threshold ou têm campo null (dado em falta)
+      const passing = withScore.filter(x => x.matchRatio >= threshold || x.hasNullGenre);
+      if (passing.length > 0) {
+        // Ordena: primeiro os que passam 100%, depois os com null
+        passing.sort((a, b) => {
+          if (a.hasNullGenre && !b.hasNullGenre) return 1;
+          if (!a.hasNullGenre && b.hasNullGenre) return -1;
+          return b.matchRatio - a.matchRatio;
+        });
+        result = passing.map(x => x.item);
+      }
     }
     if (p.watchMinRating && p.watchMinRating > 0) {
       const r = result.filter(i => ((i as any).rating ?? 0) >= p.watchMinRating!);
@@ -1271,18 +1314,33 @@ export default function Suggest({
             return (tierOrder[a.influencerTier] ?? 3) - (tierOrder[b.influencerTier] ?? 3);
           })
           .slice(0, 5);
-        if (infForCat.length > 0) {
+        // Filtrar influencers com os mesmos filtros activos
+        const wGenresInf: string[] = cat.id === 'watch' && watchPrefs?.done ? ((watchPrefs as any).genres || []) : [];
+        const wMinRatingInf = cat.id === 'watch' && watchPrefs?.done ? (parseFloat((watchPrefs as any).minRating) || 0) : 0;
+        const wEpocaInf = cat.id === 'watch' && watchPrefs?.done ? ((watchPrefs as any).epoca || 'qualquer') : 'qualquer';
+        const strictPrefs: StrictFilterPrefs = {
+          watchType: wType !== 'Ambos' ? wType : undefined,
+          watchGenreTexts: wGenresInf.filter((g: string) => g && g !== 'Qualquer').length > 0
+            ? wGenresInf.filter((g: string) => g && g !== 'Qualquer')
+            : undefined,
+          watchMinRating: wMinRatingInf > 0 ? wMinRatingInf : undefined,
+          watchEpoca: wEpocaInf !== 'qualquer' && wEpocaInf !== 'Qualquer' ? wEpocaInf : undefined,
+          excluded: disliked.filter(d => d.startsWith(cat.id + ':')).map(d => d.split(':')[1]),
+        };
+        const filteredInfluencers = strictFilter(infForCat, cat.id, strictPrefs);
+        const toInject = filteredInfluencers.length > 0 ? filteredInfluencers : infForCat;
+        if (toInject.length > 0) {
           setApiItems(prev => {
-            if (prev.length === 0) return infForCat;
+            if (prev.length === 0) return toInject;
             const result = [...prev];
             const positions = [2, 5, 7, 8, 14];
             let inserted = 0;
             for (const pos of positions) {
-              if (inserted >= infForCat.length) break;
+              if (inserted >= toInject.length) break;
               if (pos <= result.length) {
-                result.splice(pos, 0, infForCat[inserted++]);
+                result.splice(pos, 0, toInject[inserted++]);
               } else {
-                result.push(infForCat[inserted++]);
+                result.push(toInject[inserted++]);
               }
             }
             return result;
@@ -1649,45 +1707,6 @@ export default function Suggest({
         ))}
       </div>
 
-      {cat.id === 'watch' && watchPrefs?.done && (() => {
-        const activeTags: string[] = [];
-        const wType = (watchPrefs as any).type;
-        const wGenres: string[] = (watchPrefs as any).genres || [];
-        const wOrigem = (watchPrefs as any).origem;
-        const wLingua = (watchPrefs as any).lingua;
-        const wEpoca = (watchPrefs as any).epoca;
-        const wMinRating = (watchPrefs as any).minRating;
-        const wDuration = (watchPrefs as any).duration;
-
-        if (wType && wType !== 'Ambos' && wType !== 'qualquer') activeTags.push(wType);
-        wGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
-        if (wOrigem && wOrigem !== 'Qualquer') activeTags.push(wOrigem);
-        if (wLingua && wLingua !== 'Qualquer') activeTags.push(wLingua);
-        if (wEpoca && wEpoca !== 'qualquer' && wEpoca !== 'Qualquer') activeTags.push(wEpoca);
-        if (wMinRating && wMinRating !== 'Qualquer') activeTags.push(`★ ${wMinRating}`);
-        if (wDuration && wDuration !== 'normal' && wDuration !== 'Qualquer') activeTags.push(wDuration);
-
-        if (activeTags.length === 0) return null;
-        return (
-          <div style={{
-            display: 'flex', flexWrap: 'wrap', gap: 6,
-            padding: '6px 16px 2px',
-            overflowX: 'auto',
-          }}>
-            {activeTags.map((tag, i) => (
-              <span key={i} style={{
-                fontSize: 11, padding: '3px 10px',
-                background: 'rgba(200,155,60,0.12)',
-                border: '1px solid rgba(200,155,60,0.3)',
-                borderRadius: 20, color: 'rgba(200,155,60,0.85)',
-                fontFamily: "'Outfit',sans-serif",
-                whiteSpace: 'nowrap', flexShrink: 0,
-              }}>{tag}</span>
-            ))}
-          </div>
-        );
-      })()}
-
       <div className="carousel-viewport">
         {apiLoading && (
           <div className="discover-loading">
@@ -1822,6 +1841,42 @@ export default function Suggest({
                     </button>
                   )}
                 </div>
+
+                {/* Tags de filtros activos que cruzam com esta sugestão */}
+                {cat.id === 'watch' && watchPrefs?.done && (() => {
+                  const wGenres: string[] = (watchPrefs as any).genres || [];
+                  const wType = (watchPrefs as any).type;
+                  const itemGenres = (displayData?.genres || (displayGenre ? [displayGenre] : [])).map((g: string) => (g || '').toLowerCase());
+                  const itemType = (displayType || '').toLowerCase();
+
+                  const matchingTags: string[] = [];
+                  if (wType && wType !== 'Ambos' && itemType && (
+                    itemType.includes(wType.toLowerCase()) ||
+                    (wType === 'Série' && (itemType === 'série' || itemType === 'serie')) ||
+                    (wType === 'Filme' && itemType === 'filme')
+                  )) matchingTags.push(wType);
+
+                  wGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => {
+                    if (itemGenres.some(ig => ig && ig.includes(g.toLowerCase()))) {
+                      matchingTags.push(g);
+                    }
+                  });
+
+                  if (matchingTags.length === 0) return null;
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                      {matchingTags.map((tag, i) => (
+                        <span key={i} style={{
+                          fontSize: 10, padding: '2px 8px',
+                          background: 'rgba(200,155,60,0.15)',
+                          border: '1px solid rgba(200,155,60,0.4)',
+                          borderRadius: 20, color: 'rgba(200,155,60,0.9)',
+                          fontFamily: "'Outfit',sans-serif",
+                        }}>{tag}</span>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 <div className="cin-desc">{displayDesc}</div>
 

@@ -36,7 +36,8 @@ import WhyPanel from './components/panels/WhyPanel';
 import LinkPanel from './components/panels/LinkPanel';
 import LivePanel from './components/panels/LivePanel';
 import TrackPanel from './components/panels/TrackPanel';
-import WrappedOverlay from './components/panels/WrappedOverlay';
+import WrappedGenerator from './components/panels/WrappedGenerator';
+import type { WrappedData } from './components/panels/WrappedGenerator';
 import SchedulePanel from './components/panels/SchedulePanel';
 import AddToListPanel from './components/panels/AddToListPanel';
 import AuthScreen from './components/screens/AuthScreen';
@@ -48,7 +49,7 @@ import { signOut } from './services/auth';
 import { loadInfluencerProfile } from './services/influencers';
 import { loadAllFromSupabase, syncProfileToSupabase, syncHistoryToSupabase, syncTrackingToSupabase, syncListsToSupabase, syncPrefsToSupabase } from './services/sync';
 import { publishFeedEvent } from './services/feedEvents';
-import { trackAsync } from './services/analytics';
+import { trackAsync, trackSessionStart, trackSessionEnd } from './services/analytics';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -62,6 +63,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [friendPendingCount, setFriendPendingCount] = useState(0);
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -96,7 +98,7 @@ export default function App() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
-  const [wrappedOpen, setWrappedOpen] = useState(false);
+  const [wrappedGenData, setWrappedGenData] = useState<WrappedData | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [suggestKey, setSuggestKey] = useState(0);
 
@@ -108,6 +110,7 @@ export default function App() {
   // Gesture detection refs
   const gestureStartX = useRef<number | null>(null);
   const gestureStartY = useRef<number | null>(null);
+  const sessionStartedAt = useRef<number>(Date.now());
 
   const goHome = useCallback(() => {
     setScreen('home');
@@ -120,7 +123,8 @@ export default function App() {
   const navTo = useCallback((s: Screen) => {
     setPrevScreen(prev => screen !== s ? screen : prev);
     setScreen(s);
-  }, [screen]);
+    trackAsync({ userId: authUser?.id, eventType: 'screen_view', value: { screen: s } });
+  }, [screen, authUser]);
 
   const openCat = useCallback((id: string, item?: DataItem) => {
     const cat = CATS.find(c => c.id === id);
@@ -129,7 +133,8 @@ export default function App() {
     setCurSugg(item || null);
     setPrevScreen('home');
     setScreen('suggest');
-    trackAsync({ userId: authUser?.id, eventType: 'suggest_open', catId: id });
+    trackAsync({ userId: authUser?.id, eventType: 'suggest_open', catId: id,
+      value: { cat: CATS.find(c => c.id === id)?.name || id } });
     if (id === 'eat')    setEatObOpen(true);
     if (id === 'watch')  setWatchObOpen(true);
     if (id === 'listen') setListenObOpen(true);
@@ -152,7 +157,47 @@ export default function App() {
     setLiveOpen(true);
   }, []);
 
+  const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+  const openMonthlyWrapped = useCallback(() => {
+    const now = new Date();
+    setWrappedGenData({
+      mode: 'monthly',
+      history: store.history,
+      tracking: store.tracking,
+      monthName: MONTHS_PT[now.getMonth()],
+      year: now.getFullYear(),
+    });
+  }, [store.history, store.tracking]);
+
+  const openAnnualWrapped = useCallback(() => {
+    setWrappedGenData({
+      mode: 'annual',
+      history: store.history,
+      tracking: store.tracking,
+      year: new Date().getFullYear(),
+    });
+  }, [store.history, store.tracking]);
+
+
+  // Tratar link de convite (?add=username)
+  useEffect(() => {
+    if (!authUser) return;
+    const params = new URLSearchParams(window.location.search);
+    const addUsername = params.get('add');
+    if (!addUsername) return;
+    // Limpar o parâmetro do URL
+    window.history.replaceState({}, '', window.location.pathname);
+    // Navegar para Amigos com toast
+    import('./services/username').then(({ getProfileByUsername }) => {
+      getProfileByUsername(addUsername).then(p => {
+        if (p && p.id !== authUser.id) {
+          setScreen('friends');
+          toast(`✦ Adiciona @${addUsername} como amigo!`);
+        }
+      });
+    });
+  }, [authUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // React actions
   const reactNow = useCallback(() => {
@@ -171,6 +216,8 @@ export default function App() {
       ...store.tracking,
       [key]: { state: 'watching', title: curSugg.title, emoji: curSugg.emoji, cat: curCat.name, catId: curCat.id },
     });
+    trackAsync({ userId: authUser?.id, eventType: 'tracking_update',
+      catId: curCat.id, value: { title: curSugg.title, state: 'watching' } });
 
     if (authUser && store.profile.name) {
       publishFeedEvent({
@@ -311,6 +358,8 @@ export default function App() {
       if (remote.prefs.visit) store.updateVisitPrefs(remote.prefs.visit as any);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (remote.prefs.do) store.updateDoPrefs(remote.prefs.do as any);
+      trackSessionStart(userId).catch(() => {});
+      sessionStartedAt.current = Date.now();
       setScreen('home');
     } catch (e) {
       console.error('Sync error:', e);
@@ -389,6 +438,9 @@ export default function App() {
   // Restaura sessão quando a app volta ao foreground (PWA mobile)
   useEffect(() => {
     const handleVisibility = async () => {
+      if (document.visibilityState === 'hidden' && authUser) {
+        trackSessionEnd(authUser.id, sessionStartedAt.current).catch(() => {});
+      }
       if (document.visibilityState === 'visible' && !authUser) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -528,6 +580,7 @@ export default function App() {
       {!isOnboarded ? (
         <Onboard
           profile={store.profile}
+          userId={authUser?.id}
           onFinish={p => {
             store.updateProfile(p);
             setScreen('home');
@@ -548,7 +601,13 @@ export default function App() {
             }}
           >
             <div className="h-pane">
-              <Friends isActive={true} onNav={navTo} onToast={toast} />
+              <Friends
+                isActive={true}
+                onNav={navTo}
+                onToast={toast}
+                userId={authUser?.id}
+                onPendingCount={setFriendPendingCount}
+              />
             </div>
             <div className="h-pane">
               <Home
@@ -684,6 +743,7 @@ export default function App() {
             onOpenCat={openCat}
             isActive={screen === 'plan'}
             onToast={toast}
+            userId={authUser?.id}
           />
 
           <Metrics
@@ -691,7 +751,8 @@ export default function App() {
             tracking={store.tracking}
             isActive={screen === 'metrics'}
             onBack={goHome}
-            onShowWrapped={() => setWrappedOpen(true)}
+            onShowWrapped={openMonthlyWrapped}
+            onShowAnnualWrapped={openAnnualWrapped}
           />
 
           <Match
@@ -753,7 +814,7 @@ export default function App() {
 
           {/* Bottom Nav */}
           {showBottomNav && (
-            <BottomNav activeScreen={screen} onNav={navTo} />
+            <BottomNav activeScreen={screen} onNav={navTo} friendBadge={friendPendingCount} />
           )}
 
           {/* Panels */}
@@ -814,12 +875,12 @@ export default function App() {
             onToast={toast}
           />
 
-          <WrappedOverlay
-            history={store.history}
-            tracking={store.tracking}
-            isOpen={wrappedOpen}
-            onClose={() => setWrappedOpen(false)}
+          <WrappedGenerator
+            data={wrappedGenData}
+            isOpen={wrappedGenData !== null}
+            onClose={() => setWrappedGenData(null)}
             onToast={toast}
+            userId={authUser?.id}
           />
 
           <SchedulePanel
@@ -903,43 +964,43 @@ export default function App() {
           <EatOnboard
             isOpen={eatObOpen}
             currentPrefs={store.eatPrefs}
-            onClose={(prefs) => { store.updateEatPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'eat' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'eat' }); } setEatObOpen(false); }}
+            onClose={(prefs) => { store.updateEatPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'eat', value: { local: prefs.local, restrictions: prefs.restrictions } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'eat' }); } setEatObOpen(false); }}
           />
 
           <WatchOnboard
             isOpen={watchObOpen}
             currentPrefs={store.watchPrefs}
-            onClose={(prefs) => { store.updateWatchPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'watch' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'watch' }); } setWatchObOpen(false); }}
+            onClose={(prefs) => { store.updateWatchPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'watch', value: { type: prefs.type, genres: prefs.genres } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'watch' }); } setWatchObOpen(false); }}
           />
           <ListenOnboard
             isOpen={listenObOpen}
             currentPrefs={store.listenPrefs}
-            onClose={(prefs) => { store.updateListenPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'listen' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'listen' }); } setListenObOpen(false); }}
+            onClose={(prefs) => { store.updateListenPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'listen', value: { genres: prefs.genres } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'listen' }); } setListenObOpen(false); }}
           />
           <ReadOnboard
             isOpen={readObOpen}
             currentPrefs={store.readPrefs}
-            onClose={(prefs) => { store.updateReadPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'read' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'read' }); } setReadObOpen(false); }}
+            onClose={(prefs) => { store.updateReadPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'read', value: { genres: prefs.genres } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'read' }); } setReadObOpen(false); }}
           />
           <PlayOnboard
             isOpen={playObOpen}
             currentPrefs={store.playPrefs}
-            onClose={(prefs) => { store.updatePlayPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'play' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'play' }); } setPlayObOpen(false); }}
+            onClose={(prefs) => { store.updatePlayPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'play', value: { type: prefs.type, genres: prefs.genres } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'play' }); } setPlayObOpen(false); }}
           />
           <LearnOnboard
             isOpen={learnObOpen}
             currentPrefs={store.learnPrefs}
-            onClose={(prefs) => { store.updateLearnPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'learn' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'learn' }); } setLearnObOpen(false); }}
+            onClose={(prefs) => { store.updateLearnPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'learn', value: { genres: prefs.genres, formato: prefs.formato } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'learn' }); } setLearnObOpen(false); }}
           />
           <VisitOnboard
             isOpen={visitObOpen}
             currentPrefs={store.visitPrefs}
-            onClose={(prefs) => { store.updateVisitPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'visit' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'visit' }); } setVisitObOpen(false); }}
+            onClose={(prefs) => { store.updateVisitPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'visit', value: { tipo: prefs.tipo, distancia: prefs.distancia } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'visit' }); } setVisitObOpen(false); }}
           />
           <DoOnboard
             isOpen={doObOpen}
             currentPrefs={store.doPrefs}
-            onClose={(prefs) => { store.updateDoPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'do' }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'do' }); } setDoObOpen(false); }}
+            onClose={(prefs) => { store.updateDoPrefs(prefs); if (prefs.done) { setSuggestKey(v => v + 1); trackAsync({ userId: authUser?.id, eventType: 'inquerito_complete', catId: 'do', value: { contexto: prefs.contexto, local: prefs.local } }); } else { trackAsync({ userId: authUser?.id, eventType: 'inquerito_skip', catId: 'do' }); } setDoObOpen(false); }}
           />
 
           <RecipePanel

@@ -51,6 +51,7 @@ export interface Profile {
   name: string;
   onboarded: boolean;
   platforms: string[];
+  username?: string;
   blockedPlatforms?: string[];
   savedPeople?: string[];
   location?: {
@@ -113,54 +114,95 @@ export interface ScheduleEntry {
 
 export interface EatPrefs {
   done: boolean;
-  local: string[]; // 'casa', 'sair', 'takeaway'
-  fome: string;    // 'leve', 'normal', 'pesado'
-  budget: string;  // 'economico', 'medio', 'especial'
-  restrictions: string[]; // 'vegetariano', 'sem-gluten', 'sem-lactose', 'nenhuma'
-  tempo?: string;  // 'rapido', 'normal', 'demorado'
+  local: string[];
+  fome: string;
+  budget: string;
+  restrictions: string[];
+  tempo?: string;
+  nivelCozinheiro?: string;
+  quantas?: string;
+  cozinha?: string[];
+  ocasiao?: string;
+  abertoAgora?: boolean;
+  petFriendly?: boolean;
+  esplanada?: boolean;
 }
 
 export interface WatchPrefs {
   done: boolean;
+  type: string;
   genres: string[];
-  duration: string; // 'curto', 'normal', 'longo'
-  type: string;     // 'Filme', 'Série', 'Ambos'
-  discovery: string; // 'populares', 'mistura', 'surpresa'
+  conQuem?: string;
+  humor?: string;
+  duration: string;
+  discovery: string;
+  origem?: string;
+  lingua?: string;
+  epoca?: string;
+  minRating?: string;
+  classificacao?: string;
+  gatilhos?: string[];
+  reassistir?: string;
 }
 
 export interface ListenPrefs {
   done: boolean;
-  type: 'Álbum' | 'Podcast' | 'Ambos';
+  type: 'Álbum' | 'Single' | 'Podcast' | 'Audiobook' | 'Radio' | 'Live' | 'Ambos';
   genres: string[];
   energia: 'relaxante' | 'energetico' | 'mistura';
+  momento?: string;
+  lingua?: string;
+  duracao?: string;
+  novidade?: string;
 }
 
 export interface ReadPrefs {
   done: boolean;
-  type: 'Livro' | 'Artigo' | 'Ambos';
+  type: 'Livro' | 'Artigo' | 'BD' | 'Newsletter' | 'Ensaio' | 'Conto' | 'Ambos';
   genres: string[];
   peso: 'leve' | 'denso' | 'mistura';
+  comprimento?: string;
+  lingua?: string;
+  formato?: string;
+  standalone?: string;
+  tempoReal?: string;
 }
 
 export interface PlayPrefs {
   done: boolean;
-  type: 'Videojogo' | 'Tabuleiro' | 'Ambos';
+  type: 'Videojogo' | 'Tabuleiro' | 'Cartas' | 'RPGMesa' | 'Mobile' | 'Arcade' | 'Ambos';
   genres: string[];
   dificuldade: 'casual' | 'normal' | 'desafiante';
+  jogadores?: string;
+  online?: string;
+  duracao?: string;
+  experiencia?: string;
 }
 
 export interface LearnPrefs {
   done: boolean;
-  formato: 'video' | 'texto' | 'Ambos';
+  formato: 'video' | 'curso' | 'artigo' | 'podcast' | 'livro' | 'Ambos';
   genres: string[];
   duracao: 'curta' | 'normal' | 'longa';
+  nivel?: string;
+  gratis?: boolean;
+  certificado?: boolean;
+  lingua?: string;
+  objetivo?: string;
 }
 
 export interface VisitPrefs {
   done: boolean;
   tipo: string[];
+  distancia: 'perto' | 'proximo' | 'qualquer';
   custo: 'gratuito' | 'baixo' | 'qualquer';
-  distancia: 'perto' | 'qualquer';
+  altura?: string;
+  conQuem?: string;
+  interior?: string;
+  tempoVisita?: string;
+  acessivel?: boolean;
+  reserva?: string;
+  mobilidade?: string;
 }
 
 export interface DoPrefs {
@@ -168,6 +210,11 @@ export interface DoPrefs {
   contexto: 'solo' | 'a_dois' | 'grupo' | 'qualquer';
   local: 'interior' | 'exterior' | 'qualquer';
   custo: 'gratuito' | 'qualquer';
+  duracao?: string;
+  energia?: string;
+  objetivo?: string;
+  meteorologia?: string;
+  animais?: boolean;
 }
 
 export type Screen =

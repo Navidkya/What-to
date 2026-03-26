@@ -190,6 +190,7 @@ export async function loadCachedSuggestions(
     query = query
       .order('last_seen_at', { ascending: false })
       .limit(limit * 3);
+    console.log('[CACHE] catId:', catId, 'filters:', JSON.stringify(filters));
     const { data, error } = await query;
     if (error || !data) return [];
     const shuffled = data

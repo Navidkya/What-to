@@ -33,6 +33,8 @@ interface Props {
   onNav: (screen: Screen) => void;
   onUpdateLists: (lists: UserList[]) => void;
   onToast: (msg: string) => void;
+  initialCatId?: string;
+  initialTitle?: string;
 }
 
 function getCatIcon(catId: string) {
@@ -207,6 +209,8 @@ export default function ForYou({
   onNav: _onNav,
   onUpdateLists,
   onToast,
+  initialCatId: _initialCatId,
+  initialTitle,
 }: Props) {
   const [baseSlides] = useState<ForYouSlide[]>(() => buildForYouSlides(history, _profile));
   const [slides, setSlides] = useState<ForYouSlide[]>(() => buildForYouSlides(history, _profile));
@@ -234,7 +238,12 @@ export default function ForYou({
       const gold = all.filter(s => s.influencerTier === 'gold').slice(0, 3);
       const mixed = buildMixedSlides(baseSlides, gold);
       setSlides(mixed);
-    }).catch(() => { /* ignore */ });
+      // Se veio de uma sugestão específica, vai para esse slide
+      if (initialTitle) {
+        const idx = mixed.findIndex(s => s.title === initialTitle);
+        if (idx >= 0) setActiveIdx(idx);
+      }
+    }).catch(() => {});
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, baseSlides.length]);

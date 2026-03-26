@@ -18,6 +18,7 @@ interface HomeProps {
   onHideTracking: (key: string) => void;
   onRemoveTracking: (key: string) => void;
   onClearTracking: () => void;
+  onOpenForYou?: (catId: string, title: string) => void;
 }
 
 interface HeroSlide {
@@ -215,7 +216,7 @@ const CAT_IMAGES: Record<string, string> = {
 };
 
 
-export default function Home({ profile, history, tracking, schedules, onOpenCat, onOpenPlan, onOpenLive, onNav, isActive: _isActive, onHideTracking, onRemoveTracking, onClearTracking }: HomeProps) {
+export default function Home({ profile, history, tracking, schedules, onOpenCat, onOpenPlan, onOpenLive, onNav, isActive: _isActive, onHideTracking, onRemoveTracking, onClearTracking, onOpenForYou }: HomeProps) {
   const [confirmClear, setConfirmClear] = useState(false);
   const greeting = getGreeting(profile.name);
   const avatarLetter = profile.name ? profile.name[0].toUpperCase() : '◉';
@@ -439,7 +440,13 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           <div
             className="home-hero"
             style={currentHeroImg ? undefined : { background: `linear-gradient(${GRAD[currentSlide.catId] || '135deg,#111,#222'})` }}
-            onClick={() => onNav('para-ti')}
+            onClick={() => {
+              if (currentSlide && onOpenForYou) {
+                onOpenForYou(currentSlide.catId, currentSlide.item.title);
+              } else {
+                onNav('para-ti');
+              }
+            }}
           >
             {currentHeroImg && (
               <img className="home-hero-img" src={currentHeroImg} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
@@ -455,7 +462,13 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
               <div className="home-hero-desc">{currentSlide.item.desc}</div>
 
               <div className="home-hero-btns" onClick={e => e.stopPropagation()}>
-                <button className="btn-primary" onClick={() => onNav('para-ti')}>
+                <button className="btn-primary" onClick={() => {
+                  if (currentSlide && onOpenForYou) {
+                    onOpenForYou(currentSlide.catId, currentSlide.item.title);
+                  } else {
+                    onNav('para-ti');
+                  }
+                }}>
                   Ver ideia
                 </button>
               </div>
