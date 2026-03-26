@@ -13,6 +13,7 @@ export async function syncProfileToSupabase(userId: string, profile: Profile) {
     platforms: profile.platforms,
     blocked_platforms: profile.blockedPlatforms || [],
     location: profile.location || null,
+    username: profile.username || null,
   });
 }
 
@@ -24,6 +25,7 @@ export async function loadProfileFromSupabase(userId: string): Promise<Partial<P
     platforms: data.platforms || [],
     blockedPlatforms: data.blocked_platforms || [],
     location: data.location || undefined,
+    username: data.username || undefined,
   };
 }
 

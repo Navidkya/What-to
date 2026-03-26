@@ -54,7 +54,8 @@ export default function Onboard({ profile, onFinish, userId: _userId }: OnboardP
 
   const handleNameNext = () => {
     if (name.trim()) {
-      setUsername(suggestUsername(name.trim()));
+      const suggested = name.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 20);
+      setUsername(suggested || suggestUsername(name.trim()));
     }
     next();
   };

@@ -108,6 +108,10 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
   const [suggPopup, setSuggPopup] = useState<FeedCard | null>(null);
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Array<{id: string; name: string; username?: string}>>([]);
+  const [searchingFriends, setSearchingFriends] = useState(false);
 
   useEffect(() => {
     if (!isActive) return;
@@ -339,27 +343,64 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
           </svg>
         </button>
 
-        {/* Estado vazio — sem amigos ainda */}
         {sidebarOpen && (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-            padding: '8px 4px',
-          }}>
-            <div style={{ fontSize: 10, color: 'rgba(156,165,185,0.4)',
-              fontFamily: "'Outfit',sans-serif", textAlign: 'center', maxWidth: 48 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '8px 4px' }}>
+            <div style={{ fontSize: 10, color: 'rgba(156,165,185,0.4)', fontFamily: "'Outfit',sans-serif", textAlign: 'center', maxWidth: 48 }}>
               Sem amigos ainda
             </div>
             <button
-              onClick={() => onToast('✦ Convida amigos no teu perfil')}
-              style={{
-                width: 32, height: 32, borderRadius: '50%',
-                background: 'rgba(200,155,60,0.1)',
-                border: '1px dashed rgba(200,155,60,0.3)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', color: 'rgba(200,155,60,0.5)',
-                fontSize: 18,
-              }}
+              onClick={() => setSearchOpen(o => !o)}
+              style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(200,155,60,0.1)', border: '1px dashed rgba(200,155,60,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(200,155,60,0.5)', fontSize: 18 }}
             >+</button>
+          </div>
+        )}
+        {/* Caixa de pesquisa inline */}
+        {sidebarOpen && searchOpen && (
+          <div style={{ position: 'fixed', left: 60, top: '50%', transform: 'translateY(-50%)', zIndex: 100, background: '#161820', borderRadius: 12, padding: 12, width: 220, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.7)', marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>Adicionar amigo</div>
+            <input
+              autoFocus
+              placeholder="@username ou nome…"
+              value={searchQuery}
+              onChange={async e => {
+                const q = e.target.value;
+                setSearchQuery(q);
+                if (q.length < 2) { setSearchResults([]); return; }
+                setSearchingFriends(true);
+                const qClean = q.startsWith('@') ? q.slice(1) : q;
+                const { data } = await supabase.from('profiles').select('id,name,username').or(`username.ilike.%${qClean}%,name.ilike.%${qClean}%`).neq('id', _userId || '').limit(5);
+                setSearchResults((data || []).filter((p: any) => p.username));
+                setSearchingFriends(false);
+              }}
+              style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 10px', color: '#f5f1eb', fontSize: 13, outline: 'none', fontFamily: "'Outfit',sans-serif" }}
+            />
+            {searchingFriends && <div style={{ fontSize: 11, color: '#8a94a8', marginTop: 6, textAlign: 'center' }}>A pesquisar…</div>}
+            {searchResults.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, padding: '6px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div>
+                  <div style={{ fontSize: 13, color: '#f5f1eb', fontWeight: 500 }}>{r.name}</div>
+                  {r.username && <div style={{ fontSize: 11, color: '#8a94a8' }}>@{r.username}</div>}
+                </div>
+                <button
+                  style={{ background: '#C89B3C', color: '#0B0D12', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  onClick={async () => {
+                    if (!_userId) return;
+                    const { sendFriendRequest } = await import('../../services/friends');
+                    const ok = await sendFriendRequest(_userId, r.id);
+                    onToast(ok ? `✦ Pedido enviado a ${r.name}` : 'Erro ao enviar pedido');
+                    setSearchOpen(false);
+                    setSearchQuery('');
+                    setSearchResults([]);
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            ))}
+            {searchQuery.length >= 2 && !searchingFriends && searchResults.length === 0 && (
+              <div style={{ fontSize: 11, color: '#8a94a8', marginTop: 8, textAlign: 'center' }}>Nenhum utilizador encontrado</div>
+            )}
+            <button onClick={() => { setSearchOpen(false); setSearchQuery(''); setSearchResults([]); }} style={{ marginTop: 10, width: '100%', background: 'none', border: 'none', color: '#8a94a8', fontSize: 11, cursor: 'pointer' }}>Fechar</button>
           </div>
         )}
       </div>
