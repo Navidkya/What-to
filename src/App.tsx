@@ -832,6 +832,8 @@ export default function App() {
             isActive={screen === 'match-screen'}
             onBack={goHome}
             onToast={toast}
+            userId={authUser?.id}
+            userName={store.profile.name}
           />
 
           <Wishlist
