@@ -19,14 +19,14 @@ const GENRE_MAP: Record<string, string[]> = {
 
 export default function WatchOnboard({ isOpen, currentPrefs, onClose }: Props) {
   if (!isOpen) return null;
-  const [types, setTypes] = useState<string[]>(currentPrefs.type ? [currentPrefs.type] : []);
-  const [genres, setGenres] = useState<string[]>(currentPrefs.genres || []);
+  const [types, setTypes] = useState<string[]>([]);
+  const [genres, setGenres] = useState<string[]>([]);
   const [advanced, setAdvanced] = useState(false);
-  const [duration, setDuration] = useState<string[]>(currentPrefs.duration ? [currentPrefs.duration] : []);
-  const [origem, setOrigem] = useState<string[]>(currentPrefs.origem ? [currentPrefs.origem] : []);
-  const [lingua, setLingua] = useState<string[]>(currentPrefs.lingua ? [currentPrefs.lingua] : []);
-  const [epoca, setEpoca] = useState<string[]>(currentPrefs.epoca && currentPrefs.epoca !== 'qualquer' ? [currentPrefs.epoca] : []);
-  const [minRating, setMinRating] = useState<string[]>(currentPrefs.minRating ? [currentPrefs.minRating] : []);
+  const [duration, setDuration] = useState<string[]>([]);
+  const [origem, setOrigem] = useState<string[]>([]);
+  const [lingua, setLingua] = useState<string[]>([]);
+  const [epoca, setEpoca] = useState<string[]>([]);
+  const [minRating, setMinRating] = useState<string[]>([]);
 
   const activeTypes = types.filter(t => t !== 'Qualquer');
   const genreOptions = activeTypes.length === 1 ? (GENRE_MAP[activeTypes[0]] || GENRE_MAP.default) : GENRE_MAP.default;
