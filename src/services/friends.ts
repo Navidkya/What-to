@@ -22,12 +22,12 @@ export async function searchUsers(query: string, currentUserId: string): Promise
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, platforms')
-      .ilike('name', `%${query}%`)
+      .select('id, name, username, platforms')
+      .or(`name.ilike.%${query}%,username.ilike.%${query}%`)
       .neq('id', currentUserId)
       .limit(10);
     if (error) return [];
-    return (data || []).map(p => ({ id: p.id, name: p.name, platforms: p.platforms }));
+    return (data || []).map(p => ({ id: p.id, name: p.name, username: p.username, platforms: p.platforms }));
   } catch { return []; }
 }
 
@@ -90,10 +90,10 @@ export async function loadFriends(userId: string): Promise<Array<FriendProfile &
 
     if (!friendIds.length) return [];
     const { data: profiles } = await supabase
-      .from('profiles').select('id, name, platforms').in('id', friendIds);
+      .from('profiles').select('id, name, username, platforms').in('id', friendIds);
 
     return (profiles || []).map(p => ({
-      id: p.id, name: p.name, platforms: p.platforms,
+      id: p.id, name: p.name, username: p.username, platforms: p.platforms,
       friendshipId: friendshipMap[p.id],
     }));
   } catch { return []; }
@@ -112,10 +112,10 @@ export async function loadPendingRequests(userId: string): Promise<FriendRequest
     const requesterIds = data.map(f => f.requester_id);
     if (!requesterIds.length) return [];
     const { data: profiles } = await supabase
-      .from('profiles').select('id, name').in('id', requesterIds);
+      .from('profiles').select('id, name, username').in('id', requesterIds);
 
     const profileMap: Record<string, FriendProfile> = {};
-    (profiles || []).forEach(p => { profileMap[p.id] = { id: p.id, name: p.name }; });
+    (profiles || []).forEach(p => { profileMap[p.id] = { id: p.id, name: p.name, username: p.username }; });
 
     return data.map(f => ({
       id: f.id,
