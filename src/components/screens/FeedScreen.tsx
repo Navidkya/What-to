@@ -47,6 +47,7 @@ interface Props {
   onToast: (msg: string) => void;
   userId?: string;
   userName?: string;
+  onAddToHistory?: (entry: { title: string; emoji: string; cat: string; catId: string; action: 'agora' | 'hoje' | 'save' | 'skip'; date: string; type: string; genre: string }) => void;
 }
 
 
@@ -100,7 +101,7 @@ function getCatIconSvg(catId: string) {
   }
 }
 
-export default function FeedScreen({ profile: _profile, history: _history, isActive, onToast, userId: _userId }: Props) {
+export default function FeedScreen({ profile: _profile, history: _history, isActive, onToast, userId: _userId, onAddToHistory }: Props) {
   const [cards, setCards] = useState<FeedCard[]>([]);
   const [personPopup, setPersonPopup] = useState<{
     name: string; handle?: string; platform?: string; tier?: string;
@@ -617,7 +618,20 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
             <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:700, fontStyle:'italic', color:'#f5f1eb', marginBottom:6 }}>{suggPopup.title}</div>
             <div style={{ fontSize:11, color:'rgba(156,165,185,0.5)', marginBottom:20 }}>{suggPopup.catName}{suggPopup.rating ? ` · ★ ${suggPopup.rating}` : ''}{suggPopup.type === 'trending' && suggPopup.subtitle ? ` · ${suggPopup.subtitle}` : ''}</div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              <button onClick={() => { onToast('✦ Adicionado ao histórico'); setSuggPopup(null); }}
+              <button onClick={() => {
+                onAddToHistory?.({
+                  title: suggPopup.title,
+                  emoji: '✦',
+                  cat: suggPopup.catName,
+                  catId: suggPopup.catId,
+                  action: 'agora',
+                  date: new Date().toISOString(),
+                  type: '',
+                  genre: '',
+                });
+                onToast('✦ Adicionado ao histórico');
+                setSuggPopup(null);
+              }}
                 style={{ padding:'13px 16px', background:'linear-gradient(135deg,rgba(200,155,60,0.15),rgba(168,117,53,0.08))', border:'1px solid rgba(200,155,60,0.35)', borderRadius:14, color:'#C89B3C', fontFamily:"'Outfit',sans-serif", fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left' }}>
                 Ver agora
               </button>

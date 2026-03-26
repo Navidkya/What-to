@@ -846,6 +846,9 @@ export default function App() {
             onToast={toast}
             userId={authUser?.id}
             userName={store.profile.name}
+            onAddToHistory={(entry) => {
+              store.updateHistory([{ ...entry, type: '', genre: '' }, ...store.history]);
+            }}
           />
 
           <ForYou

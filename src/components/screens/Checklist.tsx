@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { ReactElement } from 'react';
 import type { HistoryEntry, TrackingMap } from '../../types';
 import { CATS, TSTATE, TCOLOR } from '../../data';
@@ -58,23 +58,6 @@ const BUCKET_LABELS: Record<string, string> = {
   antigo: 'Mais antigo',
 };
 
-const CL_IMAGES: Record<string, string> = {
-  watch: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=300&q=75',
-  eat:   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&q=75',
-  play:  'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=300&q=75',
-  read:  'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&q=75',
-  do:    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&q=75',
-  listen:'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300&q=75',
-  hist:  '',
-};
-
-const HIST_CAT_SVGS: Record<string, React.ReactNode> = {
-  watch: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 2l-4 5-4-5"/></svg>,
-  eat: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M5 2v20M21 2c0 0-2 2-2 8h4c0-6-2-8-2-8z"/><path d="M19 10v12"/></svg>,
-  play: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/></svg>,
-  read: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
-  do: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
-};
 
 function getTMDBThumb(title: string): string | null {
   const cacheKey = `wt_tmdb_ps_${title.toLowerCase().replace(/\s+/g, '_')}`;
@@ -206,30 +189,29 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
         <div style={{ width: 36 }} />
       </div>
 
-      {/* Unified filter row — single image-based row */}
-      <div className="hist-filter-row">
-        {CL_FILTER_TABS.map(t => {
-          const imgUrl = CL_IMAGES[t.id];
-          const isOn = tab === t.id;
-          const isHist = t.id === 'hist';
-          return (
-            <button
-              key={t.id}
-              className={`hist-filter-card cl-filter-card${isHist ? ' hist-tab' : ''}${isOn ? ' on' : ''}`}
-              onClick={() => setTab(t.id)}
-              style={imgUrl ? { backgroundImage: `url(${imgUrl})` } : undefined}
-            >
-              {!imgUrl && isHist && <div style={{ position: 'absolute', inset: 0, borderRadius: 12, background: 'rgba(200,151,74,0.12)' }} />}
-              {HIST_CAT_SVGS[t.id] && (
-                <div className="hist-filter-card-icon">{HIST_CAT_SVGS[t.id]}</div>
-              )}
-              {isHist && !HIST_CAT_SVGS[t.id] && (
-                <div className="hist-filter-card-icon" style={{ position: 'relative', zIndex: 1, fontSize: 14 }}>📋</div>
-              )}
-              <div className="hist-filter-card-lbl">{t.label}</div>
-            </button>
-          );
-        })}
+      {/* Filter pills */}
+      <div style={{ display:'flex', gap:8, padding:'0 20px 12px', overflowX:'auto', scrollbarWidth:'none' }}>
+        {CL_FILTER_TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              flexShrink: 0,
+              padding: '6px 14px',
+              borderRadius: 50,
+              fontSize: 12,
+              fontWeight: tab === t.id ? 600 : 400,
+              fontFamily: "'Outfit', sans-serif",
+              background: tab === t.id ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.05)',
+              border: tab === t.id ? '1px solid rgba(200,155,60,0.4)' : '1px solid rgba(255,255,255,0.08)',
+              color: tab === t.id ? '#C89B3C' : '#8a94a8',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <div className="cl-search mw">
