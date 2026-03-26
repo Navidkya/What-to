@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Profile, HistoryEntry } from '../../types';
 import { loadActiveSuggestions } from '../../services/influencers';
 import type { InfluencerSuggestion } from '../../services/influencers';
@@ -552,7 +553,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
       </div>
 
       {/* Pop-up de pessoa */}
-      {personPopup && (
+      {personPopup && createPortal(
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 16px 24px', zIndex:200 }}
           onClick={() => setPersonPopup(null)}>
           <div style={{ width:'100%', maxWidth:480, background:'rgba(10,12,20,0.97)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:24, padding:'20px 20px 28px' }}
@@ -597,16 +598,22 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
             )}
             <button onClick={() => setPersonPopup(null)} style={{ width:'100%', marginTop:14, padding:'11px', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, color:'rgba(156,165,185,0.5)', fontSize:12, fontFamily:"'Outfit',sans-serif", cursor:'pointer' }}>fechar</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Pop-up de sugestão */}
-      {suggPopup && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 16px 24px', zIndex:200 }}
+      {suggPopup && createPortal(
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 16px 80px', zIndex:200 }}
           onClick={() => setSuggPopup(null)}>
           <div style={{ width:'100%', maxWidth:480, background:'rgba(10,12,20,0.97)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:24, padding:'20px 20px 28px' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ width:36, height:3, background:'rgba(255,255,255,0.15)', borderRadius:10, margin:'0 auto 20px' }} />
+            {suggPopup.img && (
+              <div style={{ width:'calc(100% + 40px)', marginLeft:-20, marginTop:-20, marginBottom:16, height:160, overflow:'hidden', borderRadius:'24px 24px 0 0' }}>
+                <img src={suggPopup.img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center 20%' }} />
+              </div>
+            )}
             <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:700, fontStyle:'italic', color:'#f5f1eb', marginBottom:6 }}>{suggPopup.title}</div>
             <div style={{ fontSize:11, color:'rgba(156,165,185,0.5)', marginBottom:20 }}>{suggPopup.catName}{suggPopup.rating ? ` · ★ ${suggPopup.rating}` : ''}{suggPopup.type === 'trending' && suggPopup.subtitle ? ` · ${suggPopup.subtitle}` : ''}</div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -625,7 +632,8 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
             </div>
             <button onClick={() => setSuggPopup(null)} style={{ width:'100%', marginTop:14, padding:'11px', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, color:'rgba(156,165,185,0.5)', fontSize:12, fontFamily:"'Outfit',sans-serif", cursor:'pointer' }}>fechar</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
