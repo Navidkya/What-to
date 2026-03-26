@@ -467,7 +467,10 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                 borderRadius: 12, padding: '10px 16px', marginBottom: 8,
                 color: '#C89B3C', fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
-              onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
+              onClick={() => {
+                setFriendPopup(null);
+                _onOpenMessages?.(friendPopup.id, friendPopup.name);
+              }}
             >
               💬 Enviar mensagem
             </button>
