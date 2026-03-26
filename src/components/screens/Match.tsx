@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import type { Profile } from '../../types';
 import { CATS } from '../../data';
 import { loadCachedSuggestions } from '../../services/suggestionCache';
+import { loadFriends } from '../../services/friends';
+import type { FriendProfile } from '../../services/friends';
 import {
   createMatchSession, joinMatchSession,
   submitMatchVote, getMatchVotes, advanceMatchIndex,
@@ -17,6 +19,7 @@ interface Props {
   onToast: (msg: string) => void;
   userId?: string;
   userName?: string;
+  onOpenMessages?: (friendId: string, friendName: string) => void;
 }
 
 const CAT_OPTIONS = [
@@ -43,7 +46,7 @@ function Avatar({ name, size = 40, color }: { name: string; size?: number; color
   );
 }
 
-export default function Match({ profile, isActive, onBack, onToast, userId, userName }: Props) {
+export default function Match({ profile, isActive, onBack, onToast, userId, userName, onOpenMessages }: Props) {
   const [phase, setPhase] = useState<'home' | 'creating' | 'waiting' | 'joining' | 'playing' | 'matched' | 'done'>('home');
   const [selectedCat, setSelectedCat] = useState('watch');
   const [session, setSession] = useState<MatchSession | null>(null);
@@ -54,6 +57,8 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const [matchedItem, setMatchedItem] = useState<{ title: string; img: string | null } | null>(null);
   const [myVote, setMyVote] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
+  const [friends, setFriends] = useState<FriendProfile[]>([]);
+  const [showFriendInvite, setShowFriendInvite] = useState(false);
 
   const cleanupSession = useRef<(() => void) | null>(null);
   const cleanupVotes = useRef<(() => void) | null>(null);
@@ -71,6 +76,11 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     if (!isActive) return;
     return () => cleanup();
   }, [isActive, cleanup]);
+
+  useEffect(() => {
+    if (!isActive || !userId) return;
+    loadFriends(userId).then(fs => setFriends(fs)).catch(() => {});
+  }, [isActive, userId]);
 
   const checkForMatch = useCallback((allVotes: MatchVote[], sess: MatchSession) => {
     const currentTitle = sess.itemTitles[sess.currentIndex];
@@ -292,6 +302,45 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
               Copiar código
             </button>
           </div>
+          {friends.length > 0 && (
+            <div style={{ width: '100%', maxWidth: 320, marginTop: 8 }}>
+              <button
+                onClick={() => setShowFriendInvite(o => !o)}
+                style={{ width: '100%', padding: '10px 16px', background: 'rgba(200,155,60,0.08)', border: '1px solid rgba(200,155,60,0.2)', borderRadius: 12, color: '#C89B3C', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+              >
+                Convidar amigo
+              </button>
+              {showFriendInvite && (
+                <div style={{ marginTop: 8, background: '#161820', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  {friends.map(f => (
+                    <div key={f.id}
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
+                      onClick={() => {
+                        if (onOpenMessages) {
+                          const code = session!.id.slice(0, 8).toUpperCase();
+                          onOpenMessages(f.id, f.name);
+                          onToast(`✦ Código ${code} copiado — cola na mensagem`);
+                          navigator.clipboard?.writeText(code);
+                          setShowFriendInvite(false);
+                        }
+                      }}
+                    >
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(200,155,60,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#C89B3C', flexShrink: 0 }}>
+                        {f.name[0]?.toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, color: '#f5f1eb', fontWeight: 500 }}>{f.name}</div>
+                        {f.username && <div style={{ fontSize: 11, color: '#8a94a8' }}>@{f.username}</div>}
+                      </div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C89B3C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                      </svg>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#8a94a8', fontSize: 12 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#C89B3C', animation: 'pulse 1.5s infinite' }} />
             À espera do parceiro…

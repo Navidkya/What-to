@@ -61,11 +61,19 @@ export async function joinMatchSession(
   userId: string
 ): Promise<MatchSession | null> {
   try {
+    // Busca por prefixo do UUID (código curto de 8 chars)
+    const { data: found, error: findError } = await supabase
+      .from('match_sessions')
+      .select('*')
+      .ilike('id', `${sessionId.toLowerCase()}%`)
+      .eq('status', 'waiting')
+      .single();
+    if (findError || !found) return null;
+
     const { data, error } = await supabase
       .from('match_sessions')
-      .update({ joined_by: userId, status: 'active' })
-      .eq('id', sessionId)
-      .eq('status', 'waiting')
+      .update({ joined_by: userId, status: 'active', updated_at: new Date().toISOString() })
+      .eq('id', found.id)
       .select()
       .single();
     if (error || !data) return null;

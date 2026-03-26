@@ -834,6 +834,7 @@ export default function App() {
             onToast={toast}
             userId={authUser?.id}
             userName={store.profile.name}
+            onOpenMessages={(fid, fname) => openMessages(fid, fname)}
           />
 
           <Wishlist
