@@ -233,20 +233,61 @@ export default function ForYou({
   useEffect(() => {
     if (!isActive) return;
     resetTimer();
-    // Load influencer suggestions and mix
     loadActiveSuggestions().then(all => {
       const gold = all.filter(s => s.influencerTier === 'gold').slice(0, 3);
       const mixed = buildMixedSlides(baseSlides, gold);
-      setSlides(mixed);
-      // Se veio de uma sugestão específica, vai para esse slide
+
       if (initialTitle) {
-        const idx = mixed.findIndex(s => s.title === initialTitle);
-        if (idx >= 0) setActiveIdx(idx);
+        // Tenta encontrar o slide nos existentes
+        let idx = mixed.findIndex(s => s.title === initialTitle);
+        if (idx >= 0) {
+          setSlides(mixed);
+          setActiveIdx(idx);
+        } else {
+          // Não está na lista — constrói slide a partir dos dados locais
+          const allCats = ['watch','eat','play','read','listen','do','learn','visit'];
+          let foundItem: ForYouSlide | null = null;
+          for (const catId of allCats) {
+            const cat = CATS.find(c => c.id === catId);
+            if (!cat) continue;
+            const item = (DATA[catId] || []).find((d: any) => d.title === initialTitle);
+            if (item) {
+              foundItem = {
+                title: item.title,
+                desc: item.desc || '',
+                emoji: item.emoji || '✦',
+                catId,
+                catName: cat.name,
+                type: item.type || '',
+                genre: item.genre || '',
+                rating: item.rating,
+                year: item.year,
+                platforms: item.platforms || [],
+                img: null,
+                steamId: item.steamId,
+              };
+              break;
+            }
+          }
+          if (foundItem) {
+            setSlides([foundItem, ...mixed]);
+            setActiveIdx(0);
+          } else {
+            setSlides(mixed);
+            setActiveIdx(0);
+          }
+        }
+      } else {
+        setSlides(mixed);
+        setActiveIdx(0);
       }
-    }).catch(() => {});
+    }).catch(() => {
+      setSlides(baseSlides);
+      setActiveIdx(0);
+    });
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, baseSlides.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, initialTitle]);
 
   // Fetch images
   useEffect(() => {

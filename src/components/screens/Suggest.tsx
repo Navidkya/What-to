@@ -1842,37 +1842,142 @@ export default function Suggest({
                   )}
                 </div>
 
-                {/* Tags de filtros activos que cruzam com esta sugestão */}
+                {/* Tags de filtros activos — watch */}
                 {cat.id === 'watch' && watchPrefs?.done && (() => {
-                  const wGenres: string[] = (watchPrefs as any).genres || [];
-                  const wType = (watchPrefs as any).type;
-                  const itemGenres = (displayData?.genres || (displayGenre ? [displayGenre] : [])).map((g: string) => (g || '').toLowerCase());
+                  const wGenres: string[] = ((watchPrefs as any).genres || []).filter((g: string) => g !== 'Qualquer');
+                  const wType: string = (watchPrefs as any).type || '';
+
+                  const activeTags: string[] = [];
+                  if (wType && wType !== 'Ambos') activeTags.push(wType);
+                  wGenres.forEach((g: string) => activeTags.push(g));
+
+                  if (activeTags.length === 0) return null;
+
+                  const itemGenres = (displayData?.genres || (displayGenre ? [displayGenre] : []))
+                    .map((g: string) => (g || '').toLowerCase());
                   const itemType = (displayType || '').toLowerCase();
 
-                  const matchingTags: string[] = [];
-                  if (wType && wType !== 'Ambos' && itemType && (
-                    itemType.includes(wType.toLowerCase()) ||
-                    (wType === 'Série' && (itemType === 'série' || itemType === 'serie')) ||
-                    (wType === 'Filme' && itemType === 'filme')
-                  )) matchingTags.push(wType);
-
-                  wGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => {
-                    if (itemGenres.some(ig => ig && ig.includes(g.toLowerCase()))) {
-                      matchingTags.push(g);
-                    }
+                  const totalFilters = activeTags.length;
+                  let matched = 0;
+                  if (wType && wType !== 'Ambos') {
+                    const typeMatch = itemType === wType.toLowerCase() ||
+                      (wType === 'Série' && (itemType === 'série' || itemType === 'serie')) ||
+                      (wType === 'Filme' && itemType === 'filme');
+                    if (typeMatch) matched++;
+                  }
+                  wGenres.forEach((g: string) => {
+                    if (itemGenres.some(ig => ig.includes(g.toLowerCase()))) matched++;
                   });
 
-                  if (matchingTags.length === 0) return null;
+                  const matchRatio = totalFilters > 0 ? matched / totalFilters : 1;
+                  const isPartial = matchRatio < 1 && matchRatio >= 0.75;
+
                   return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                      {matchingTags.map((tag, i) => (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6, alignItems: 'center' }}>
+                      {activeTags.map((tag, i) => (
                         <span key={i} style={{
                           fontSize: 10, padding: '2px 8px',
                           background: 'rgba(200,155,60,0.15)',
                           border: '1px solid rgba(200,155,60,0.4)',
                           borderRadius: 20, color: 'rgba(200,155,60,0.9)',
                           fontFamily: "'Outfit',sans-serif",
+                          whiteSpace: 'nowrap',
                         }}>{tag}</span>
+                      ))}
+                      {isPartial && (
+                        <span
+                          title={`Esta sugestão corresponde a ${Math.round(matchRatio * 100)}% dos filtros activos. Alguns dados podem estar em falta no cache.`}
+                          style={{
+                            fontSize: 10, padding: '2px 8px',
+                            background: 'rgba(224,155,60,0.08)',
+                            border: '1px solid rgba(224,155,60,0.25)',
+                            borderRadius: 20, color: 'rgba(224,155,60,0.55)',
+                            fontFamily: "'Outfit',sans-serif",
+                            cursor: 'help', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ~{Math.round(matchRatio * 100)}% match
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Tags de filtros activos — play */}
+                {cat.id === 'play' && playPrefs?.done && (() => {
+                  const activeTags: string[] = [];
+                  const pType = (playPrefs as any).type;
+                  const pGenres: string[] = (playPrefs as any).genres || [];
+                  const pJogadores = (playPrefs as any).jogadores;
+                  const pOnline = (playPrefs as any).online;
+                  if (pType && pType !== 'Ambos') activeTags.push(pType);
+                  pGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
+                  if (pJogadores && pJogadores !== 'Qualquer') activeTags.push(pJogadores);
+                  if (pOnline && pOnline !== 'Qualquer') activeTags.push(pOnline);
+                  if (activeTags.length === 0) return null;
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                      {activeTags.map((tag, i) => (
+                        <span key={i} style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.4)', borderRadius: 20, color: 'rgba(200,155,60,0.9)', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{tag}</span>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Tags de filtros activos — listen */}
+                {cat.id === 'listen' && listenPrefs?.done && (() => {
+                  const activeTags: string[] = [];
+                  const lType = (listenPrefs as any).type;
+                  const lGenres: string[] = (listenPrefs as any).genres || [];
+                  const lMomento = (listenPrefs as any).momento;
+                  if (lType && lType !== 'Ambos') activeTags.push(lType);
+                  lGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
+                  if (lMomento && lMomento !== 'Qualquer') activeTags.push(lMomento);
+                  if (activeTags.length === 0) return null;
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                      {activeTags.map((tag, i) => (
+                        <span key={i} style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.4)', borderRadius: 20, color: 'rgba(200,155,60,0.9)', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{tag}</span>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Tags de filtros activos — read */}
+                {cat.id === 'read' && readPrefs?.done && (() => {
+                  const activeTags: string[] = [];
+                  const rType = (readPrefs as any).type;
+                  const rGenres: string[] = (readPrefs as any).genres || [];
+                  const rPeso = (readPrefs as any).peso;
+                  const rComprimento = (readPrefs as any).comprimento;
+                  if (rType && rType !== 'Ambos') activeTags.push(rType);
+                  rGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
+                  if (rPeso && rPeso !== 'Qualquer') activeTags.push(rPeso);
+                  if (rComprimento && rComprimento !== 'Qualquer') activeTags.push(rComprimento);
+                  if (activeTags.length === 0) return null;
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                      {activeTags.map((tag, i) => (
+                        <span key={i} style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.4)', borderRadius: 20, color: 'rgba(200,155,60,0.9)', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{tag}</span>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Tags de filtros activos — learn */}
+                {cat.id === 'learn' && learnPrefs?.done && (() => {
+                  const activeTags: string[] = [];
+                  const lnFormato = (learnPrefs as any).formato;
+                  const lnGenres: string[] = (learnPrefs as any).genres || [];
+                  const lnNivel = (learnPrefs as any).nivel;
+                  if (lnFormato && lnFormato !== 'Qualquer') activeTags.push(lnFormato);
+                  lnGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
+                  if (lnNivel && lnNivel !== 'Qualquer') activeTags.push(lnNivel);
+                  if (activeTags.length === 0) return null;
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                      {activeTags.map((tag, i) => (
+                        <span key={i} style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.4)', borderRadius: 20, color: 'rgba(200,155,60,0.9)', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{tag}</span>
                       ))}
                     </div>
                   );
