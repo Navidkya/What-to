@@ -401,14 +401,28 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
                 {/* Mini botões */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0, marginLeft: 6 }}>
                   <button
-                    onClick={e => { e.stopPropagation(); onHideTracking(it.catId + ':' + it.title); }}
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (it.badge === 'hoje') {
+                        onHideTracking('hoje:' + it.catId + ':' + it.title);
+                      } else {
+                        onHideTracking(it.catId + ':' + it.title);
+                      }
+                    }}
                     style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--mu)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     title="Ocultar"
                   >
                     –
                   </button>
                   <button
-                    onClick={e => { e.stopPropagation(); onRemoveTracking(it.catId + ':' + it.title); }}
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (it.badge === 'hoje') {
+                        onRemoveTracking('hoje:' + it.catId + ':' + it.title);
+                      } else {
+                        onRemoveTracking(it.catId + ':' + it.title);
+                      }
+                    }}
                     style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(224,112,112,0.06)', border: '1px solid rgba(224,112,112,0.2)', color: 'var(--rd)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     title="Apagar"
                   >

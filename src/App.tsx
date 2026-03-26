@@ -651,14 +651,32 @@ export default function App() {
                 onNav={navTo}
                 isActive={true}
                 onHideTracking={(key) => {
-                  const updated = { ...store.tracking };
-                  if (updated[key]) updated[key] = { ...updated[key], state: 'paused' };
-                  store.updateTracking(updated);
+                  if (key.startsWith('hoje:')) {
+                    const [, catId, ...titleParts] = key.split(':');
+                    const title = titleParts.join(':');
+                    store.updateHistory(store.history.map(h =>
+                      h.action === 'hoje' && h.catId === catId && h.title === title
+                        ? { ...h, action: 'skip' as const }
+                        : h
+                    ));
+                  } else {
+                    const updated = { ...store.tracking };
+                    if (updated[key]) updated[key] = { ...updated[key], state: 'paused' };
+                    store.updateTracking(updated);
+                  }
                 }}
                 onRemoveTracking={(key) => {
-                  const updated = { ...store.tracking };
-                  delete updated[key];
-                  store.updateTracking(updated);
+                  if (key.startsWith('hoje:')) {
+                    const [, catId, ...titleParts] = key.split(':');
+                    const title = titleParts.join(':');
+                    store.updateHistory(store.history.filter(h =>
+                      !(h.action === 'hoje' && h.catId === catId && h.title === title)
+                    ));
+                  } else {
+                    const updated = { ...store.tracking };
+                    delete updated[key];
+                    store.updateTracking(updated);
+                  }
                 }}
                 onClearTracking={() => {
                   store.updateTracking({});
