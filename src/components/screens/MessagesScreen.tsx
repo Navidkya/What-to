@@ -150,8 +150,7 @@ export default function MessagesScreen({
     setSending(true);
     const text = inputText.trim();
     setInputText('');
-    const msg = await sendMessage(activeConv.id, userId, text);
-    if (msg) setMessages(prev => [...prev, msg]);
+    await sendMessage(activeConv.id, userId, text);
     setSending(false);
   };
 
@@ -335,7 +334,8 @@ export default function MessagesScreen({
 
       {/* Input */}
       <div style={{
-        padding: '12px 16px 32px',
+        padding: '12px 16px',
+        paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
         borderTop: '1px solid rgba(255,255,255,0.06)',
         display: 'flex', gap: 8, alignItems: 'flex-end',
         background: '#0B0D12',

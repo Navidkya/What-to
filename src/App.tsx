@@ -47,6 +47,7 @@ import AdminPanel from './components/screens/AdminPanel';
 import MessagesScreen from './components/screens/MessagesScreen';
 import { supabase } from './lib/supabase';
 import { signOut } from './services/auth';
+import { getTotalUnread } from './services/messages';
 import { loadInfluencerProfile } from './services/influencers';
 import { loadAllFromSupabase, syncProfileToSupabase, syncHistoryToSupabase, syncTrackingToSupabase, syncListsToSupabase, syncPrefsToSupabase } from './services/sync';
 import { publishFeedEvent } from './services/feedEvents';
@@ -116,6 +117,7 @@ export default function App() {
   const gestureStartX = useRef<number | null>(null);
   const gestureStartY = useRef<number | null>(null);
   const sessionStartedAt = useRef<number>(Date.now());
+  const messagesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const goHome = useCallback(() => {
     setScreen('home');
@@ -188,6 +190,7 @@ export default function App() {
   const openMessages = useCallback((friendId?: string, friendName?: string) => {
     setMessagesFriendId(friendId);
     setMessagesFriendName(friendName);
+    setMessagesUnread(0);
     navTo('messages');
   }, [navTo]);
 
@@ -462,6 +465,35 @@ export default function App() {
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [authUser, processUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listener global de mensagens não lidas → badge BottomNav
+  useEffect(() => {
+    if (!authUser?.id) return;
+
+    getTotalUnread(authUser.id).then(setMessagesUnread);
+
+    if (messagesChannelRef.current) supabase.removeChannel(messagesChannelRef.current);
+    messagesChannelRef.current = supabase
+      .channel('global-messages-' + authUser.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+      }, (payload) => {
+        const m = payload.new as any;
+        if (m.sender_id !== authUser.id) {
+          setMessagesUnread(prev => prev + 1);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      if (messagesChannelRef.current) {
+        supabase.removeChannel(messagesChannelRef.current);
+        messagesChannelRef.current = null;
+      }
+    };
+  }, [authUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 6d — Sync automático
   useEffect(() => {

@@ -50,16 +50,19 @@ export async function loadConversations(userId: string): Promise<Conversation[]>
       profileMap[p.id] = { name: p.name, username: p.username };
     });
 
-    // Contar mensagens não lidas
+    // Contar mensagens não lidas (query agregada)
+    const convIds = data.map((c: any) => c.id);
     const unreadCounts: Record<string, number> = {};
-    for (const c of data) {
-      const { count } = await supabase
+    if (convIds.length > 0) {
+      const { data: unreadData } = await supabase
         .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('conversation_id', c.id)
+        .select('conversation_id')
+        .in('conversation_id', convIds)
         .neq('sender_id', userId)
         .is('read_at', null);
-      unreadCounts[c.id] = count || 0;
+      (unreadData || []).forEach((m: any) => {
+        unreadCounts[m.conversation_id] = (unreadCounts[m.conversation_id] || 0) + 1;
+      });
     }
 
     return data.map((c: any) => {
