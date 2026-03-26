@@ -125,6 +125,11 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
     buildFeed();
   }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    setWatchProviders([]);
+    setLoadingProviders(false);
+  }, [suggPopup]);
+
   const buildFeed = async () => {
     const muted = getMuted();
 
@@ -690,7 +695,11 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.5)', marginBottom: 10 }}>Disponível em</div>
                   {watchProviders.map(p => (
-                    <button key={p.name} onClick={() => { window.open(p.link, '_blank', 'noopener,noreferrer'); setSuggPopup(null); setWatchProviders([]); }}
+                    <button key={p.name} onClick={() => {
+                      onAddToHistory?.({ title: suggPopup.title, emoji: '✦', cat: suggPopup.catName, catId: suggPopup.catId, action: 'agora', date: new Date().toISOString(), type: '', genre: '' });
+                      onAddToTracking?.(`${suggPopup.catId}:${suggPopup.title}`, { title: suggPopup.title, emoji: '✦', cat: suggPopup.catName, catId: suggPopup.catId, state: 'watching' });
+                      window.open(p.link, '_blank', 'noopener,noreferrer'); setSuggPopup(null); setWatchProviders([]);
+                    }}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 8,
                         background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
                         borderRadius: 12, cursor: 'pointer', textAlign: 'left' }}>
@@ -703,20 +712,18 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                 </div>
               ) : (
                 <button onClick={async () => {
-                  onAddToHistory?.({
-                    title: suggPopup.title,
-                    emoji: '✦',
-                    cat: suggPopup.catName,
-                    catId: suggPopup.catId,
-                    action: 'agora',
-                    date: new Date().toISOString(),
-                    type: '',
-                    genre: '',
-                  });
-                  onAddToTracking?.(
-                    `${suggPopup.catId}:${suggPopup.title}`,
-                    { title: suggPopup.title, emoji: '✦', cat: suggPopup.catName, catId: suggPopup.catId, state: 'watching' }
-                  );
+                  const addRecord = () => {
+                    onAddToHistory?.({
+                      title: suggPopup.title, emoji: '✦',
+                      cat: suggPopup.catName, catId: suggPopup.catId,
+                      action: 'agora', date: new Date().toISOString(),
+                      type: '', genre: '',
+                    });
+                    onAddToTracking?.(
+                      `${suggPopup.catId}:${suggPopup.title}`,
+                      { title: suggPopup.title, emoji: '✦', cat: suggPopup.catName, catId: suggPopup.catId, state: 'watching' }
+                    );
+                  };
                   const catId = suggPopup.catId;
                   const { data } = await supabase
                     .from('suggestions_cache')
@@ -743,26 +750,33 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                           logo: p.logo_path,
                           link: link || `https://www.google.com/search?q=${encodeURIComponent(suggPopup.title + ' ver online')}`,
                         })));
+                        // tracking adicionado quando o utilizador escolhe a plataforma
                       } else {
+                        addRecord();
                         window.open(`https://www.google.com/search?q=${encodeURIComponent(suggPopup.title + ' ver online')}`, '_blank', 'noopener,noreferrer');
                         setSuggPopup(null);
                       }
                     } catch {
+                      addRecord();
                       window.open(`https://www.google.com/search?q=${encodeURIComponent(suggPopup.title + ' ver online')}`, '_blank', 'noopener,noreferrer');
                       setSuggPopup(null);
                     } finally {
                       setLoadingProviders(false);
                     }
                   } else if ((catId === 'read' || catId === 'listen' || catId === 'learn') && url) {
+                    addRecord();
                     window.open(url, '_blank', 'noopener,noreferrer');
                     setSuggPopup(null);
                   } else if (catId === 'play' && extId) {
+                    addRecord();
                     window.open(`https://rawg.io/games/${extId}`, '_blank', 'noopener,noreferrer');
                     setSuggPopup(null);
                   } else if (catId === 'eat' || catId === 'visit' || catId === 'do') {
+                    addRecord();
                     window.open(`https://www.google.com/maps/search/${encodeURIComponent(suggPopup.title)}`, '_blank', 'noopener,noreferrer');
                     setSuggPopup(null);
                   } else {
+                    addRecord();
                     onToast('✦ Adicionado ao histórico');
                     setSuggPopup(null);
                   }
