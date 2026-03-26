@@ -122,6 +122,9 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [friendPopup, setFriendPopup] = useState<(FriendProfile & { friendshipId: string }) | null>(null);
+  const [profilePanel, setProfilePanel] = useState<(FriendProfile & { friendshipId: string }) | null>(null);
+  const [profileEvents, setProfileEvents] = useState<Array<{ title: string; img: string | null; catId: string; catName: string; actionType: string }>>([]);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -205,6 +208,27 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
     await removeFriend(friendshipId);
     onToast(`Removeste ${name}`);
     load();
+  };
+
+  const loadFriendProfile = async (friendId: string) => {
+    setProfileLoading(true);
+    setProfileEvents([]);
+    try {
+      const { data } = await supabase
+        .from('feed_events')
+        .select('title, img, cat_id, cat_name, action_type, created_at')
+        .eq('user_id', friendId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      setProfileEvents((data || []).map((e: any) => ({
+        title: e.title,
+        img: e.img,
+        catId: e.cat_id,
+        catName: e.cat_name,
+        actionType: e.action_type,
+      })));
+    } catch { /* silencioso */ }
+    setProfileLoading(false);
   };
 
   if (!isActive) return null;
@@ -516,6 +540,140 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
       </div>
 
       {/* Pop-up perfil amigo */}
+      {profilePanel && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'flex-end' }}
+          onClick={() => setProfilePanel(null)}
+        >
+          <div
+            style={{ width: '100%', background: '#0f1118', borderRadius: '24px 24px 0 0', padding: '0 0 40px', maxHeight: '92vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Drag bar */}
+            <div style={{ width: 36, height: 3, background: 'rgba(255,255,255,0.12)', borderRadius: 10, margin: '14px auto 0' }} />
+
+            {/* Cabeçalho */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '20px 20px 0' }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: 'rgba(200,155,60,0.15)', border: '2px solid rgba(200,155,60,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 26, fontWeight: 700, color: '#C89B3C', flexShrink: 0,
+              }}>
+                {profilePanel.name[0]?.toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, fontStyle: 'italic', color: '#f5f1eb', lineHeight: 1.1 }}>
+                  {profilePanel.name}
+                </div>
+                {profilePanel.username && (
+                  <div style={{ fontSize: 13, color: '#8a94a8', marginTop: 3 }}>@{profilePanel.username}</div>
+                )}
+              </div>
+              <button
+                onClick={() => { setProfilePanel(null); _onOpenMessages?.(profilePanel.id, profilePanel.name); }}
+                style={{ background: 'rgba(200,155,60,0.12)', border: '1px solid rgba(200,155,60,0.25)', borderRadius: 12, padding: '8px 14px', color: '#C89B3C', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Outfit',sans-serif", flexShrink: 0 }}
+              >
+                Mensagem
+              </button>
+            </div>
+
+            {/* Conteúdo */}
+            {(() => {
+              const svgProps = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.5', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+              const catSvg = (catId: string) => {
+                switch (catId) {
+                  case 'watch': return <svg {...svgProps}><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 2l-4 5-4-5"/></svg>;
+                  case 'play': return <svg {...svgProps}><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/></svg>;
+                  case 'read': return <svg {...svgProps}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+                  case 'listen': return <svg {...svgProps}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>;
+                  case 'eat': return <svg {...svgProps}><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M5 2v20M21 2c0 0-2 2-2 8h4c0-6-2-8-2-8z"/><path d="M19 10v12"/></svg>;
+                  case 'learn': return <svg {...svgProps}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+                  case 'visit': return <svg {...svgProps}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
+                  case 'do': return <svg {...svgProps}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+                  default: return <svg {...svgProps}><circle cx="12" cy="12" r="10"/></svg>;
+                }
+              };
+
+              if (profileLoading) return (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: '#8a94a8', fontSize: 13 }}>A carregar...</div>
+              );
+              if (profileEvents.length === 0) return (
+                <div style={{ textAlign: 'center', padding: '24px 20px', color: '#8a94a8', fontSize: 13 }}>
+                  Ainda sem actividade partilhada.
+                </div>
+              );
+
+              // Categorias favoritas — top 3 por frequência
+              const catCount: Record<string, { name: string; count: number }> = {};
+              profileEvents.forEach(e => {
+                if (!catCount[e.catId]) catCount[e.catId] = { name: e.catName, count: 0 };
+                catCount[e.catId].count++;
+              });
+              const topCats = Object.entries(catCount)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, 3);
+
+              return (
+                <>
+                  {topCats.length > 0 && (
+                    <div style={{ padding: '20px 20px 0' }}>
+                      <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}>
+                        Categorias favoritas
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {topCats.map(([catId, { name, count }]) => (
+                          <div key={catId} style={{ flex: 1, background: 'rgba(200,155,60,0.07)', border: '1px solid rgba(200,155,60,0.18)', borderRadius: 12, padding: '10px 8px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4, color: '#C89B3C' }}>
+                              {catSvg(catId)}
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: '#C89B3C', fontFamily: "'Outfit',sans-serif" }}>{name}</div>
+                            <div style={{ fontSize: 10, color: '#8a94a8', marginTop: 2 }}>{count} {count === 1 ? 'vez' : 'vezes'}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Últimas sugestões */}
+                  <div style={{ padding: '20px 20px 0' }}>
+                    <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}>
+                      Últimas sugestões
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                      {profileEvents.slice(0, 6).map((e, i) => (
+                        <div key={i} style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '3/4', position: 'relative', background: '#1a1d28' }}>
+                          {e.img ? (
+                            <img src={e.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(200,155,60,0.4)' }}>
+                              {catSvg(e.catId)}
+                            </div>
+                          )}
+                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)' }} />
+                          <div style={{ position: 'absolute', bottom: 6, left: 6, right: 6, fontSize: 10, fontWeight: 600, color: '#f5f1eb', lineHeight: 1.2, fontFamily: "'Outfit',sans-serif" }}>
+                            {e.title.length > 20 ? e.title.slice(0, 18) + '…' : e.title}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* Botão fechar */}
+            <button
+              onClick={() => setProfilePanel(null)}
+              style={{ margin: '20px 20px 0', width: 'calc(100% - 40px)', padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, color: 'rgba(156,165,185,0.4)', fontSize: 13, fontFamily: "'Outfit',sans-serif", cursor: 'pointer' }}
+            >
+              ← fechar
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {friendPopup && createPortal(
         <div
           style={{
@@ -556,7 +714,11 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                 color: '#C89B3C', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 fontFamily: "'Outfit',sans-serif", textAlign: 'left',
               }}
-              onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
+              onClick={() => {
+                setProfilePanel(friendPopup);
+                setFriendPopup(null);
+                loadFriendProfile(friendPopup!.id);
+              }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               Ver perfil
