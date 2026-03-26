@@ -431,7 +431,7 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
               width: '100%', background: '#161820',
               borderRadius: '20px 20px 0 0',
               padding: '24px 20px 40px',
-              maxHeight: '80vh', overflowY: 'auto',
+              maxHeight: '75vh', overflowY: 'auto',
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -452,8 +452,8 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
               style={{
                 width: '100%', background: 'rgba(200,155,60,0.12)',
                 border: '1px solid rgba(200,155,60,0.25)',
-                borderRadius: 12, padding: '12px', marginBottom: 10,
-                color: '#C89B3C', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                borderRadius: 12, padding: '10px 16px', marginBottom: 8,
+                color: '#C89B3C', fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
               onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
             >
@@ -463,8 +463,8 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
               style={{
                 width: '100%', background: 'rgba(200,155,60,0.12)',
                 border: '1px solid rgba(200,155,60,0.25)',
-                borderRadius: 12, padding: '12px', marginBottom: 10,
-                color: '#C89B3C', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                borderRadius: 12, padding: '10px 16px', marginBottom: 8,
+                color: '#C89B3C', fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
               onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
             >
@@ -474,8 +474,8 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
               style={{
                 width: '100%', background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 12, padding: '12px', marginBottom: 10,
-                color: '#8a94a8', fontSize: 14, cursor: 'pointer',
+                borderRadius: 12, padding: '10px 16px', marginBottom: 8,
+                color: '#8a94a8', fontSize: 13, cursor: 'pointer',
               }}
               onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
             >
@@ -485,8 +485,8 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
               style={{
                 width: '100%', background: 'rgba(224,123,123,0.15)',
                 border: '1px solid rgba(224,123,123,0.3)',
-                borderRadius: 12, padding: '12px', marginBottom: 10,
-                color: '#e07b7b', fontSize: 14, cursor: 'pointer',
+                borderRadius: 12, padding: '10px 16px', marginBottom: 8,
+                color: '#e07b7b', fontSize: 13, cursor: 'pointer',
               }}
               onClick={() => {
                 handleRemove(friendPopup.friendshipId, friendPopup.name);

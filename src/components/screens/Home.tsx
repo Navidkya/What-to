@@ -253,7 +253,13 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
   const currentHeroImg = heroImage;
 
   // Pending: hoje + watching
-  const hojeItems = history.filter(h => h.action === 'hoje').slice(0, 3);
+  const hojeItems = history
+    .filter(h => h.action === 'hoje')
+    .filter(h => {
+      const key = h.catId + ':' + h.title;
+      return tracking[key]?.state !== 'paused';
+    })
+    .slice(0, 3);
   const watchingItems = Object.entries(tracking).filter(([, v]) => v.state === 'watching').slice(0, 2);
   const pendingItems: Array<{ emoji: string; title: string; sub: string; badge: string; catId: string; ep?: number; total?: number }> = [];
   hojeItems.forEach(h => pendingItems.push({ emoji: h.emoji, title: h.title, sub: 'Para hoje · ' + fmtDate(h.date), badge: 'hoje', catId: h.catId }));
@@ -444,12 +450,19 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         )}
 
         {/* Criar Plano */}
-        <div style={{ padding: '0 16px', marginBottom: 12 }}>
+        <div style={{ padding: '0 16px', marginTop: 16, marginBottom: 12 }}>
           <button
             onClick={onOpenPlan}
             style={{ width: '100%', padding: '14px 20px', background: 'rgba(200,155,60,0.08)', border: '1px solid rgba(200,155,60,0.25)', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', textAlign: 'left' }}
           >
-            <span style={{ fontSize: 24 }}>📋</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ color: 'var(--ac)', flexShrink: 0 }}>
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+              <rect x="9" y="3" width="6" height="4" rx="1"/>
+              <line x1="9" y1="12" x2="15" y2="12"/>
+              <line x1="9" y1="16" x2="13" y2="16"/>
+            </svg>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 14, fontWeight: 600, color: 'var(--ac)' }}>Criar Plano</div>
               <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 1 }}>Planeia a tua noite ou dia</div>
