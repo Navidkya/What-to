@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { Screen } from '../../types';
 import {
   sendFriendRequest, acceptFriendRequest,
@@ -417,7 +418,7 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
       </div>
 
       {/* Pop-up perfil amigo */}
-      {friendPopup && (
+      {friendPopup && createPortal(
         <div
           style={{
             position: 'fixed', inset: 0, zIndex: 100,
@@ -496,7 +497,8 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
               Remover amigo
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
