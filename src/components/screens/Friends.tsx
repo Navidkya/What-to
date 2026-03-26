@@ -35,7 +35,7 @@ function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   );
 }
 
-export default function Friends({ isActive, onNav, onToast, userId, onPendingCount, onOpenMessages }: FriendsProps) {
+export default function Friends({ isActive, onNav, onToast, userId, onPendingCount, onOpenMessages: _onOpenMessages }: FriendsProps) {
   const [tab, setTab] = useState<'friends' | 'search' | 'requests'>('friends');
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
@@ -431,6 +431,7 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
               width: '100%', background: '#161820',
               borderRadius: '20px 20px 0 0',
               padding: '24px 20px 40px',
+              maxHeight: '80vh', overflowY: 'auto',
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -454,18 +455,37 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                 borderRadius: 12, padding: '12px', marginBottom: 10,
                 color: '#C89B3C', fontSize: 14, fontWeight: 600, cursor: 'pointer',
               }}
-              onClick={() => {
-                setFriendPopup(null);
-                onOpenMessages?.(friendPopup.id, friendPopup.name);
+              onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
+            >
+              Ver perfil
+            </button>
+            <button
+              style={{
+                width: '100%', background: 'rgba(200,155,60,0.12)',
+                border: '1px solid rgba(200,155,60,0.25)',
+                borderRadius: 12, padding: '12px', marginBottom: 10,
+                color: '#C89B3C', fontSize: 14, fontWeight: 600, cursor: 'pointer',
               }}
+              onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
             >
               💬 Enviar mensagem
             </button>
             <button
               style={{
+                width: '100%', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 12, padding: '12px', marginBottom: 10,
+                color: '#8a94a8', fontSize: 14, cursor: 'pointer',
+              }}
+              onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
+            >
+              Silenciar sugestões
+            </button>
+            <button
+              style={{
                 width: '100%', background: 'rgba(224,123,123,0.15)',
                 border: '1px solid rgba(224,123,123,0.3)',
-                borderRadius: 12, padding: '12px',
+                borderRadius: 12, padding: '12px', marginBottom: 10,
                 color: '#e07b7b', fontSize: 14, cursor: 'pointer',
               }}
               onClick={() => {
