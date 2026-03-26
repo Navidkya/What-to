@@ -48,6 +48,7 @@ interface Props {
   userId?: string;
   userName?: string;
   onAddToHistory?: (entry: { title: string; emoji: string; cat: string; catId: string; action: 'agora' | 'hoje' | 'save' | 'skip'; date: string; type: string; genre: string }) => void;
+  onOpenMessages?: (friendId: string, friendName: string) => void;
 }
 
 
@@ -101,7 +102,7 @@ function getCatIconSvg(catId: string) {
   }
 }
 
-export default function FeedScreen({ profile: _profile, history: _history, isActive, onToast, userId: _userId, onAddToHistory }: Props) {
+export default function FeedScreen({ profile: _profile, history: _history, isActive, onToast, userId: _userId, onAddToHistory, onOpenMessages }: Props) {
   const [cards, setCards] = useState<FeedCard[]>([]);
   const [personPopup, setPersonPopup] = useState<{
     name: string; handle?: string; platform?: string; tier?: string;
@@ -110,6 +111,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
   const [suggPopup, setSuggPopup] = useState<FeedCard | null>(null);
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [friendsList, setFriendsList] = useState<Array<{id: string; name: string; unread: number}>>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Array<{id: string; name: string; username?: string}>>([]);
@@ -284,6 +286,18 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
     while (rti < remainingApiTrending.length) result.push(remainingApiTrending[rti++]);
 
     setCards(result);
+
+    if (_userId) {
+      const { loadFriends } = await import('../../services/friends');
+      const { loadConversations } = await import('../../services/messages');
+      const [fs, convs] = await Promise.all([loadFriends(_userId), loadConversations(_userId)]);
+      const unreadMap: Record<string, number> = {};
+      convs.forEach(c => {
+        const fid = c.user1Id === _userId ? c.user2Id : c.user1Id;
+        unreadMap[fid] = c.unreadCount || 0;
+      });
+      setFriendsList(fs.map(f => ({ id: f.id, name: f.name, unread: unreadMap[f.id] || 0 })));
+    }
   };
 
   const handleFollowUser = async (targetUserId: string | undefined, name: string) => {
@@ -347,13 +361,49 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
 
         {sidebarOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '8px 4px' }}>
-            <div style={{ fontSize: 10, color: 'rgba(156,165,185,0.4)', fontFamily: "'Outfit',sans-serif", textAlign: 'center', maxWidth: 48 }}>
-              Sem amigos ainda
-            </div>
-            <button
-              onClick={() => setSearchOpen(o => !o)}
-              style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(200,155,60,0.1)', border: '1px dashed rgba(200,155,60,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(200,155,60,0.5)', fontSize: 18 }}
-            >+</button>
+            {friendsList.length === 0 ? (
+              <>
+                <div style={{ fontSize: 10, color: 'rgba(156,165,185,0.4)', fontFamily: "'Outfit',sans-serif", textAlign: 'center', maxWidth: 48 }}>
+                  Sem amigos ainda
+                </div>
+                <button
+                  onClick={() => setSearchOpen(o => !o)}
+                  style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(200,155,60,0.1)', border: '1px dashed rgba(200,155,60,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(200,155,60,0.5)', fontSize: 18 }}
+                >+</button>
+              </>
+            ) : (
+              <>
+                {friendsList.map(f => (
+                  <div key={f.id} style={{ position: 'relative', cursor: 'pointer' }}
+                    onClick={() => onOpenMessages?.(f.id, f.name)}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%',
+                      background: 'rgba(200,155,60,0.15)',
+                      border: '1.5px solid rgba(200,155,60,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700, color: '#C89B3C',
+                    }}>
+                      {f.name[0]?.toUpperCase()}
+                    </div>
+                    {f.unread > 0 && (
+                      <div style={{
+                        position: 'absolute', top: -2, right: -2,
+                        background: '#C89B3C', color: '#0B0D12',
+                        borderRadius: '50%', width: 14, height: 14,
+                        fontSize: 9, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {f.unread > 9 ? '9+' : f.unread}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={() => setSearchOpen(o => !o)}
+                  style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(200,155,60,0.08)', border: '1px dashed rgba(200,155,60,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(200,155,60,0.4)', fontSize: 16 }}
+                >+</button>
+              </>
+            )}
           </div>
         )}
         {/* Caixa de pesquisa inline */}

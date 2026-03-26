@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import type { Screen } from '../../types';
+import type { Screen, Conversation } from '../../types';
 import {
   sendFriendRequest, acceptFriendRequest,
   rejectFriendRequest, removeFriend, loadFriends, loadPendingRequests,
   getFriendshipStatus,
 } from '../../services/friends';
 import type { FriendProfile, FriendRequest } from '../../services/friends';
+import { loadConversations } from '../../services/messages';
 import { supabase } from '../../lib/supabase';
 import { trackAsync } from '../../services/analytics';
 
@@ -17,6 +18,7 @@ interface FriendsProps {
   userId?: string;
   onPendingCount?: (count: number) => void;
   onOpenMessages?: (friendId: string, friendName: string) => void;
+  unreadMessages?: number;
 }
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
@@ -36,8 +38,82 @@ function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   );
 }
 
-export default function Friends({ isActive, onNav, onToast, userId, onPendingCount, onOpenMessages: _onOpenMessages }: FriendsProps) {
-  const [tab, setTab] = useState<'friends' | 'search' | 'requests'>('friends');
+function MessagesInline({ userId, onOpenMessages }: {
+  userId?: string;
+  onOpenMessages?: (friendId: string, friendName: string) => void;
+}) {
+  const [convs, setConvs] = React.useState<Conversation[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  React.useEffect(() => {
+    if (!userId) return;
+    setLoading(true);
+    loadConversations(userId).then(c => { setConvs(c); setLoading(false); });
+  }, [userId]);
+  function timeAgo(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'agora';
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    return new Date(iso).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+  }
+  if (loading) return (
+    <div style={{ textAlign: 'center', padding: 40, color: '#8a94a8', fontSize: 13 }}>
+      A carregar…
+    </div>
+  );
+  if (!convs.length) return (
+    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#8a94a8', fontSize: 13 }}>
+      Sem mensagens ainda.<br/>
+      <span style={{ fontSize: 12 }}>Vai a "Os meus amigos" e clica numa pessoa para enviar mensagem.</span>
+    </div>
+  );
+  return (
+    <div>
+      {convs.map(c => {
+        const friendId = c.user1Id === userId ? c.user2Id : c.user1Id;
+        return (
+          <div key={c.id}
+            onClick={() => onOpenMessages?.(friendId, c.friendName || 'Amigo')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
+              cursor: 'pointer',
+              background: (c.unreadCount || 0) > 0 ? 'rgba(200,155,60,0.04)' : 'transparent',
+              borderRadius: 8, marginBottom: 2,
+            }}
+          >
+            <Avatar name={c.friendName || '?'} size={44} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                <div style={{ fontSize: 15, fontWeight: (c.unreadCount || 0) > 0 ? 600 : 400, color: '#f5f1eb' }}>
+                  {c.friendName}
+                </div>
+                <div style={{ fontSize: 11, color: '#8a94a8' }}>{timeAgo(c.lastMessageAt)}</div>
+              </div>
+              <div style={{ fontSize: 13, color: '#8a94a8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {c.lastMessage || 'Sem mensagens'}
+              </div>
+            </div>
+            {(c.unreadCount || 0) > 0 && (
+              <div style={{
+                background: '#C89B3C', color: '#0B0D12', borderRadius: '50%',
+                width: 20, height: 20, fontSize: 11, fontWeight: 700, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {(c.unreadCount || 0) > 9 ? '9+' : c.unreadCount}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function Friends({ isActive, onNav, onToast, userId, onPendingCount, onOpenMessages: _onOpenMessages, unreadMessages = 0 }: FriendsProps) {
+  const [tab, setTab] = useState<'friends' | 'search' | 'requests' | 'messages'>('friends');
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -202,6 +278,21 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {pendingRequests.length}
+              </span>
+            )}
+          </button>
+          <button style={{ ...s.tab(tab === 'messages'), position: 'relative' }}
+            onClick={() => setTab('messages')}>
+            Mensagens
+            {unreadMessages > 0 && (
+              <span style={{
+                position: 'absolute', top: 6, right: '10%',
+                background: '#C89B3C', color: '#0B0D12',
+                borderRadius: '50%', width: 16, height: 16,
+                fontSize: 10, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {unreadMessages > 9 ? '9+' : unreadMessages}
               </span>
             )}
           </button>
@@ -411,6 +502,13 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* TAB: Mensagens */}
+        {tab === 'messages' && (
+          <div style={{ paddingTop: 8 }}>
+            <MessagesInline userId={userId} onOpenMessages={_onOpenMessages} />
           </div>
         )}
 

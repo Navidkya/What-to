@@ -637,6 +637,7 @@ export default function App() {
                 userId={authUser?.id}
                 onPendingCount={setFriendPendingCount}
                 onOpenMessages={(fid, fname) => openMessages(fid, fname)}
+                unreadMessages={messagesUnread}
               />
             </div>
             <div className="h-pane">
@@ -849,6 +850,7 @@ export default function App() {
             onAddToHistory={(entry) => {
               store.updateHistory([{ ...entry, type: '', genre: '' }, ...store.history]);
             }}
+            onOpenMessages={(fid, fname) => openMessages(fid, fname)}
           />
 
           <ForYou
