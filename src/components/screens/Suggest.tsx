@@ -1793,13 +1793,85 @@ export default function Suggest({
                 {/* Tags row — todos os géneros + ano + duração + rating */}
                 <div className="cin-tags">
                   {/* Tipo */}
-                  {displayType && (
-                    <span className="cin-tag cin-tag-type">{displayType}</span>
-                  )}
-                  {/* Todos os géneros */}
-                  {(displayData?.genres || (displayGenre ? [displayGenre] : [])).map((g, i) => (
-                    <span key={i} className="cin-tag">{g}</span>
-                  ))}
+                  {displayType && (() => {
+                    let isFiltered = false;
+                    if (cat.id === 'watch' && watchPrefs?.done) {
+                      const wType = (watchPrefs as any).type || '';
+                      if (wType && wType !== 'Ambos') {
+                        const t = displayType.toLowerCase();
+                        isFiltered = t === wType.toLowerCase() ||
+                          (wType === 'Série' && (t === 'série' || t === 'serie')) ||
+                          (wType === 'Filme' && t === 'filme');
+                      }
+                    } else if (cat.id === 'play' && playPrefs?.done) {
+                      const pType = (playPrefs as any).type || '';
+                      if (pType && pType !== 'Ambos') isFiltered = displayType.toLowerCase().includes(pType.toLowerCase());
+                    } else if (cat.id === 'listen' && listenPrefs?.done) {
+                      const lType = (listenPrefs as any).type || '';
+                      if (lType && lType !== 'Ambos') isFiltered = displayType.toLowerCase().includes(lType.toLowerCase());
+                    } else if (cat.id === 'read' && readPrefs?.done) {
+                      const rType = (readPrefs as any).type || '';
+                      if (rType && rType !== 'Ambos') isFiltered = displayType.toLowerCase().includes(rType.toLowerCase());
+                    }
+                    return (
+                      <span className="cin-tag cin-tag-type" style={isFiltered ? { fontWeight: 700, color: '#C89B3C', borderColor: 'rgba(200,155,60,0.6)', background: 'rgba(200,155,60,0.18)' } : undefined}>
+                        {displayType}
+                      </span>
+                    );
+                  })()}
+                  {/* Todos os géneros — filtrados em destaque */}
+                  {(() => {
+                    const allGenres = displayData?.genres || (displayGenre ? [displayGenre] : []);
+                    const activeFilterGenres: string[] = [];
+                    if (cat.id === 'watch' && watchPrefs?.done) {
+                      const wGenres: string[] = ((watchPrefs as any).genres || []).filter((g: string) => g && g !== 'Qualquer');
+                      wGenres.forEach((g: string) => activeFilterGenres.push(g.toLowerCase()));
+                    } else if (cat.id === 'play' && playPrefs?.done) {
+                      ((playPrefs as any).genres || []).filter((g: string) => g && g !== 'Qualquer').forEach((g: string) => activeFilterGenres.push(g.toLowerCase()));
+                    } else if (cat.id === 'listen' && listenPrefs?.done) {
+                      ((listenPrefs as any).genres || []).filter((g: string) => g && g !== 'Qualquer').forEach((g: string) => activeFilterGenres.push(g.toLowerCase()));
+                    } else if (cat.id === 'read' && readPrefs?.done) {
+                      ((readPrefs as any).genres || []).filter((g: string) => g && g !== 'Qualquer').forEach((g: string) => activeFilterGenres.push(g.toLowerCase()));
+                    }
+
+                    const extraTags: string[] = [];
+                    if (activeFilterGenres.length > 0) {
+                      activeFilterGenres.forEach(f => {
+                        const alreadyShown = allGenres.some(g => g.toLowerCase().includes(f) || f.includes(g.toLowerCase()));
+                        if (!alreadyShown) extraTags.push(f);
+                      });
+                    }
+
+                    const totalFilters = activeFilterGenres.length;
+                    const matched = totalFilters > 0
+                      ? activeFilterGenres.filter(f => allGenres.some(g => g.toLowerCase().includes(f) || f.includes(g.toLowerCase()))).length
+                      : totalFilters;
+                    const matchRatio = totalFilters > 0 ? matched / totalFilters : 1;
+                    const isPartial = matchRatio < 1 && matchRatio >= 0.75;
+
+                    return (
+                      <>
+                        {allGenres.map((g, i) => {
+                          const isFiltered = activeFilterGenres.some(f => g.toLowerCase().includes(f) || f.includes(g.toLowerCase()));
+                          return (
+                            <span key={i} className="cin-tag" style={isFiltered ? { fontWeight: 700, color: '#C89B3C', borderColor: 'rgba(200,155,60,0.6)', background: 'rgba(200,155,60,0.18)' } : undefined}>
+                              {g}
+                            </span>
+                          );
+                        })}
+                        {extraTags.map((g, i) => (
+                          <span key={`extra-${i}`} className="cin-tag" style={{ fontWeight: 700, color: '#C89B3C', borderColor: 'rgba(200,155,60,0.6)', background: 'rgba(200,155,60,0.18)' }}>
+                            {g}
+                          </span>
+                        ))}
+                        {isPartial && (
+                          <span className="cin-tag" title="Esta sugestão corresponde a 75% dos filtros activos" style={{ opacity: 0.6, cursor: 'help' }}>
+                            ~{Math.round(matchRatio * 100)}%
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
                   {/* Ano */}
                   {displayYear && <span className="cin-tag">{displayYear}</span>}
                   {/* Duração */}
@@ -1841,147 +1913,6 @@ export default function Suggest({
                     </button>
                   )}
                 </div>
-
-                {/* Tags de filtros activos — watch */}
-                {cat.id === 'watch' && watchPrefs?.done && (() => {
-                  const wGenres: string[] = ((watchPrefs as any).genres || []).filter((g: string) => g !== 'Qualquer');
-                  const wType: string = (watchPrefs as any).type || '';
-
-                  const activeTags: string[] = [];
-                  if (wType && wType !== 'Ambos') activeTags.push(wType);
-                  wGenres.forEach((g: string) => activeTags.push(g));
-
-                  if (activeTags.length === 0) return null;
-
-                  const itemGenres = (displayData?.genres || (displayGenre ? [displayGenre] : []))
-                    .map((g: string) => (g || '').toLowerCase());
-                  const itemType = (displayType || '').toLowerCase();
-
-                  const totalFilters = activeTags.length;
-                  let matched = 0;
-                  if (wType && wType !== 'Ambos') {
-                    const typeMatch = itemType === wType.toLowerCase() ||
-                      (wType === 'Série' && (itemType === 'série' || itemType === 'serie')) ||
-                      (wType === 'Filme' && itemType === 'filme');
-                    if (typeMatch) matched++;
-                  }
-                  wGenres.forEach((g: string) => {
-                    if (itemGenres.some(ig => ig.includes(g.toLowerCase()))) matched++;
-                  });
-
-                  const matchRatio = totalFilters > 0 ? matched / totalFilters : 1;
-                  const isPartial = matchRatio < 1 && matchRatio >= 0.75;
-
-                  return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6, alignItems: 'center' }}>
-                      {activeTags.map((tag, i) => (
-                        <span key={i} style={{
-                          fontSize: 10, padding: '2px 8px',
-                          background: 'rgba(200,155,60,0.15)',
-                          border: '1px solid rgba(200,155,60,0.4)',
-                          borderRadius: 20, color: 'rgba(200,155,60,0.9)',
-                          fontFamily: "'Outfit',sans-serif",
-                          whiteSpace: 'nowrap',
-                        }}>{tag}</span>
-                      ))}
-                      {isPartial && (
-                        <span
-                          title={`Esta sugestão corresponde a ${Math.round(matchRatio * 100)}% dos filtros activos. Alguns dados podem estar em falta no cache.`}
-                          style={{
-                            fontSize: 10, padding: '2px 8px',
-                            background: 'rgba(224,155,60,0.08)',
-                            border: '1px solid rgba(224,155,60,0.25)',
-                            borderRadius: 20, color: 'rgba(224,155,60,0.55)',
-                            fontFamily: "'Outfit',sans-serif",
-                            cursor: 'help', whiteSpace: 'nowrap',
-                          }}
-                        >
-                          ~{Math.round(matchRatio * 100)}% match
-                        </span>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Tags de filtros activos — play */}
-                {cat.id === 'play' && playPrefs?.done && (() => {
-                  const activeTags: string[] = [];
-                  const pType = (playPrefs as any).type;
-                  const pGenres: string[] = (playPrefs as any).genres || [];
-                  const pJogadores = (playPrefs as any).jogadores;
-                  const pOnline = (playPrefs as any).online;
-                  if (pType && pType !== 'Ambos') activeTags.push(pType);
-                  pGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
-                  if (pJogadores && pJogadores !== 'Qualquer') activeTags.push(pJogadores);
-                  if (pOnline && pOnline !== 'Qualquer') activeTags.push(pOnline);
-                  if (activeTags.length === 0) return null;
-                  return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                      {activeTags.map((tag, i) => (
-                        <span key={i} style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.4)', borderRadius: 20, color: 'rgba(200,155,60,0.9)', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{tag}</span>
-                      ))}
-                    </div>
-                  );
-                })()}
-
-                {/* Tags de filtros activos — listen */}
-                {cat.id === 'listen' && listenPrefs?.done && (() => {
-                  const activeTags: string[] = [];
-                  const lType = (listenPrefs as any).type;
-                  const lGenres: string[] = (listenPrefs as any).genres || [];
-                  const lMomento = (listenPrefs as any).momento;
-                  if (lType && lType !== 'Ambos') activeTags.push(lType);
-                  lGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
-                  if (lMomento && lMomento !== 'Qualquer') activeTags.push(lMomento);
-                  if (activeTags.length === 0) return null;
-                  return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                      {activeTags.map((tag, i) => (
-                        <span key={i} style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.4)', borderRadius: 20, color: 'rgba(200,155,60,0.9)', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{tag}</span>
-                      ))}
-                    </div>
-                  );
-                })()}
-
-                {/* Tags de filtros activos — read */}
-                {cat.id === 'read' && readPrefs?.done && (() => {
-                  const activeTags: string[] = [];
-                  const rType = (readPrefs as any).type;
-                  const rGenres: string[] = (readPrefs as any).genres || [];
-                  const rPeso = (readPrefs as any).peso;
-                  const rComprimento = (readPrefs as any).comprimento;
-                  if (rType && rType !== 'Ambos') activeTags.push(rType);
-                  rGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
-                  if (rPeso && rPeso !== 'Qualquer') activeTags.push(rPeso);
-                  if (rComprimento && rComprimento !== 'Qualquer') activeTags.push(rComprimento);
-                  if (activeTags.length === 0) return null;
-                  return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                      {activeTags.map((tag, i) => (
-                        <span key={i} style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.4)', borderRadius: 20, color: 'rgba(200,155,60,0.9)', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{tag}</span>
-                      ))}
-                    </div>
-                  );
-                })()}
-
-                {/* Tags de filtros activos — learn */}
-                {cat.id === 'learn' && learnPrefs?.done && (() => {
-                  const activeTags: string[] = [];
-                  const lnFormato = (learnPrefs as any).formato;
-                  const lnGenres: string[] = (learnPrefs as any).genres || [];
-                  const lnNivel = (learnPrefs as any).nivel;
-                  if (lnFormato && lnFormato !== 'Qualquer') activeTags.push(lnFormato);
-                  lnGenres.filter((g: string) => g !== 'Qualquer').forEach((g: string) => activeTags.push(g));
-                  if (lnNivel && lnNivel !== 'Qualquer') activeTags.push(lnNivel);
-                  if (activeTags.length === 0) return null;
-                  return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                      {activeTags.map((tag, i) => (
-                        <span key={i} style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.4)', borderRadius: 20, color: 'rgba(200,155,60,0.9)', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{tag}</span>
-                      ))}
-                    </div>
-                  );
-                })()}
 
                 <div className="cin-desc">{displayDesc}</div>
 
