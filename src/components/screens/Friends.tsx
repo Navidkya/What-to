@@ -547,54 +547,63 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                 )}
               </div>
             </div>
+            {/* Ver perfil */}
             <button
               style={{
-                width: '100%', background: 'rgba(200,155,60,0.12)',
-                border: '1px solid rgba(200,155,60,0.25)',
-                borderRadius: 12, padding: '10px 16px', marginBottom: 8,
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                background: 'rgba(200,155,60,0.08)', border: '1px solid rgba(200,155,60,0.2)',
+                borderRadius: 14, padding: '13px 16px', marginBottom: 10,
                 color: '#C89B3C', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                fontFamily: "'Outfit',sans-serif", textAlign: 'left',
               }}
               onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               Ver perfil
             </button>
+
+            {/* Enviar mensagem */}
             <button
               style={{
-                width: '100%', background: 'rgba(200,155,60,0.12)',
-                border: '1px solid rgba(200,155,60,0.25)',
-                borderRadius: 12, padding: '10px 16px', marginBottom: 8,
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                background: 'rgba(200,155,60,0.08)', border: '1px solid rgba(200,155,60,0.2)',
+                borderRadius: 14, padding: '13px 16px', marginBottom: 10,
                 color: '#C89B3C', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                fontFamily: "'Outfit',sans-serif", textAlign: 'left',
               }}
-              onClick={() => {
-                setFriendPopup(null);
-                _onOpenMessages?.(friendPopup.id, friendPopup.name);
-              }}
+              onClick={() => { setFriendPopup(null); _onOpenMessages?.(friendPopup.id, friendPopup.name); }}
             >
-              💬 Enviar mensagem
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Enviar mensagem
             </button>
+
+            {/* Silenciar sugestões */}
             <button
               style={{
-                width: '100%', background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 12, padding: '10px 16px', marginBottom: 8,
-                color: '#8a94a8', fontSize: 13, cursor: 'pointer',
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: 14, padding: '13px 16px', marginBottom: 10,
+                color: 'rgba(245,241,235,0.5)', fontSize: 13, cursor: 'pointer',
+                fontFamily: "'Outfit',sans-serif", textAlign: 'left',
               }}
               onClick={() => { setFriendPopup(null); onToast('Em breve'); }}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
               Silenciar sugestões
             </button>
+
+            {/* Remover amigo */}
             <button
               style={{
-                width: '100%', background: 'rgba(224,123,123,0.15)',
-                border: '1px solid rgba(224,123,123,0.3)',
-                borderRadius: 12, padding: '10px 16px', marginBottom: 8,
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                background: 'rgba(224,123,123,0.08)', border: '1px solid rgba(224,123,123,0.2)',
+                borderRadius: 14, padding: '13px 16px', marginBottom: 10,
                 color: '#e07b7b', fontSize: 13, cursor: 'pointer',
+                fontFamily: "'Outfit',sans-serif", textAlign: 'left',
               }}
-              onClick={() => {
-                handleRemove(friendPopup.friendshipId, friendPopup.name);
-                setFriendPopup(null);
-              }}
+              onClick={() => { handleRemove(friendPopup.friendshipId, friendPopup.name); setFriendPopup(null); }}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
               Remover amigo
             </button>
           </div>

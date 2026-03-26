@@ -49,6 +49,7 @@ interface Props {
   userName?: string;
   onAddToHistory?: (entry: { title: string; emoji: string; cat: string; catId: string; action: 'agora' | 'hoje' | 'save' | 'skip'; date: string; type: string; genre: string }) => void;
   onOpenMessages?: (friendId: string, friendName: string) => void;
+  onAddToTracking?: (key: string, data: { title: string; emoji: string; cat: string; catId: string; state: 'watching' }) => void;
 }
 
 
@@ -102,7 +103,7 @@ function getCatIconSvg(catId: string) {
   }
 }
 
-export default function FeedScreen({ profile: _profile, history: _history, isActive, onToast, userId: _userId, onAddToHistory, onOpenMessages }: Props) {
+export default function FeedScreen({ profile: _profile, history: _history, isActive, onToast, userId: _userId, onAddToHistory, onOpenMessages, onAddToTracking }: Props) {
   const [cards, setCards] = useState<FeedCard[]>([]);
   const [personPopup, setPersonPopup] = useState<{
     name: string; handle?: string; platform?: string; tier?: string;
@@ -116,6 +117,8 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Array<{id: string; name: string; username?: string}>>([]);
   const [searchingFriends, setSearchingFriends] = useState(false);
+  const [watchProviders, setWatchProviders] = useState<Array<{name: string; logo: string; link: string}>>([]);
+  const [loadingProviders, setLoadingProviders] = useState(false);
 
   useEffect(() => {
     if (!isActive) return;
@@ -377,13 +380,16 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                   <div key={f.id} style={{ position: 'relative', cursor: 'pointer' }}
                     onClick={() => onOpenMessages?.(f.id, f.name)}>
                     <div style={{
-                      width: 36, height: 36, borderRadius: '50%',
-                      background: 'rgba(200,155,60,0.15)',
-                      border: '1.5px solid rgba(200,155,60,0.3)',
+                      height: 32, borderRadius: 16,
+                      background: 'rgba(200,155,60,0.12)',
+                      border: '1px solid rgba(200,155,60,0.25)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 13, fontWeight: 700, color: '#C89B3C',
+                      padding: '0 10px',
+                      fontSize: 11, fontWeight: 600, color: '#C89B3C',
+                      whiteSpace: 'nowrap', maxWidth: 96, overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                     }}>
-                      {f.name[0]?.toUpperCase()}
+                      {f.name.split(' ')[0]}
                     </div>
                     {f.unread > 0 && (
                       <div style={{
@@ -636,18 +642,30 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                 <div style={{ fontFamily:"'Outfit',sans-serif", fontSize:16, fontWeight:700, color:'#f5f1eb', marginBottom:16 }}>{personPopup.name}</div>
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {[
-                    { label: following.has(personPopup.userId || '') ? 'Deixar de seguir' : 'Seguir', icon: following.has(personPopup.userId || '') ? '×' : '+', action: () => { following.has(personPopup.userId || '') ? handleUnfollowUser(personPopup.userId, personPopup.name) : handleFollowUser(personPopup.userId, personPopup.name); setPersonPopup(null); }, danger: following.has(personPopup.userId || '') },
-                    { label: 'Silenciar', icon: '○', action: () => handleMuteUser(personPopup.userId, personPopup.name), danger: false },
+                    {
+                      label: following.has(personPopup.userId || '') ? 'Deixar de seguir' : 'Seguir',
+                      icon: following.has(personPopup.userId || '')
+                        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>,
+                      action: () => { following.has(personPopup.userId || '') ? handleUnfollowUser(personPopup.userId, personPopup.name) : handleFollowUser(personPopup.userId, personPopup.name); setPersonPopup(null); },
+                      danger: following.has(personPopup.userId || ''),
+                    },
+                    {
+                      label: 'Silenciar',
+                      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>,
+                      action: () => handleMuteUser(personPopup.userId, personPopup.name),
+                      danger: false,
+                    },
                   ].map((act, i) => (
                     <button key={i} onClick={act.action}
                       style={{ padding:'12px 16px', background: i===0 && !act.danger ? 'rgba(200,155,60,0.08)' : 'rgba(255,255,255,0.03)', border:`1px solid ${i===0 && !act.danger ? 'rgba(200,155,60,0.2)' : act.danger ? 'rgba(224,112,112,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius:12, color: act.danger ? 'rgba(224,112,112,0.7)' : i===0 ? '#C89B3C' : 'rgba(245,241,235,0.7)', fontFamily:"'Outfit',sans-serif", fontSize:13, cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:10 }}>
-                      <span style={{ fontSize:14 }}>{act.icon}</span>{act.label}
+                      {act.icon}{act.label}
                     </button>
                   ))}
                 </div>
               </>
             )}
-            <button onClick={() => setPersonPopup(null)} style={{ width:'100%', marginTop:14, padding:'11px', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, color:'rgba(156,165,185,0.5)', fontSize:12, fontFamily:"'Outfit',sans-serif", cursor:'pointer' }}>fechar</button>
+            <button onClick={() => setPersonPopup(null)} style={{ width:'100%', marginTop:14, padding:'11px', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, color:'rgba(156,165,185,0.4)', fontSize:12, fontFamily:"'Outfit',sans-serif", cursor:'pointer' }}>fechar</button>
           </div>
         </div>,
         document.body
@@ -656,7 +674,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
       {/* Pop-up de sugestão */}
       {suggPopup && createPortal(
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 16px 80px', zIndex:200 }}
-          onClick={() => setSuggPopup(null)}>
+          onClick={() => { setSuggPopup(null); setWatchProviders([]); }}>
           <div style={{ width:'100%', maxWidth:480, background:'rgba(10,12,20,0.97)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:24, padding:'20px 20px 28px' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ width:36, height:3, background:'rgba(255,255,255,0.15)', borderRadius:10, margin:'0 auto 20px' }} />
@@ -668,23 +686,91 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
             <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:700, fontStyle:'italic', color:'#f5f1eb', marginBottom:6 }}>{suggPopup.title}</div>
             <div style={{ fontSize:11, color:'rgba(156,165,185,0.5)', marginBottom:20 }}>{suggPopup.catName}{suggPopup.rating ? ` · ★ ${suggPopup.rating}` : ''}{suggPopup.type === 'trending' && suggPopup.subtitle ? ` · ${suggPopup.subtitle}` : ''}</div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              <button onClick={() => {
-                onAddToHistory?.({
-                  title: suggPopup.title,
-                  emoji: '✦',
-                  cat: suggPopup.catName,
-                  catId: suggPopup.catId,
-                  action: 'agora',
-                  date: new Date().toISOString(),
-                  type: '',
-                  genre: '',
-                });
-                onToast('✦ Adicionado ao histórico');
-                setSuggPopup(null);
-              }}
-                style={{ padding:'13px 16px', background:'linear-gradient(135deg,rgba(200,155,60,0.15),rgba(168,117,53,0.08))', border:'1px solid rgba(200,155,60,0.35)', borderRadius:14, color:'#C89B3C', fontFamily:"'Outfit',sans-serif", fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left' }}>
-                Ver agora
-              </button>
+              {watchProviders.length > 0 ? (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: 'rgba(156,165,185,0.5)', marginBottom: 10 }}>Disponível em</div>
+                  {watchProviders.map(p => (
+                    <button key={p.name} onClick={() => { window.open(p.link, '_blank', 'noopener,noreferrer'); setSuggPopup(null); setWatchProviders([]); }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 8,
+                        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 12, cursor: 'pointer', textAlign: 'left' }}>
+                      <img src={`https://image.tmdb.org/t/p/original${p.logo}`} alt={p.name}
+                        style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
+                      <span style={{ color: '#f5f1eb', fontSize: 13, fontFamily: "'Outfit',sans-serif" }}>{p.name}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 11, color: '#C89B3C' }}>Ver →</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <button onClick={async () => {
+                  onAddToHistory?.({
+                    title: suggPopup.title,
+                    emoji: '✦',
+                    cat: suggPopup.catName,
+                    catId: suggPopup.catId,
+                    action: 'agora',
+                    date: new Date().toISOString(),
+                    type: '',
+                    genre: '',
+                  });
+                  onAddToTracking?.(
+                    `${suggPopup.catId}:${suggPopup.title}`,
+                    { title: suggPopup.title, emoji: '✦', cat: suggPopup.catName, catId: suggPopup.catId, state: 'watching' }
+                  );
+                  const catId = suggPopup.catId;
+                  const { data } = await supabase
+                    .from('suggestions_cache')
+                    .select('external_id,url,source_api')
+                    .eq('title', suggPopup.title)
+                    .eq('cat_id', catId)
+                    .maybeSingle();
+                  const extId = (data as { external_id?: string; url?: string } | null)?.external_id;
+                  const url = (data as { external_id?: string; url?: string } | null)?.url;
+                  if (catId === 'watch' && extId) {
+                    setLoadingProviders(true);
+                    const parts = extId.split('-');
+                    const mediaType = parts[0];
+                    const tmdbId = parts.slice(1).join('-');
+                    const tmdbKey = import.meta.env.VITE_TMDB_KEY;
+                    try {
+                      const res = await fetch(`https://api.themoviedb.org/3/${mediaType}/${tmdbId}/watch/providers?api_key=${tmdbKey}`);
+                      const json = await res.json();
+                      const flatrate = json.results?.PT?.flatrate;
+                      const link = json.results?.PT?.link;
+                      if (flatrate && flatrate.length > 0) {
+                        setWatchProviders(flatrate.map((p: { provider_name: string; logo_path: string }) => ({
+                          name: p.provider_name,
+                          logo: p.logo_path,
+                          link: link || `https://www.google.com/search?q=${encodeURIComponent(suggPopup.title + ' ver online')}`,
+                        })));
+                      } else {
+                        window.open(`https://www.google.com/search?q=${encodeURIComponent(suggPopup.title + ' ver online')}`, '_blank', 'noopener,noreferrer');
+                        setSuggPopup(null);
+                      }
+                    } catch {
+                      window.open(`https://www.google.com/search?q=${encodeURIComponent(suggPopup.title + ' ver online')}`, '_blank', 'noopener,noreferrer');
+                      setSuggPopup(null);
+                    } finally {
+                      setLoadingProviders(false);
+                    }
+                  } else if ((catId === 'read' || catId === 'listen' || catId === 'learn') && url) {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                    setSuggPopup(null);
+                  } else if (catId === 'play' && extId) {
+                    window.open(`https://rawg.io/games/${extId}`, '_blank', 'noopener,noreferrer');
+                    setSuggPopup(null);
+                  } else if (catId === 'eat' || catId === 'visit' || catId === 'do') {
+                    window.open(`https://www.google.com/maps/search/${encodeURIComponent(suggPopup.title)}`, '_blank', 'noopener,noreferrer');
+                    setSuggPopup(null);
+                  } else {
+                    onToast('✦ Adicionado ao histórico');
+                    setSuggPopup(null);
+                  }
+                }}
+                  style={{ padding:'13px 16px', background:'linear-gradient(135deg,rgba(200,155,60,0.15),rgba(168,117,53,0.08))', border:'1px solid rgba(200,155,60,0.35)', borderRadius:14, color:'#C89B3C', fontFamily:"'Outfit',sans-serif", fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left' }}>
+                  {loadingProviders ? 'A carregar...' : 'Ver agora'}
+                </button>
+              )}
               <button onClick={() => { onToast('Agendado'); setSuggPopup(null); }}
                 style={{ padding:'13px 16px', background:'rgba(106,180,224,0.07)', border:'1px solid rgba(106,180,224,0.2)', borderRadius:14, color:'rgba(106,180,224,0.8)', fontFamily:"'Outfit',sans-serif", fontSize:13, cursor:'pointer', textAlign:'left' }}>
                 Agendar
@@ -694,7 +780,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                 Guardar em lista
               </button>
             </div>
-            <button onClick={() => setSuggPopup(null)} style={{ width:'100%', marginTop:14, padding:'11px', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, color:'rgba(156,165,185,0.5)', fontSize:12, fontFamily:"'Outfit',sans-serif", cursor:'pointer' }}>fechar</button>
+            <button onClick={() => { setSuggPopup(null); setWatchProviders([]); }} style={{ width:'100%', marginTop:14, padding:'11px', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, color:'rgba(156,165,185,0.4)', fontSize:12, fontFamily:"'Outfit',sans-serif", cursor:'pointer' }}>fechar</button>
           </div>
         </div>,
         document.body

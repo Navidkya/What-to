@@ -351,7 +351,7 @@ export default function App() {
         store.updateProfile({ ...store.profile, name: userName, onboarded: true });
       }
       if (remote.history.length > 0) store.updateHistory(remote.history);
-      if (Object.keys(remote.tracking).length > 0) store.updateTracking(remote.tracking);
+      store.updateTracking(remote.tracking);
       if (remote.lists.length > 0) store.updateUserLists(remote.lists);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (remote.prefs.eat) store.updateEatPrefs(remote.prefs.eat as any);
@@ -555,24 +555,6 @@ export default function App() {
   // Rota admin secreta
   if (window.location.hash === '#admin') {
     return <AdminPanel />;
-  }
-
-  // MessagesScreen (overlay de ecrã completo)
-  if (screen === 'messages') {
-    return (
-      <MessagesScreen
-        isActive={true}
-        userId={authUser?.id}
-        userName={store.profile.name}
-        onBack={() => navTo('friends')}
-        onToast={toast}
-        initialFriendId={messagesFriendId}
-        initialFriendName={messagesFriendName}
-        pendingSuggestion={pendingSuggestionShare}
-        onClearPendingSuggestion={() => setPendingSuggestionShare(null)}
-        onUnreadCount={setMessagesUnread}
-      />
-    );
   }
 
   // Auth guards
@@ -1062,6 +1044,21 @@ export default function App() {
             onClose={() => setRecipeOpen(false)}
           />
         </div>
+      )}
+
+      {screen === 'messages' && (
+        <MessagesScreen
+          isActive={true}
+          userId={authUser?.id}
+          userName={store.profile.name}
+          onBack={() => navTo('friends')}
+          onToast={toast}
+          initialFriendId={messagesFriendId}
+          initialFriendName={messagesFriendName}
+          pendingSuggestion={pendingSuggestionShare}
+          onClearPendingSuggestion={() => setPendingSuggestionShare(null)}
+          onUnreadCount={setMessagesUnread}
+        />
       )}
 
       <Toast message={msg} visible={visible} />
