@@ -123,7 +123,9 @@ export async function sendMessage(
 
     // Actualiza last_message na conversa
     await supabase.from('conversations').update({
-      last_message: text.substring(0, 80),
+      last_message: text.startsWith('MATCH_INVITE:')
+        ? 'Convite para Match'
+        : text.substring(0, 80),
       last_message_at: new Date().toISOString(),
     }).eq('id', conversationId);
 

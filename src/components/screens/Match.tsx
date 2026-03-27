@@ -88,25 +88,19 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     loadFriends(userId).then(fs => setFriends(fs)).catch(() => {});
   }, [isActive, userId]);
 
-  const autoJoinRef = useRef<string | null>(null);
-  if (initialJoinCode && initialJoinCode !== autoJoinRef.current) {
-    autoJoinRef.current = initialJoinCode;
-  }
-
   useEffect(() => {
-    const code = autoJoinRef.current;
-    if (!code || !isActive || !userId) return;
-    onJoinCodeConsumed?.();
-    setJoinCode(code);
-    setLoading(true);
-    joinMatchSession(code, userId).then(async sess => {
-      if (!sess) { onToast('Sessão não encontrada — verifica o código'); setLoading(false); return; }
+    if (!isActive || !initialJoinCode || !userId) return;
+    setJoinCode(initialJoinCode);
+    const t = window.setTimeout(async () => {
+      setLoading(true);
+      const sess = await joinMatchSession(initialJoinCode, userId);
+      if (!sess) { onToast('Sessão não encontrada ou já iniciada'); setLoading(false); onJoinCodeConsumed?.(); return; }
       const cached = await loadCachedSuggestions(sess.catId, 100, {});
       const cacheMap = new Map(cached.map(i => [i.title, i]));
       const orderedItems = sess.itemTitles.map(title => {
         const found = cacheMap.get(title);
         return found
-          ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null }
+          ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating, year: found.year }
           : { title, img: null, genre: '', type: '', rating: null, year: null };
       });
       setSession(sess);
@@ -118,8 +112,10 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       setPhase('playing');
       setLoading(false);
       onToast('✦ Entraste na sessão!');
-    });
-  }, [initialJoinCode, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+      onJoinCodeConsumed?.();
+    }, 100);
+    return () => window.clearTimeout(t);
+  }, [isActive, initialJoinCode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkForMatch = useCallback((allVotes: MatchVote[], sess: MatchSession) => {
     const currentTitle = sess.itemTitles[sess.currentIndex];
