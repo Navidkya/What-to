@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Profile, HistoryEntry, TrackingMap, DataItem, Screen, ScheduleEntry } from '../../types';
+import { APP_VERSION } from '../../version';
 import { DATA, CATS, GRAD } from '../../data';
 import ConfirmModal from '../layout/ConfirmModal';
 import { fetchBookCover, getSteamImageUrl } from '../../services/openLibrary';
@@ -319,6 +320,9 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
               <div className="home-sub">{dayTime}</div>
               <div className="home-name">{greeting}</div>
               <div className="home-mood">{contextPhrase}</div>
+              <div style={{ fontSize: 10, color: 'rgba(138,148,168,0.4)', fontFamily: "'Outfit',sans-serif", marginTop: 2, letterSpacing: 1 }}>
+                {APP_VERSION}
+              </div>
             </div>
             <button className="home-avatar" onClick={() => onNav('profile')}>
               {avatarLetter}
