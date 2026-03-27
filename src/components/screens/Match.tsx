@@ -560,7 +560,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
         <div style={s.inner}>
           <div style={{ marginBottom: 8 }}>
             <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.5)', letterSpacing: 1.2, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 20 }}>
-              {CAT_OPTIONS.find(c => c.id === selectedCat)?.name}
+              {selectedCats.map(id => CAT_OPTIONS.find(c => c.id === id)?.name).filter(Boolean).join(' · ')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
               {localPlayers.map((name, idx) => (
