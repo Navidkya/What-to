@@ -110,7 +110,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
         .map(c => ({
           convId: c.id,
           friendId: c.user1Id === userId ? c.user2Id : c.user1Id,
-          friendName: c.friendName,
+          friendName: c.friendName || '',
         }));
       setMatchInvites(invites);
     }).catch(() => {});
