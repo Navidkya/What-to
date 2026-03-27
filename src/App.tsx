@@ -661,6 +661,7 @@ export default function App() {
                 onPendingCount={setFriendPendingCount}
                 onOpenMessages={(fid, fname) => openMessages(fid, fname)}
                 unreadMessages={messagesUnread}
+                onNavigateMatch={(sessionId) => { setMatchInitialCode(sessionId); navTo('match-screen'); }}
               />
             </div>
             <div className="h-pane">

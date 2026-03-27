@@ -7,7 +7,7 @@ import {
   getFriendshipStatus,
 } from '../../services/friends';
 import type { FriendProfile, FriendRequest } from '../../services/friends';
-import { loadConversations } from '../../services/messages';
+import { loadConversations, loadMessages } from '../../services/messages';
 import { supabase } from '../../lib/supabase';
 import { trackAsync } from '../../services/analytics';
 
@@ -19,6 +19,7 @@ interface FriendsProps {
   onPendingCount?: (count: number) => void;
   onOpenMessages?: (friendId: string, friendName: string) => void;
   unreadMessages?: number;
+  onNavigateMatch?: (sessionId: string) => void;
 }
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
@@ -112,8 +113,18 @@ function MessagesInline({ userId, onOpenMessages }: {
   );
 }
 
-export default function Friends({ isActive, onNav, onToast, userId, onPendingCount, onOpenMessages: _onOpenMessages, unreadMessages = 0 }: FriendsProps) {
-  const [tab, setTab] = useState<'friends' | 'search' | 'requests' | 'messages'>('friends');
+export default function Friends({ isActive, onNav, onToast, userId, onPendingCount, onOpenMessages: _onOpenMessages, unreadMessages = 0, onNavigateMatch }: FriendsProps) {
+  const [tab, setTab] = useState<'friends' | 'search' | 'requests' | 'messages' | 'notifications'>('friends');
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    type: 'match_invite' | 'friend_request' | 'friend_accepted';
+    fromName: string;
+    fromId: string;
+    sessionId?: string;
+    catName?: string;
+    friendshipId?: string;
+    createdAt: string;
+  }>>([]);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -136,6 +147,48 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
     setFriends(fs);
     setPendingRequests(reqs);
     onPendingCount?.(reqs.length);
+
+    // Agrega notificações
+    const notifs: Array<{
+      id: string; type: 'match_invite' | 'friend_request' | 'friend_accepted';
+      fromName: string; fromId: string; sessionId?: string; catName?: string;
+      friendshipId?: string; createdAt: string;
+    }> = [];
+    // Pedidos de amizade pendentes
+    reqs.forEach(r => {
+      notifs.push({
+        id: `fr-${r.id}`,
+        type: 'friend_request',
+        fromName: r.profile?.name || 'Alguém',
+        fromId: r.requesterId,
+        friendshipId: r.id,
+        createdAt: new Date().toISOString(),
+      });
+    });
+    // Convites Match via mensagens
+    try {
+      const convs = await loadConversations(userId);
+      const matchConvs = convs.filter(c => c.lastMessage === 'Convite para Match' && (c.unreadCount || 0) > 0);
+      for (const conv of matchConvs) {
+        const msgs = await loadMessages(conv.id);
+        const inviteMsg = [...msgs].reverse().find(m => m.text?.startsWith('MATCH_INVITE:'));
+        if (inviteMsg?.text) {
+          const parts = inviteMsg.text.split(':');
+          const sessionId = parts[1] || '';
+          const catName = parts[2] || 'Ver';
+          notifs.push({
+            id: `mi-${conv.id}`,
+            type: 'match_invite',
+            fromName: conv.friendName || 'Amigo',
+            fromId: conv.user1Id === userId ? conv.user2Id : conv.user1Id,
+            sessionId,
+            catName,
+            createdAt: inviteMsg.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    } catch { /* silencioso */ }
+    setNotifications(notifs);
     setLoading(false);
   }, [userId, onPendingCount]);
 
@@ -302,6 +355,21 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {pendingRequests.length}
+              </span>
+            )}
+          </button>
+          <button style={{ ...s.tab(tab === 'notifications'), position: 'relative' }}
+            onClick={() => setTab('notifications')}>
+            Notif.
+            {notifications.length > 0 && (
+              <span style={{
+                position: 'absolute', top: 6, right: '5%',
+                background: '#C89B3C', color: '#0B0D12',
+                borderRadius: '50%', width: 16, height: 16,
+                fontSize: 10, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {notifications.length > 9 ? '9+' : notifications.length}
               </span>
             )}
           </button>
@@ -523,6 +591,77 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                   <button style={s.btnOutline} onClick={() => handleReject(req)}>
                     Recusar
                   </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* TAB: Notificações */}
+        {tab === 'notifications' && (
+          <div>
+            {notifications.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(138,148,168,0.5)', fontSize: 13, fontFamily: "'Outfit',sans-serif" }}>
+                Sem notificações
+              </div>
+            ) : notifications.map(n => (
+              <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: n.type === 'match_invite' ? 'rgba(200,155,60,0.12)' : 'rgba(106,180,224,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {n.type === 'match_invite' ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C89B3C" strokeWidth="1.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  ) : n.type === 'friend_accepted' ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5ec97a" strokeWidth="1.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6ab4e0" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  {n.type === 'match_invite' && (
+                    <>
+                      <div style={{ fontSize: 13, color: '#f5f1eb', fontFamily: "'Outfit',sans-serif", marginBottom: 2 }}>
+                        <span style={{ fontWeight: 600 }}>{n.fromName}</span> convidou-te para Match
+                      </div>
+                      <div style={{ fontSize: 12, color: '#8a94a8', marginBottom: 8 }}>Categoria: {n.catName}</div>
+                      <button
+                        onClick={() => onNavigateMatch?.(n.sessionId || '')}
+                        style={{ padding: '7px 18px', background: '#C89B3C', border: 'none', borderRadius: 8, color: '#0B0D12', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+                      >
+                        Aceitar
+                      </button>
+                    </>
+                  )}
+                  {n.type === 'friend_request' && (
+                    <>
+                      <div style={{ fontSize: 13, color: '#f5f1eb', fontFamily: "'Outfit',sans-serif", marginBottom: 8 }}>
+                        <span style={{ fontWeight: 600 }}>{n.fromName}</span> quer ser teu amigo
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          onClick={async () => {
+                            const req = pendingRequests.find(r => r.id === n.friendshipId);
+                            if (req) { await handleAccept(req); setNotifications(prev => prev.filter(x => x.id !== n.id)); }
+                          }}
+                          style={{ padding: '7px 18px', background: '#C89B3C', border: 'none', borderRadius: 8, color: '#0B0D12', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+                        >
+                          Aceitar
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const req = pendingRequests.find(r => r.id === n.friendshipId);
+                            if (req) { await handleReject(req); setNotifications(prev => prev.filter(x => x.id !== n.id)); }
+                          }}
+                          style={{ padding: '7px 14px', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#8a94a8', fontSize: 12, cursor: 'pointer' }}
+                        >
+                          Recusar
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  {n.type === 'friend_accepted' && (
+                    <div style={{ fontSize: 13, color: '#f5f1eb', fontFamily: "'Outfit',sans-serif" }}>
+                      <span style={{ fontWeight: 600 }}>{n.fromName}</span> aceitou o teu pedido
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

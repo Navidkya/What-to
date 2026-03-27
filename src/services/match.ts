@@ -55,20 +55,31 @@ export async function createMatchSession(
   } catch { return null; }
 }
 
-// Entra numa sessão existente pelo ID
 export async function joinMatchSession(
   sessionId: string,
   userId: string
 ): Promise<MatchSession | null> {
   try {
-    // Busca por prefixo do UUID (código curto de 8 chars)
-    const { data: found, error: findError } = await supabase
+    // Tenta match exacto primeiro (quando vem do convite com ID completo)
+    const { data: exact } = await supabase
       .from('match_sessions')
       .select('*')
-      .ilike('id', `${sessionId.toLowerCase()}%`)
+      .eq('id', sessionId)
       .eq('status', 'waiting')
-      .single();
-    if (findError || !found) return null;
+      .maybeSingle();
+
+    const found = exact ?? await (async () => {
+      // Fallback: prefixo para código curto manual
+      const { data } = await supabase
+        .from('match_sessions')
+        .select('*')
+        .ilike('id', `${sessionId.toLowerCase()}%`)
+        .eq('status', 'waiting')
+        .maybeSingle();
+      return data;
+    })();
+
+    if (!found) return null;
 
     const { data, error } = await supabase
       .from('match_sessions')
@@ -202,6 +213,21 @@ export function listenMatchVotes(
     })
     .subscribe();
   return () => { supabase.removeChannel(channel); };
+}
+
+// Busca sessão activa do utilizador (criada ou onde entrou, status waiting ou active)
+export async function getActiveSessionForUser(userId: string): Promise<MatchSession | null> {
+  try {
+    const { data } = await supabase
+      .from('match_sessions')
+      .select('*')
+      .or(`created_by.eq.${userId},joined_by.eq.${userId}`)
+      .in('status', ['waiting', 'active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data ? mapSession(data) : null;
+  } catch { return null; }
 }
 
 // Busca sessão por código curto (sem join)

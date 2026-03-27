@@ -7,7 +7,7 @@ import { loadCachedSuggestions } from '../../services/suggestionCache';
 import { loadFriends } from '../../services/friends';
 import type { FriendProfile } from '../../services/friends';
 import {
-  createMatchSession, joinMatchSession,
+  createMatchSession, joinMatchSession, getActiveSessionForUser,
   submitMatchVote, getMatchVotes, advanceMatchIndex,
   endMatchSession, listenMatchSession, listenMatchVotes,
 } from '../../services/match';
@@ -50,13 +50,49 @@ function Avatar({ name, size = 40, color }: { name: string; size?: number; color
   );
 }
 
+function CatPicker({ selected, onChange }: { selected: string[]; onChange: (cats: string[]) => void }) {
+  const toggle = (id: string) => {
+    onChange(selected.includes(id)
+      ? selected.length > 1 ? selected.filter(c => c !== id) : selected
+      : [...selected, id]
+    );
+  };
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 4 }}>
+      {CAT_OPTIONS.map(c => {
+        const active = selected.includes(c.id);
+        return (
+          <button key={c.id} onClick={() => toggle(c.id)} style={{
+            position: 'relative', padding: '10px 16px',
+            background: active ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${active ? 'rgba(200,155,60,0.5)' : 'rgba(255,255,255,0.08)'}`,
+            borderRadius: 12, color: active ? '#C89B3C' : '#8a94a8',
+            fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit',sans-serif",
+            fontWeight: active ? 600 : 400,
+          }}>
+            {c.name}
+            {active && (
+              <span style={{
+                position: 'absolute', top: 4, right: 4,
+                width: 14, height: 14, borderRadius: '50%',
+                background: '#C89B3C', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: 8, color: '#0B0D12', fontWeight: 700,
+              }}>✓</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 type Phase = 'home' | 'creating' | 'waiting' | 'joining' | 'playing' | 'matched' | 'done' | 'local-playing' | 'local-done';
 
 type LocalItem = { title: string; img: string | null; genre: string; type: string; rating?: number | null; year?: string | null };
 
 export default function Match({ profile, isActive, onBack, onToast, userId, userName, onOpenMessages, initialJoinCode, onJoinCodeConsumed }: Props) {
   const [phase, setPhase] = useState<Phase>('home');
-  const [selectedCat, setSelectedCat] = useState('watch');
+  const [selectedCats, setSelectedCats] = useState<string[]>(['watch']);
   const [session, setSession] = useState<MatchSession | null>(null);
   const [votes, setVotes] = useState<MatchVote[]>([]);
   const [joinCode, setJoinCode] = useState('');
@@ -79,6 +115,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const [showPassOverlay, setShowPassOverlay] = useState(false);
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [matchInvites, setMatchInvites] = useState<Array<{ convId: string; friendId: string; friendName: string }>>([]);
+  const [activeSession, setActiveSession] = useState<MatchSession | null>(null);
 
   const cleanupSession = useRef<(() => void) | null>(null);
   const cleanupVotes = useRef<(() => void) | null>(null);
@@ -114,6 +151,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
         }));
       setMatchInvites(invites);
     }).catch(() => {});
+    getActiveSessionForUser(userId).then(sess => setActiveSession(sess)).catch(() => {});
   }, [isActive, userId]);
 
   useEffect(() => {
@@ -123,7 +161,9 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       setLoading(true);
       const sess = await joinMatchSession(initialJoinCode, userId);
       if (!sess) { onToast('Sessão não encontrada ou já iniciada'); setLoading(false); onJoinCodeConsumed?.(); return; }
-      const cached = await loadCachedSuggestions(sess.catId, 100, {});
+      const catIds = sess.catId.split(',');
+      const allCachedChunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 100, {})));
+      const cached = allCachedChunks.flat();
       const cacheMap = new Map(cached.map(i => [i.title, i]));
       const orderedItems = sess.itemTitles.map(title => {
         const found = cacheMap.get(title);
@@ -191,14 +231,15 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const handleCreate = async () => {
     if (!userId) { onToast('Precisas de estar autenticado'); return; }
     setLoading(true);
-    const cached = await loadCachedSuggestions(selectedCat, 30, {});
-    const titles = cached.map(i => i.title).slice(0, 20);
-    const itemList = cached.slice(0, 20).map(i => ({
+    const catChunks = await Promise.all(selectedCats.map(cid => loadCachedSuggestions(cid, 30, {})));
+    const allCached = catChunks.flat();
+    const titles = allCached.map(i => i.title).slice(0, 20);
+    const itemList = allCached.slice(0, 20).map(i => ({
       title: i.title, img: i.img, genre: i.genre,
       type: i.type, rating: i.rating, year: i.year,
     }));
     if (titles.length === 0) { onToast('Sem sugestões disponíveis'); setLoading(false); return; }
-    const sess = await createMatchSession(userId, selectedCat, titles);
+    const sess = await createMatchSession(userId, selectedCats.join(','), titles);
     if (!sess) { onToast('Erro ao criar sessão'); setLoading(false); return; }
     setSession(sess);
     setItems(itemList);
@@ -219,7 +260,9 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       setLoading(false);
       return;
     }
-    const cached = await loadCachedSuggestions(sess.catId, 100, {});
+    const catIds = sess.catId.split(',');
+    const allCachedChunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 100, {})));
+    const cached = allCachedChunks.flat();
     const cacheMap = new Map(cached.map(i => [i.title, i]));
     const orderedItems = sess.itemTitles.map(title => {
       const found = cacheMap.get(title);
@@ -302,12 +345,14 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     setLocalMatches([]);
     setShowPassOverlay(false);
     setShowJoinCode(false);
+    setActiveSession(null);
   };
 
   if (!isActive) return null;
 
   const currentItem = items[currentIdx] || null;
-  const cat = CATS.find(c => c.id === (session?.catId || selectedCat));
+  const firstCatId = (session?.catId || selectedCats[0] || 'watch').split(',')[0];
+  const cat = CATS.find(c => c.id === firstCatId);
 
   const s = {
     screen: { position: 'fixed' as const, inset: 0, background: '#0B0D12', zIndex: 20, display: 'flex', flexDirection: 'column' as const },
@@ -329,18 +374,52 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
         </div>
         <div style={s.inner}>
 
+          {/* Sessão em curso */}
+          {activeSession && (
+            <div style={{ marginBottom: 24, background: 'rgba(200,155,60,0.06)', border: '1px solid rgba(200,155,60,0.2)', borderRadius: 14, padding: '14px 16px' }}>
+              <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 8 }}>Sessão em curso</div>
+              <div style={{ fontSize: 13, color: '#f5f1eb', marginBottom: 12, fontFamily: "'Outfit',sans-serif" }}>
+                {CATS.find(c => c.id === activeSession.catId.split(',')[0])?.name || 'Match'} · {activeSession.status === 'waiting' ? 'À espera de parceiro' : 'Em jogo'}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={async () => {
+                    if (!userId) return;
+                    setLoading(true);
+                    const catIds = activeSession.catId.split(',');
+                    const chunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 100, {})));
+                    const cached = chunks.flat();
+                    const cacheMap = new Map(cached.map(i => [i.title, i]));
+                    const orderedItems = activeSession.itemTitles.map(title => {
+                      const found = cacheMap.get(title);
+                      return found ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null } : { title, img: null, genre: '', type: '', rating: null, year: null };
+                    });
+                    setSession(activeSession);
+                    setItems(orderedItems);
+                    setCurrentIdx(activeSession.currentIndex);
+                    setMyVote(null);
+                    setVotes([]);
+                    subscribeToSession(activeSession);
+                    setPhase(activeSession.status === 'waiting' ? 'waiting' : 'playing');
+                    setLoading(false);
+                  }}
+                  style={{ flex: 1, padding: '10px', background: '#C89B3C', border: 'none', borderRadius: 10, color: '#0B0D12', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+                >
+                  Continuar
+                </button>
+                <button
+                  onClick={() => { endMatchSession(activeSession.id); setActiveSession(null); }}
+                  style={{ padding: '10px 14px', background: 'rgba(224,112,112,0.08)', border: '1px solid rgba(224,112,112,0.2)', borderRadius: 10, color: '#e07070', fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+                >
+                  Abandonar
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* SECÇÃO 1 — Criar sessão */}
           <div style={{ marginBottom: 32 }}>
             <div style={s.lbl}>Criar sessão</div>
-
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 16 }}>
-              {CAT_OPTIONS.map(c => (
-                <button key={c.id} onClick={() => setSelectedCat(c.id)}
-                  style={{ padding: '8px 16px', borderRadius: 20, border: selectedCat === c.id ? '1px solid rgba(200,155,60,0.6)' : '1px solid rgba(255,255,255,0.1)', background: selectedCat === c.id ? 'rgba(200,155,60,0.15)' : 'transparent', color: selectedCat === c.id ? '#C89B3C' : '#8a94a8', fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>
-                  {c.name}
-                </button>
-              ))}
-            </div>
 
             <div style={{ display: 'flex', gap: 12 }}>
               {/* Local */}
@@ -419,23 +498,26 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
               Ler QR Code
             </button>
 
-            {/* Inserir código toggle */}
             <button
               onClick={() => setShowJoinCode(v => !v)}
-              style={{ background: 'none', border: 'none', color: showJoinCode ? '#C89B3C' : 'rgba(138,148,168,0.45)', fontSize: 12, cursor: 'pointer', fontFamily: "'Outfit',sans-serif", padding: '6px 0', display: 'block' }}
+              style={{ width: '100%', padding: '12px 16px', background: showJoinCode ? 'rgba(200,155,60,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${showJoinCode ? 'rgba(200,155,60,0.25)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 12, color: showJoinCode ? '#C89B3C' : '#8a94a8', fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit',sans-serif", display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}
             >
-              {showJoinCode ? '▲ Fechar' : '▼ Inserir código'}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                <path d="M14 14h.01M14 17h.01M17 14h.01M17 17h3v3h-3z"/>
+              </svg>
+              Inserir código
             </button>
             {showJoinCode && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, marginBottom: 6 }}>
                 <input
                   value={joinCode}
-                  onChange={e => setJoinCode(e.target.value)}
+                  onChange={e => setJoinCode(e.target.value.toUpperCase())}
                   placeholder="Código da sessão…"
-                  style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 16px', color: '#f5f1eb', fontSize: 14, outline: 'none', fontFamily: "'Outfit',sans-serif" }}
+                  style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 16px', color: '#f5f1eb', fontSize: 14, outline: 'none', fontFamily: "'Outfit',sans-serif", letterSpacing: 2 }}
                 />
                 <button onClick={handleJoin} disabled={loading || !joinCode.trim()}
-                  style={{ padding: '12px 20px', background: joinCode.trim() ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 12, color: '#C89B3C', fontSize: 13, fontWeight: 600, cursor: joinCode.trim() ? 'pointer' : 'default', fontFamily: "'Outfit',sans-serif" }}>
+                  style={{ padding: '12px 20px', background: joinCode.trim() ? '#C89B3C' : 'rgba(255,255,255,0.04)', border: 'none', borderRadius: 12, color: joinCode.trim() ? '#0B0D12' : '#8a94a8', fontSize: 13, fontWeight: 700, cursor: joinCode.trim() ? 'pointer' : 'default', fontFamily: "'Outfit',sans-serif" }}>
                   Entrar
                 </button>
               </div>
@@ -453,8 +535,9 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     const handleStartLocal = async () => {
       if (!allFilled) { onToast('Preenche todos os nomes'); return; }
       setLoading(true);
-      const cached = await loadCachedSuggestions(selectedCat, 30, {});
-      const itemList = cached.slice(0, 20).map(i => ({
+      const catChunks = await Promise.all(selectedCats.map(cid => loadCachedSuggestions(cid, 30, {})));
+      const allCached = catChunks.flat();
+      const itemList = allCached.slice(0, 20).map(i => ({
         title: i.title, img: i.img, genre: i.genre,
         type: i.type, rating: i.rating, year: i.year,
       }));
@@ -521,10 +604,15 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
           </div>
 
           <div style={{ marginTop: 24 }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}>Categorias</div>
+              <CatPicker selected={selectedCats} onChange={setSelectedCats} />
+            </div>
+
             <button
               onClick={handleStartLocal}
               disabled={!allFilled || loading}
-              style={{ width: '100%', padding: '16px', background: allFilled && !loading ? '#C89B3C' : 'rgba(200,155,60,0.2)', color: allFilled && !loading ? '#0B0D12' : 'rgba(200,155,60,0.35)', border: 'none', borderRadius: 16, fontSize: 15, fontWeight: 700, cursor: allFilled && !loading ? 'pointer' : 'default', fontFamily: "'Outfit',sans-serif" }}
+              style={{ width: '100%', padding: '16px', background: allFilled && !loading ? '#C89B3C' : 'rgba(200,155,60,0.25)', color: allFilled && !loading ? '#0B0D12' : 'rgba(200,155,60,0.4)', border: 'none', borderRadius: 16, fontSize: 15, fontWeight: 700, cursor: allFilled && !loading ? 'pointer' : 'default', fontFamily: "'Outfit',sans-serif" }}
             >
               {loading ? 'A carregar...' : 'Começar'}
             </button>
@@ -655,11 +743,17 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       <div style={s.screen}>
         <div style={s.tb}>
           <button style={s.backBtn} onClick={handleReset}>←</button>
-          <div style={s.title}>À espera…</div>
+          <div style={s.title}>Sessão criada</div>
           <div style={{ width: 40 }} />
         </div>
         <div style={{ ...s.inner, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 20 }}>
           <Avatar name={displayName} size={56} color="#C89B3C" />
+
+          {/* Categorias */}
+          <div style={{ width: '100%', maxWidth: 340 }}>
+            <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}>Categorias</div>
+            <CatPicker selected={selectedCats} onChange={setSelectedCats} />
+          </div>
 
           {/* PRIORIDADE 1 — Convidar amigo */}
           {friends.length > 0 && (
@@ -682,11 +776,10 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
                     <div key={f.id}
                       style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
                       onClick={async () => {
-                        const code = session!.id.slice(0, 8).toUpperCase();
                         const catName = cat?.name || 'Ver';
                         const convId = await getOrCreateConversation(userId!, f.id);
                         if (convId) {
-                          await sendMessage(convId, userId!, `MATCH_INVITE:${code}:${catName}`);
+                          await sendMessage(convId, userId!, `MATCH_INVITE:${session!.id}:${catName}`);
                           onToast(`✦ Convite enviado a ${f.name}!`);
                         } else {
                           onToast('Erro ao enviar convite');

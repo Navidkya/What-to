@@ -330,7 +330,7 @@ export default function MessagesScreen({
                         Categoria: {catName}
                       </div>
                       <div style={{ fontSize: 13, color: '#8a94a8', marginBottom: isMine ? 8 : 12, fontFamily: 'monospace', letterSpacing: 2 }}>
-                        {code}
+                        {code.length > 8 ? code.slice(0, 8).toUpperCase() : code.toUpperCase()}
                       </div>
                       {!isMine && (
                         <button
