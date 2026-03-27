@@ -10,7 +10,7 @@ import {
   createMatchSession, joinMatchSession, getActiveSessionForUser,
   submitMatchVote, advanceMatchIndex,
   endMatchSession, listenMatchSession, listenMatchVotes,
-  checkMatchForItem, addItemsToSession,
+  checkMatchForItem, addItemsToSession, getMatchVotes,
 } from '../../services/match';
 import type { MatchSession, MatchVote } from '../../services/match';
 import { getOrCreateConversation, sendMessage, loadConversations } from '../../services/messages';
@@ -120,11 +120,14 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const [myVotedTitles, setMyVotedTitles] = useState<Set<string>>(new Set());
   const [showMatchBanner, setShowMatchBanner] = useState(false);
   const [addingMore, setAddingMore] = useState(false);
+  const [voteCount, setVoteCount] = useState(0);
 
   const cleanupSession = useRef<(() => void) | null>(null);
   const cleanupVotes = useRef<(() => void) | null>(null);
   const phaseRef = useRef<Phase>('home');
   const myVotedTitlesRef = useRef<Set<string>>(new Set());
+  const swipeStartX = useRef<number | null>(null);
+  const swipeStartY = useRef<number | null>(null);
 
   const displayName = userName || profile.name || 'Tu';
 
@@ -190,9 +193,16 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
           ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null, description: (found as any).description ?? null }
           : { title, img: null, genre: '', type: '', rating: null, year: null, description: null };
       });
+      const previousVotes = await getMatchVotes(sess.id);
+      const myPreviousVoted = new Set(
+        previousVotes.filter(v => v.userId === userId).map(v => v.itemTitle)
+      );
+      setMyVotedTitles(myPreviousVoted);
+      myVotedTitlesRef.current = myPreviousVoted;
+      const firstUnvoted = orderedItems.findIndex(i => !myPreviousVoted.has(i.title));
       setSession(sess);
       setItems(orderedItems);
-      setCurrentIdx(sess.currentIndex);
+      setCurrentIdx(firstUnvoted !== -1 ? firstUnvoted : 0);
       setMyVote(null);
       setVotes([]);
       subscribeToSession(sess);
@@ -297,9 +307,16 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
         ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null, description: (found as any).description ?? null }
         : { title, img: null, genre: '', type: '', rating: null, year: null, description: null };
     });
+    const previousVotes = await getMatchVotes(sess.id);
+    const myPreviousVoted = new Set(
+      previousVotes.filter(v => v.userId === userId).map(v => v.itemTitle)
+    );
+    setMyVotedTitles(myPreviousVoted);
+    myVotedTitlesRef.current = myPreviousVoted;
+    const firstUnvoted = orderedItems.findIndex(i => !myPreviousVoted.has(i.title));
     setSession(sess);
     setItems(orderedItems);
-    setCurrentIdx(sess.currentIndex);
+    setCurrentIdx(firstUnvoted !== -1 ? firstUnvoted : 0);
     setMyVote(null);
     setVotes([]);
     subscribeToSession(sess);
@@ -340,14 +357,16 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       }
     }
 
+    // Incrementa contador — banner a cada 10 votos
+    const newCount = voteCount + 1;
+    setVoteCount(newCount);
+    if (newCount % 10 === 0) setShowMatchBanner(true);
+
     // Avança para próximo item não votado
     const nextIdx = findNextUnvoted(currentIdx + 1, newVotedTitles);
     if (nextIdx !== -1) {
       setCurrentIdx(nextIdx);
       setMyVote(null);
-    } else {
-      // Acabou as sugestões disponíveis — mostra banner
-      setShowMatchBanner(true);
     }
   };
 
@@ -399,6 +418,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     setMyVotedTitles(new Set());
     setShowMatchBanner(false);
     setAddingMore(false);
+    setVoteCount(0);
   };
 
   if (!isActive) return null;
@@ -447,9 +467,16 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
                       const found = cacheMap.get(title);
                       return found ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null } : { title, img: null, genre: '', type: '', rating: null, year: null };
                     });
+                    const previousVotes = await getMatchVotes(activeSession.id);
+                    const myPreviousVoted = new Set(
+                      previousVotes.filter(v => v.userId === userId).map(v => v.itemTitle)
+                    );
+                    setMyVotedTitles(myPreviousVoted);
+                    myVotedTitlesRef.current = myPreviousVoted;
+                    const firstUnvoted = orderedItems.findIndex(i => !myPreviousVoted.has(i.title));
                     setSession(activeSession);
                     setItems(orderedItems);
-                    setCurrentIdx(activeSession.currentIndex);
+                    setCurrentIdx(firstUnvoted !== -1 ? firstUnvoted : 0);
                     setMyVote(null);
                     setVotes([]);
                     subscribeToSession(activeSession);
@@ -909,7 +936,42 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
-          <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          <div
+            style={{ flex: 1, position: 'relative', overflow: 'hidden' }}
+            onTouchStart={(e) => {
+              swipeStartX.current = e.touches[0].clientX;
+              swipeStartY.current = e.touches[0].clientY;
+            }}
+            onTouchEnd={(e) => {
+              if (swipeStartX.current === null || swipeStartY.current === null) return;
+              const dx = e.changedTouches[0].clientX - swipeStartX.current;
+              const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY.current);
+              swipeStartX.current = null;
+              swipeStartY.current = null;
+              if (Math.abs(dx) < 40 || dy > Math.abs(dx)) return;
+              if (dx < 0) {
+                const nextIdx = findNextUnvoted(currentIdx + 1, myVotedTitles);
+                if (nextIdx !== -1) setCurrentIdx(nextIdx);
+                else if (currentIdx < items.length - 1) setCurrentIdx(currentIdx + 1);
+              } else {
+                if (currentIdx > 0) setCurrentIdx(currentIdx - 1);
+              }
+            }}
+          >
+            {/* Progress dots */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2, display: 'flex', justifyContent: 'center', gap: 4, padding: '10px 0 4px' }}>
+              {items.slice(Math.max(0, currentIdx - 2), Math.min(items.length, currentIdx + 3)).map((_, i) => {
+                const realIdx = Math.max(0, currentIdx - 2) + i;
+                return (
+                  <div key={realIdx} style={{
+                    width: realIdx === currentIdx ? 16 : 6,
+                    height: 4, borderRadius: 2,
+                    background: realIdx === currentIdx ? '#C89B3C' : 'rgba(255,255,255,0.2)',
+                    transition: 'all 0.2s',
+                  }} />
+                );
+              })}
+            </div>
             {currentItem.img ? (
               <img src={currentItem.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />
             ) : (
@@ -947,46 +1009,53 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
           </div>
         </div>
 
-        {/* Banner "Explorar mais" */}
-        {showMatchBanner && createPortal(
-          <div style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(11,13,18,0.92)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontStyle: 'italic' as const, color: '#f5f1eb', textAlign: 'center', marginBottom: 12 }}>
-              Ainda sem match
-            </div>
-            <div style={{ fontSize: 14, color: '#8a94a8', textAlign: 'center', marginBottom: 32, lineHeight: 1.6 }}>
-              Votaste em todas as sugestões disponíveis.<br />
-              Queres explorar mais ou aguardar que o teu parceiro vote?
-            </div>
-            <button
-              onClick={async () => {
-                if (!session) return;
-                setAddingMore(true);
-                const catIds = session.catId.split(',');
-                const chunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 30, {})));
-                const existing = new Set(items.map(i => i.title));
-                const newItems = chunks.flat().filter(i => !existing.has(i.title)).slice(0, 5);
-                if (newItems.length === 0) { onToast('Sem mais sugestões disponíveis'); setAddingMore(false); return; }
-                await addItemsToSession(session.id, newItems.map(i => i.title));
-                const newLocalItems = newItems.map(i => ({ title: i.title, img: i.img, genre: i.genre, type: i.type, rating: i.rating ?? null, year: i.year ?? null, description: (i as any).description ?? null }));
-                setItems(prev => {
-                  const updated = [...prev, ...newLocalItems];
-                  setCurrentIdx(prev.length);
-                  return updated;
-                });
-                setShowMatchBanner(false);
-                setAddingMore(false);
-              }}
-              disabled={addingMore}
-              style={{ width: '100%', maxWidth: 300, padding: '14px', background: '#C89B3C', border: 'none', borderRadius: 14, color: '#0B0D12', fontSize: 14, fontWeight: 700, cursor: addingMore ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif", marginBottom: 12 }}
+        {/* Banner informativo — fecha ao clicar fora */}
+        {showMatchBanner && session && createPortal(
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(11,13,18,0.85)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 32 }}
+            onClick={() => setShowMatchBanner(false)}
+          >
+            <div
+              style={{ background: '#161820', borderRadius: 20, padding: '28px 24px', maxWidth: 320, width: '100%', textAlign: 'center' as const }}
+              onClick={e => e.stopPropagation()}
             >
-              {addingMore ? 'A carregar...' : 'Ver mais sugestões'}
-            </button>
-            <button
-              onClick={() => setShowMatchBanner(false)}
-              style={{ background: 'none', border: 'none', color: '#8a94a8', fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
-            >
-              Aguardar — o parceiro ainda está a votar
-            </button>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontStyle: 'italic' as const, color: '#f5f1eb', marginBottom: 10 }}>
+                Já votaste em {voteCount} sugestões
+              </div>
+              <div style={{ fontSize: 13, color: '#8a94a8', lineHeight: 1.6, marginBottom: 24 }}>
+                Podes continuar a explorar ou aguardar enquanto o teu parceiro decide. O match acontece quando os dois escolherem a mesma.
+              </div>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!session) return;
+                  setAddingMore(true);
+                  const catIds = session.catId.split(',');
+                  const chunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 30, {})));
+                  const existing = new Set(items.map(i => i.title));
+                  const newItems = chunks.flat().filter(i => !existing.has(i.title)).slice(0, 10);
+                  if (newItems.length > 0) {
+                    await addItemsToSession(session.id, newItems.map(i => i.title));
+                    const newLocalItems = newItems.map(i => ({ title: i.title, img: i.img, genre: i.genre, type: i.type, rating: i.rating ?? null, year: i.year ?? null, description: (i as any).description ?? null }));
+                    setItems(prev => [...prev, ...newLocalItems]);
+                  } else {
+                    onToast('Sem mais sugestões disponíveis');
+                  }
+                  setShowMatchBanner(false);
+                  setAddingMore(false);
+                }}
+                disabled={addingMore}
+                style={{ width: '100%', padding: '13px', background: '#C89B3C', border: 'none', borderRadius: 12, color: '#0B0D12', fontSize: 14, fontWeight: 700, cursor: addingMore ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}
+              >
+                {addingMore ? 'A carregar...' : 'Explorar mais 10'}
+              </button>
+              <button
+                onClick={() => setShowMatchBanner(false)}
+                style={{ background: 'none', border: 'none', color: '#8a94a8', fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+              >
+                Continuar a votar
+              </button>
+            </div>
           </div>,
           document.body
         )}
