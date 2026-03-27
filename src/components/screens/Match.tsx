@@ -119,8 +119,13 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
 
   const cleanupSession = useRef<(() => void) | null>(null);
   const cleanupVotes = useRef<(() => void) | null>(null);
+  const phaseRef = useRef<Phase>('home');
 
   const displayName = userName || profile.name || 'Tu';
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   const cleanup = useCallback(() => {
     cleanupSession.current?.();
@@ -219,7 +224,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     cleanupSession.current = listenMatchSession(sess.id, updatedSess => {
       setSession(updatedSess);
       setCurrentIdx(updatedSess.currentIndex);
-      if (updatedSess.status === 'active' && phase === 'waiting') {
+      if (updatedSess.status === 'active' && phaseRef.current === 'waiting') {
         setPhase('playing');
         onToast('✦ O teu parceiro entrou!');
       }
@@ -231,7 +236,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
         return updated;
       });
     });
-  }, [userId, phase, onToast, checkForMatch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId, onToast, checkForMatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async () => {
     if (!userId) { onToast('Precisas de estar autenticado'); return; }
@@ -660,7 +665,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
             </div>
           </div>
 
-          <div style={{ padding: '16px 20px 40px', display: 'flex', gap: 12 }}>
+          <div style={{ padding: '16px 20px calc(80px + env(safe-area-inset-bottom, 16px))', display: 'flex', gap: 12 }}>
             <button onClick={() => handleLocalVote(false)}
               style={{ flex: 1, padding: '16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, color: '#e07b7b', fontSize: 20, cursor: 'pointer' }}>
               ✗
@@ -892,7 +897,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
             </div>
           </div>
 
-          <div style={{ padding: '16px 20px 40px', display: 'flex', gap: 12 }}>
+          <div style={{ padding: '16px 20px calc(80px + env(safe-area-inset-bottom, 16px))', display: 'flex', gap: 12 }}>
             <button onClick={() => handleVote(false)} disabled={!!myVoteForCurrent}
               style={{ flex: 1, padding: '16px', background: myVoteForCurrent?.vote === false ? 'rgba(224,123,123,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${myVoteForCurrent?.vote === false ? 'rgba(224,123,123,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 16, color: '#e07b7b', fontSize: 20, cursor: myVoteForCurrent ? 'default' : 'pointer' }}>
               ✗
