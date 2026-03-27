@@ -72,6 +72,7 @@ export default function App() {
   const [pendingSuggestionShare, setPendingSuggestionShare] = useState<any>(null);
   const [forYouInitialCatId, setForYouInitialCatId] = useState<string | undefined>();
   const [forYouInitialTitle, setForYouInitialTitle] = useState<string | undefined>();
+  const [matchInitialCode, setMatchInitialCode] = useState<string | undefined>();
 
   // Navigation
   const [screen, setScreen] = useState<Screen>(store.profile.onboarded ? 'home' : 'onboard');
@@ -835,6 +836,8 @@ export default function App() {
             userId={authUser?.id}
             userName={store.profile.name}
             onOpenMessages={(fid, fname) => openMessages(fid, fname)}
+            initialJoinCode={matchInitialCode}
+            onJoinCodeConsumed={() => setMatchInitialCode(undefined)}
           />
 
           <Wishlist
@@ -1105,6 +1108,7 @@ export default function App() {
           pendingSuggestion={pendingSuggestionShare}
           onClearPendingSuggestion={() => setPendingSuggestionShare(null)}
           onUnreadCount={setMessagesUnread}
+          onNavigateMatch={(code) => { setMatchInitialCode(code); navTo('match-screen'); }}
         />
       )}
 

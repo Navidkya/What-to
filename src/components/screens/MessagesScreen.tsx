@@ -22,6 +22,7 @@ interface Props {
   } | null;
   onClearPendingSuggestion?: () => void;
   onUnreadCount?: (count: number) => void;
+  onNavigateMatch?: (code: string) => void;
 }
 
 function Avatar({ name, size = 36 }: { name: string; size?: number }) {
@@ -54,7 +55,7 @@ export default function MessagesScreen({
   isActive, userId, userName, onBack, onToast,
   initialFriendId, initialFriendName,
   pendingSuggestion, onClearPendingSuggestion,
-  onUnreadCount,
+  onUnreadCount, onNavigateMatch,
 }: Props) {
   const [view, setView] = useState<'inbox' | 'conversation'>('inbox');
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -309,6 +310,47 @@ export default function MessagesScreen({
                     {timeAgo(m.createdAt)}
                   </div>
                 </div>
+              ) : m.text?.startsWith('MATCH_INVITE:') ? (
+                // Card de convite para Match
+                (() => {
+                  const parts = m.text.split(':');
+                  const code = parts[1] || '';
+                  const catName = parts[2] || 'Ver';
+                  return (
+                    <div style={{
+                      maxWidth: '80%',
+                      background: isMine ? 'rgba(200,155,60,0.12)' : 'rgba(255,255,255,0.07)',
+                      border: `1px solid ${isMine ? 'rgba(200,155,60,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: 16, padding: '14px 16px',
+                    }}>
+                      <div style={{ fontSize: 11, color: '#C89B3C', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>
+                        Convite para Match
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#f5f1eb', marginBottom: 4 }}>
+                        Categoria: {catName}
+                      </div>
+                      <div style={{ fontSize: 13, color: '#8a94a8', marginBottom: isMine ? 8 : 12, fontFamily: 'monospace', letterSpacing: 2 }}>
+                        {code}
+                      </div>
+                      {!isMine && (
+                        <button
+                          onClick={() => onNavigateMatch?.(code)}
+                          style={{
+                            width: '100%', padding: '10px', background: '#C89B3C',
+                            color: '#0B0D12', border: 'none', borderRadius: 10,
+                            fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                            fontFamily: "'Outfit',sans-serif",
+                          }}
+                        >
+                          Aceitar
+                        </button>
+                      )}
+                      <div style={{ fontSize: 10, opacity: 0.5, marginTop: 8, textAlign: 'right' }}>
+                        {timeAgo(m.createdAt)}
+                      </div>
+                    </div>
+                  );
+                })()
               ) : (
                 // Mensagem de texto normal
                 <div style={{

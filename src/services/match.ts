@@ -203,3 +203,19 @@ export function listenMatchVotes(
     .subscribe();
   return () => { supabase.removeChannel(channel); };
 }
+
+// Busca sessão por código curto (sem join)
+export async function getMatchSessionByShortCode(
+  shortCode: string
+): Promise<MatchSession | null> {
+  try {
+    const { data, error } = await supabase
+      .from('match_sessions')
+      .select('*')
+      .ilike('id', `${shortCode.toLowerCase()}%`)
+      .eq('status', 'waiting')
+      .maybeSingle();
+    if (error || !data) return null;
+    return mapSession(data);
+  } catch { return null; }
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import type { Profile } from '../../types';
 import { CATS } from '../../data';
 import { loadCachedSuggestions } from '../../services/suggestionCache';
@@ -11,6 +12,7 @@ import {
   endMatchSession, listenMatchSession, listenMatchVotes,
 } from '../../services/match';
 import type { MatchSession, MatchVote } from '../../services/match';
+import { getOrCreateConversation, sendMessage } from '../../services/messages';
 
 interface Props {
   profile: Profile;
@@ -20,6 +22,8 @@ interface Props {
   userId?: string;
   userName?: string;
   onOpenMessages?: (friendId: string, friendName: string) => void;
+  initialJoinCode?: string;
+  onJoinCodeConsumed?: () => void;
 }
 
 const CAT_OPTIONS = [
@@ -46,7 +50,7 @@ function Avatar({ name, size = 40, color }: { name: string; size?: number; color
   );
 }
 
-export default function Match({ profile, isActive, onBack, onToast, userId, userName, onOpenMessages }: Props) {
+export default function Match({ profile, isActive, onBack, onToast, userId, userName, onOpenMessages, initialJoinCode, onJoinCodeConsumed }: Props) {
   const [phase, setPhase] = useState<'home' | 'creating' | 'waiting' | 'joining' | 'playing' | 'matched' | 'done'>('home');
   const [selectedCat, setSelectedCat] = useState('watch');
   const [session, setSession] = useState<MatchSession | null>(null);
@@ -59,11 +63,13 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const [loading, setLoading] = useState(false);
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [showFriendInvite, setShowFriendInvite] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   const cleanupSession = useRef<(() => void) | null>(null);
   const cleanupVotes = useRef<(() => void) | null>(null);
 
   const displayName = userName || profile.name || 'Tu';
+  void onOpenMessages;
 
   const cleanup = useCallback(() => {
     cleanupSession.current?.();
@@ -81,6 +87,39 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     if (!isActive || !userId) return;
     loadFriends(userId).then(fs => setFriends(fs)).catch(() => {});
   }, [isActive, userId]);
+
+  const autoJoinRef = useRef<string | null>(null);
+  if (initialJoinCode && initialJoinCode !== autoJoinRef.current) {
+    autoJoinRef.current = initialJoinCode;
+  }
+
+  useEffect(() => {
+    const code = autoJoinRef.current;
+    if (!code || !isActive || !userId) return;
+    onJoinCodeConsumed?.();
+    setJoinCode(code);
+    setLoading(true);
+    joinMatchSession(code, userId).then(async sess => {
+      if (!sess) { onToast('Sessão não encontrada — verifica o código'); setLoading(false); return; }
+      const cached = await loadCachedSuggestions(sess.catId, 100, {});
+      const cacheMap = new Map(cached.map(i => [i.title, i]));
+      const orderedItems = sess.itemTitles.map(title => {
+        const found = cacheMap.get(title);
+        return found
+          ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null }
+          : { title, img: null, genre: '', type: '', rating: null, year: null };
+      });
+      setSession(sess);
+      setItems(orderedItems);
+      setCurrentIdx(sess.currentIndex);
+      setMyVote(null);
+      setVotes([]);
+      subscribeToSession(sess);
+      setPhase('playing');
+      setLoading(false);
+      onToast('✦ Entraste na sessão!');
+    });
+  }, [initialJoinCode, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkForMatch = useCallback((allVotes: MatchVote[], sess: MatchSession) => {
     const currentTitle = sess.itemTitles[sess.currentIndex];
@@ -151,15 +190,18 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     if (!userId || !joinCode.trim()) return;
     setLoading(true);
     const sess = await joinMatchSession(joinCode.trim(), userId);
-    if (!sess) { onToast('Sessão não encontrada ou já iniciada'); setLoading(false); return; }
-    const cached = await loadCachedSuggestions(sess.catId, 30, {});
-    const allItems = cached.slice(0, 20).map(i => ({
-      title: i.title, img: i.img, genre: i.genre,
-      type: i.type, rating: i.rating, year: i.year,
-    }));
+    if (!sess) {
+      onToast('Sessão não encontrada — verifica o código');
+      setLoading(false);
+      return;
+    }
+    const cached = await loadCachedSuggestions(sess.catId, 100, {});
+    const cacheMap = new Map(cached.map(i => [i.title, i]));
     const orderedItems = sess.itemTitles.map(title => {
-      const found = allItems.find(i => i.title === title);
-      return found || { title, img: null, genre: '', type: '', rating: null, year: null };
+      const found = cacheMap.get(title);
+      return found
+        ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null }
+        : { title, img: null, genre: '', type: '', rating: null, year: null };
     });
     setSession(sess);
     setItems(orderedItems);
@@ -302,6 +344,23 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
               Copiar código
             </button>
           </div>
+
+          <div style={{ marginTop: 12 }}>
+            <button
+              onClick={() => setShowQR(q => !q)}
+              style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '8px 20px', color: '#8a94a8', fontSize: 12, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+            >
+              {showQR ? 'Ocultar QR Code' : 'Mostrar QR Code'}
+            </button>
+            {showQR && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                <div style={{ background: '#fff', padding: 12, borderRadius: 12 }}>
+                  <QRCodeSVG value={session.id.slice(0, 8).toUpperCase()} size={180} />
+                </div>
+              </div>
+            )}
+          </div>
+
           {friends.length > 0 && (
             <div style={{ width: '100%', maxWidth: 320, marginTop: 8 }}>
               <button
@@ -315,14 +374,17 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
                   {friends.map(f => (
                     <div key={f.id}
                       style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
-                      onClick={() => {
-                        if (onOpenMessages) {
-                          const code = session!.id.slice(0, 8).toUpperCase();
-                          onOpenMessages(f.id, f.name);
-                          onToast(`✦ Código ${code} copiado — cola na mensagem`);
-                          navigator.clipboard?.writeText(code);
-                          setShowFriendInvite(false);
+                      onClick={async () => {
+                        const code = session!.id.slice(0, 8).toUpperCase();
+                        const catName = cat?.name || 'Ver';
+                        const convId = await getOrCreateConversation(userId!, f.id);
+                        if (convId) {
+                          await sendMessage(convId, userId!, `MATCH_INVITE:${code}:${catName}`);
+                          onToast(`✦ Convite enviado a ${f.name}!`);
+                        } else {
+                          onToast('Erro ao enviar convite');
                         }
+                        setShowFriendInvite(false);
                       }}
                     >
                       <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(200,155,60,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#C89B3C', flexShrink: 0 }}>
