@@ -240,6 +240,43 @@ export async function getActiveSessionForUser(userId: string): Promise<MatchSess
   } catch { return null; }
 }
 
+// Verifica se já existe match para um item (dois users votaram Sim)
+export async function checkMatchForItem(
+  sessionId: string,
+  itemTitle: string
+): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('match_votes')
+      .select('user_id')
+      .eq('session_id', sessionId)
+      .eq('item_title', itemTitle)
+      .eq('vote', true);
+    return (data?.length || 0) >= 2;
+  } catch { return false; }
+}
+
+// Adiciona mais sugestões à sessão (para o banner "explorar mais")
+export async function addItemsToSession(
+  sessionId: string,
+  newTitles: string[]
+): Promise<boolean> {
+  try {
+    const { data: sess } = await supabase
+      .from('match_sessions')
+      .select('item_titles')
+      .eq('id', sessionId)
+      .single();
+    if (!sess) return false;
+    const combined = [...(sess.item_titles || []), ...newTitles];
+    const { error } = await supabase
+      .from('match_sessions')
+      .update({ item_titles: combined, updated_at: new Date().toISOString() })
+      .eq('id', sessionId);
+    return !error;
+  } catch { return false; }
+}
+
 // Busca sessão por código curto (sem join)
 export async function getMatchSessionByShortCode(
   shortCode: string

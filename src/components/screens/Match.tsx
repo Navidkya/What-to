@@ -10,6 +10,7 @@ import {
   createMatchSession, joinMatchSession, getActiveSessionForUser,
   submitMatchVote, getMatchVotes, advanceMatchIndex,
   endMatchSession, listenMatchSession, listenMatchVotes,
+  checkMatchForItem, addItemsToSession,
 } from '../../services/match';
 import type { MatchSession, MatchVote } from '../../services/match';
 import { getOrCreateConversation, sendMessage, loadConversations } from '../../services/messages';
@@ -88,7 +89,7 @@ function CatPicker({ selected, onChange }: { selected: string[]; onChange: (cats
 
 type Phase = 'home' | 'creating' | 'waiting' | 'joining' | 'playing' | 'matched' | 'done' | 'local-playing' | 'local-done';
 
-type LocalItem = { title: string; img: string | null; genre: string; type: string; rating?: number | null; year?: string | null };
+type LocalItem = { title: string; img: string | null; genre: string; type: string; rating?: number | null; year?: string | null; description?: string | null };
 
 export default function Match({ profile, isActive, onBack, onToast, userId, userName, onOpenMessages, initialJoinCode, onJoinCodeConsumed }: Props) {
   const [phase, setPhase] = useState<Phase>('home');
@@ -116,16 +117,24 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [matchInvites, setMatchInvites] = useState<Array<{ convId: string; friendId: string; friendName: string }>>([]);
   const [activeSession, setActiveSession] = useState<MatchSession | null>(null);
+  const [myVotedTitles, setMyVotedTitles] = useState<Set<string>>(new Set());
+  const [showMatchBanner, setShowMatchBanner] = useState(false);
+  const [addingMore, setAddingMore] = useState(false);
 
   const cleanupSession = useRef<(() => void) | null>(null);
   const cleanupVotes = useRef<(() => void) | null>(null);
   const phaseRef = useRef<Phase>('home');
+  const myVotedTitlesRef = useRef<Set<string>>(new Set());
 
   const displayName = userName || profile.name || 'Tu';
 
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  useEffect(() => {
+    myVotedTitlesRef.current = myVotedTitles;
+  }, [myVotedTitles]);
 
   const cleanup = useCallback(() => {
     cleanupSession.current?.();
@@ -178,8 +187,8 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       const orderedItems = sess.itemTitles.map(title => {
         const found = cacheMap.get(title);
         return found
-          ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null }
-          : { title, img: null, genre: '', type: '', rating: null, year: null };
+          ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null, description: (found as any).description ?? null }
+          : { title, img: null, genre: '', type: '', rating: null, year: null, description: null };
       });
       setSession(sess);
       setItems(orderedItems);
@@ -229,12 +238,19 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
         onToast('✦ O teu parceiro entrou!');
       }
     });
-    cleanupVotes.current = listenMatchVotes(sess.id, newVote => {
-      setVotes(prev => {
-        const updated = [...prev.filter(v => !(v.userId === newVote.userId && v.itemTitle === newVote.itemTitle)), newVote];
-        checkForMatch(updated, sess);
-        return updated;
-      });
+    cleanupVotes.current = listenMatchVotes(sess.id, async (newVote) => {
+      // Só interessa votos do outro user
+      if (newVote.userId === userId) return;
+      // Se o outro votou Sim num item onde eu já votei Sim → match!
+      if (newVote.vote && myVotedTitlesRef.current.has(newVote.itemTitle)) {
+        const isMatch = await checkMatchForItem(sess.id, newVote.itemTitle);
+        if (isMatch) {
+          const item = items.find(i => i.title === newVote.itemTitle);
+          setMatchedItem({ title: newVote.itemTitle, img: item?.img || null });
+          setPhase('matched');
+          endMatchSession(sess.id);
+        }
+      }
     });
   }, [userId, onToast, checkForMatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -247,6 +263,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     const itemList = allCached.slice(0, 20).map(i => ({
       title: i.title, img: i.img, genre: i.genre,
       type: i.type, rating: i.rating, year: i.year,
+      description: (i as any).description ?? null,
     }));
     if (titles.length === 0) { onToast('Sem sugestões disponíveis'); setLoading(false); return; }
     const sess = await createMatchSession(userId, selectedCats.join(','), titles);
@@ -277,8 +294,8 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     const orderedItems = sess.itemTitles.map(title => {
       const found = cacheMap.get(title);
       return found
-        ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null }
-        : { title, img: null, genre: '', type: '', rating: null, year: null };
+        ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null, description: (found as any).description ?? null }
+        : { title, img: null, genre: '', type: '', rating: null, year: null, description: null };
     });
     setSession(sess);
     setItems(orderedItems);
@@ -291,23 +308,46 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     onToast('✦ Entraste na sessão!');
   };
 
+  const findNextUnvoted = (startIdx: number, votedTitles: Set<string>): number => {
+    for (let i = startIdx; i < items.length; i++) {
+      if (!votedTitles.has(items[i].title)) return i;
+    }
+    return -1;
+  };
+
   const handleVote = async (vote: boolean) => {
-    if (!session || !userId || myVote !== null) return;
-    const currentTitle = session.itemTitles[currentIdx];
-    if (!currentTitle) return;
-    setMyVote(vote);
+    if (!session || !userId) return;
+    const currentTitle = items[currentIdx]?.title;
+    if (!currentTitle || myVotedTitles.has(currentTitle)) return;
+
+    // Marca como votado localmente
+    const newVotedTitles = new Set([...myVotedTitles, currentTitle]);
+    setMyVotedTitles(newVotedTitles);
+    myVotedTitlesRef.current = newVotedTitles;
+
+    // Guarda voto no Supabase
     await submitMatchVote(session.id, userId, currentTitle, vote);
-    const allVotes = await getMatchVotes(session.id);
-    setVotes(allVotes);
-    const matched = checkForMatch(allVotes, { ...session, currentIndex: currentIdx });
-    if (!matched) {
-      const votesForCurrent = allVotes.filter(v => v.itemTitle === currentTitle);
-      if (votesForCurrent.length >= 2) {
-        setTimeout(() => {
-          setMyVote(null);
-          setCurrentIdx(i => i + 1);
-        }, 600);
+
+    // Se votou Sim, verifica imediatamente se há match
+    if (vote) {
+      const isMatch = await checkMatchForItem(session.id, currentTitle);
+      if (isMatch) {
+        const item = items.find(i => i.title === currentTitle);
+        setMatchedItem({ title: currentTitle, img: item?.img || null });
+        setPhase('matched');
+        endMatchSession(session.id);
+        return;
       }
+    }
+
+    // Avança para próximo item não votado
+    const nextIdx = findNextUnvoted(currentIdx + 1, newVotedTitles);
+    if (nextIdx !== -1) {
+      setCurrentIdx(nextIdx);
+      setMyVote(null);
+    } else {
+      // Acabou as sugestões disponíveis — mostra banner
+      setShowMatchBanner(true);
     }
   };
 
@@ -356,6 +396,9 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     setShowPassOverlay(false);
     setShowJoinCode(false);
     setActiveSession(null);
+    setMyVotedTitles(new Set());
+    setShowMatchBanner(false);
+    setAddingMore(false);
   };
 
   if (!isActive) return null;
@@ -855,15 +898,14 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
 
   // ── PHASE: PLAYING (online) ──
   if (phase === 'playing' && session && currentItem) {
-    const myVoteForCurrent = votes.find(v => v.userId === userId && v.itemTitle === currentItem.title);
-    const otherVoteForCurrent = votes.find(v => v.userId !== userId && v.itemTitle === currentItem.title);
+    const alreadyVoted = myVotedTitles.has(currentItem.title);
 
     return (
       <div style={s.screen}>
         <div style={s.tb}>
           <button style={s.backBtn} onClick={handleReset}>←</button>
           <div style={s.title}>{cat?.name || 'Match'}</div>
-          <div style={{ fontSize: 12, color: '#8a94a8' }}>{currentIdx + 1}/{session.itemTitles.length}</div>
+          <div style={{ fontSize: 12, color: '#8a94a8' }}>{myVotedTitles.size}/{items.length}</div>
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
@@ -873,41 +915,81 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
             ) : (
               <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #1a1d28, #0f1118)' }} />
             )}
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11,13,18,0.95) 0%, rgba(11,13,18,0.3) 60%, transparent 100%)' }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11,13,18,0.97) 0%, rgba(11,13,18,0.5) 50%, transparent 100%)' }} />
 
             <div style={{ position: 'absolute', bottom: 24, left: 20, right: 20 }}>
               <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, fontStyle: 'italic' as const, color: '#f5f1eb', marginBottom: 8, lineHeight: 1.1 }}>
                 {currentItem.title}
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: currentItem.description ? 8 : 0 }}>
                 {currentItem.type && <span style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 20, color: '#C89B3C', fontFamily: "'Outfit',sans-serif" }}>{currentItem.type}</span>}
                 {currentItem.genre && <span style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, color: '#8a94a8', fontFamily: "'Outfit',sans-serif" }}>{currentItem.genre}</span>}
                 {currentItem.year && <span style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, color: '#8a94a8', fontFamily: "'Outfit',sans-serif" }}>{currentItem.year}</span>}
                 {currentItem.rating && <span style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, color: '#8a94a8', fontFamily: "'Outfit',sans-serif" }}>★ {currentItem.rating}</span>}
               </div>
-            </div>
-
-            <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: myVoteForCurrent ? (myVoteForCurrent.vote ? 'rgba(94,201,122,0.3)' : 'rgba(224,123,123,0.3)') : 'rgba(255,255,255,0.1)', border: `2px solid ${myVoteForCurrent ? (myVoteForCurrent.vote ? '#5ec97a' : '#e07b7b') : 'rgba(255,255,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
-                {myVoteForCurrent ? (myVoteForCurrent.vote ? '✓' : '✗') : '?'}
-              </div>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: otherVoteForCurrent ? (otherVoteForCurrent.vote ? 'rgba(94,201,122,0.3)' : 'rgba(224,123,123,0.3)') : 'rgba(255,255,255,0.1)', border: `2px solid ${otherVoteForCurrent ? (otherVoteForCurrent.vote ? '#5ec97a' : '#e07b7b') : 'rgba(255,255,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
-                {otherVoteForCurrent ? (otherVoteForCurrent.vote ? '✓' : '✗') : '?'}
-              </div>
+              {currentItem.description && (
+                <div style={{ fontSize: 12, color: 'rgba(138,148,168,0.75)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, fontFamily: "'Outfit',sans-serif" }}>
+                  {currentItem.description}
+                </div>
+              )}
             </div>
           </div>
 
           <div style={{ padding: '16px 20px calc(80px + env(safe-area-inset-bottom, 16px))', display: 'flex', gap: 12 }}>
-            <button onClick={() => handleVote(false)} disabled={!!myVoteForCurrent}
-              style={{ flex: 1, padding: '16px', background: myVoteForCurrent?.vote === false ? 'rgba(224,123,123,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${myVoteForCurrent?.vote === false ? 'rgba(224,123,123,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 16, color: '#e07b7b', fontSize: 20, cursor: myVoteForCurrent ? 'default' : 'pointer' }}>
+            <button onClick={() => handleVote(false)} disabled={alreadyVoted}
+              style={{ flex: 1, padding: '16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, color: '#e07b7b', fontSize: 20, cursor: alreadyVoted ? 'default' : 'pointer', opacity: alreadyVoted ? 0.4 : 1 }}>
               ✗
             </button>
-            <button onClick={() => handleVote(true)} disabled={!!myVoteForCurrent}
-              style={{ flex: 2, padding: '16px', background: myVoteForCurrent?.vote === true ? 'rgba(94,201,122,0.2)' : '#C89B3C', border: `1px solid ${myVoteForCurrent?.vote === true ? 'rgba(94,201,122,0.5)' : 'transparent'}`, borderRadius: 16, color: myVoteForCurrent?.vote === true ? '#5ec97a' : '#0B0D12', fontSize: 15, fontWeight: 700, cursor: myVoteForCurrent ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif" }}>
-              {myVoteForCurrent?.vote === true ? '✓ Votado' : 'Sim ✓'}
+            <button onClick={() => handleVote(true)} disabled={alreadyVoted}
+              style={{ flex: 2, padding: '16px', background: alreadyVoted ? 'rgba(200,155,60,0.25)' : '#C89B3C', border: 'none', borderRadius: 16, color: alreadyVoted ? 'rgba(200,155,60,0.5)' : '#0B0D12', fontSize: 15, fontWeight: 700, cursor: alreadyVoted ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif" }}>
+              {alreadyVoted ? '✓ Votado' : 'Sim ✓'}
             </button>
           </div>
         </div>
+
+        {/* Banner "Explorar mais" */}
+        {showMatchBanner && createPortal(
+          <div style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(11,13,18,0.92)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontStyle: 'italic' as const, color: '#f5f1eb', textAlign: 'center', marginBottom: 12 }}>
+              Ainda sem match
+            </div>
+            <div style={{ fontSize: 14, color: '#8a94a8', textAlign: 'center', marginBottom: 32, lineHeight: 1.6 }}>
+              Votaste em todas as sugestões disponíveis.<br />
+              Queres explorar mais ou aguardar que o teu parceiro vote?
+            </div>
+            <button
+              onClick={async () => {
+                if (!session) return;
+                setAddingMore(true);
+                const catIds = session.catId.split(',');
+                const chunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 30, {})));
+                const existing = new Set(items.map(i => i.title));
+                const newItems = chunks.flat().filter(i => !existing.has(i.title)).slice(0, 5);
+                if (newItems.length === 0) { onToast('Sem mais sugestões disponíveis'); setAddingMore(false); return; }
+                await addItemsToSession(session.id, newItems.map(i => i.title));
+                const newLocalItems = newItems.map(i => ({ title: i.title, img: i.img, genre: i.genre, type: i.type, rating: i.rating ?? null, year: i.year ?? null, description: (i as any).description ?? null }));
+                setItems(prev => {
+                  const updated = [...prev, ...newLocalItems];
+                  setCurrentIdx(prev.length);
+                  return updated;
+                });
+                setShowMatchBanner(false);
+                setAddingMore(false);
+              }}
+              disabled={addingMore}
+              style={{ width: '100%', maxWidth: 300, padding: '14px', background: '#C89B3C', border: 'none', borderRadius: 14, color: '#0B0D12', fontSize: 14, fontWeight: 700, cursor: addingMore ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif", marginBottom: 12 }}
+            >
+              {addingMore ? 'A carregar...' : 'Ver mais sugestões'}
+            </button>
+            <button
+              onClick={() => setShowMatchBanner(false)}
+              style={{ background: 'none', border: 'none', color: '#8a94a8', fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+            >
+              Aguardar — o parceiro ainda está a votar
+            </button>
+          </div>,
+          document.body
+        )}
       </div>
     );
   }
@@ -915,23 +997,52 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   // ── PHASE: MATCHED ──
   if (phase === 'matched' && matchedItem) {
     return createPortal(
-      <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        {matchedItem.img && (
-          <img src={matchedItem.img} alt="" style={{ width: '100%', maxWidth: 360, height: 220, objectFit: 'cover', borderRadius: 20, marginBottom: 24 }} />
-        )}
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 14, fontStyle: 'italic' as const, color: '#C89B3C', letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase' as const }}>
-          ✦ Match!
+      <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.95)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <style>{`
+          @keyframes matchPop {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          @keyframes matchFadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+        <div style={{ fontSize: 72, color: '#C89B3C', marginBottom: 24, animation: 'matchPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' }}>
+          ✦
         </div>
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontWeight: 700, fontStyle: 'italic' as const, color: '#f5f1eb', textAlign: 'center', marginBottom: 8 }}>
+        {matchedItem.img && (
+          <img src={matchedItem.img} alt="" style={{ width: '100%', maxWidth: 320, height: 200, objectFit: 'cover', borderRadius: 20, marginBottom: 20, animation: 'matchFadeUp 0.4s 0.3s both' }} />
+        )}
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 13, fontStyle: 'italic' as const, color: '#C89B3C', letterSpacing: 3, marginBottom: 8, textTransform: 'uppercase' as const, animation: 'matchFadeUp 0.4s 0.4s both' }}>
+          Match!
+        </div>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, fontWeight: 700, fontStyle: 'italic' as const, color: '#f5f1eb', textAlign: 'center', marginBottom: 6, animation: 'matchFadeUp 0.4s 0.5s both' }}>
           {matchedItem.title}
         </div>
-        <div style={{ fontSize: 13, color: '#8a94a8', marginBottom: 32, textAlign: 'center' }}>
+        <div style={{ fontSize: 13, color: '#8a94a8', marginBottom: 32, animation: 'matchFadeUp 0.4s 0.6s both' }}>
           Os dois disseram sim!
         </div>
-        <button onClick={handleReset}
-          style={{ padding: '14px 32px', background: '#C89B3C', color: '#0B0D12', border: 'none', borderRadius: 16, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>
-          Fechar
-        </button>
+        <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 300, animation: 'matchFadeUp 0.4s 0.7s both' }}>
+          <button
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({ title: `Match: ${matchedItem.title}`, text: `Fizemos match em "${matchedItem.title}" no What to!`, url: 'https://what-to-zdka.vercel.app' });
+              } else {
+                navigator.clipboard?.writeText(`Fizemos match em "${matchedItem.title}" no What to!`);
+                onToast('✦ Copiado para partilhar!');
+              }
+            }}
+            style={{ flex: 1, padding: '13px', background: 'rgba(200,155,60,0.15)', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 14, color: '#C89B3C', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+          >
+            Partilhar
+          </button>
+          <button onClick={handleReset}
+            style={{ flex: 1, padding: '13px', background: '#C89B3C', color: '#0B0D12', border: 'none', borderRadius: 14, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}>
+            Fechar
+          </button>
+        </div>
       </div>,
       document.body
     );
