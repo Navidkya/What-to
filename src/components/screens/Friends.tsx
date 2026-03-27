@@ -168,7 +168,10 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
     // Convites Match via mensagens
     try {
       const convs = await loadConversations(userId);
-      const matchConvs = convs.filter(c => c.lastMessage === 'Convite para Match' && (c.unreadCount || 0) > 0);
+      const matchConvs = convs.filter(c =>
+        (c.lastMessage === 'Convite para Match' || c.lastMessage?.includes('MATCH_INVITE')) &&
+        (c.unreadCount || 0) > 0
+      );
       for (const conv of matchConvs) {
         const msgs = await loadMessages(conv.id);
         const inviteMsg = [...msgs].reverse().find(m => m.text?.startsWith('MATCH_INVITE:'));
@@ -228,6 +231,10 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
     }, 400);
     return () => clearTimeout(timer);
   }, [search, userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (tab === 'notifications' && userId) load();
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSendRequest = async (targetId: string, name: string) => {
     if (!userId) return;
@@ -335,59 +342,68 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
           }}>←</button>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs com ícones */}
         <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 20 }}>
-          <button style={s.tab(tab === 'friends')} onClick={() => setTab('friends')}>
-            Os meus amigos
+
+          {/* Amigos */}
+          <button title="Os meus amigos" style={{ ...s.tab(tab === 'friends'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => setTab('friends')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
           </button>
-          <button style={s.tab(tab === 'search')} onClick={() => setTab('search')}>
-            Adicionar
+
+          {/* Adicionar */}
+          <button title="Adicionar amigo" style={{ ...s.tab(tab === 'search'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => setTab('search')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+              <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+            </svg>
           </button>
-          <button style={{ ...s.tab(tab === 'requests'), position: 'relative' }}
-            onClick={() => setTab('requests')}>
-            Pedidos
-            {pendingRequests.length > 0 && (
-              <span style={{
-                position: 'absolute', top: 6, right: '20%',
-                background: '#C89B3C', color: '#0B0D12',
-                borderRadius: '50%', width: 16, height: 16,
-                fontSize: 10, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {pendingRequests.length}
-              </span>
-            )}
-          </button>
-          <button style={{ ...s.tab(tab === 'notifications'), position: 'relative' }}
+
+          {/* Notificações */}
+          <button title="Notificações" style={{ ...s.tab(tab === 'notifications'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
             onClick={() => setTab('notifications')}>
-            Notif.
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
             {notifications.length > 0 && (
-              <span style={{
-                position: 'absolute', top: 6, right: '5%',
-                background: '#C89B3C', color: '#0B0D12',
-                borderRadius: '50%', width: 16, height: 16,
-                fontSize: 10, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
+              <span style={{ position: 'absolute', top: 6, right: '18%', background: '#C89B3C', color: '#0B0D12', borderRadius: '50%', width: 15, height: 15, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {notifications.length > 9 ? '9+' : notifications.length}
               </span>
             )}
           </button>
-          <button style={{ ...s.tab(tab === 'messages'), position: 'relative' }}
+
+          {/* Mensagens */}
+          <button title="Mensagens" style={{ ...s.tab(tab === 'messages'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
             onClick={() => setTab('messages')}>
-            Mensagens
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
             {unreadMessages > 0 && (
-              <span style={{
-                position: 'absolute', top: 6, right: '10%',
-                background: '#C89B3C', color: '#0B0D12',
-                borderRadius: '50%', width: 16, height: 16,
-                fontSize: 10, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
+              <span style={{ position: 'absolute', top: 6, right: '18%', background: '#C89B3C', color: '#0B0D12', borderRadius: '50%', width: 15, height: 15, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {unreadMessages > 9 ? '9+' : unreadMessages}
               </span>
             )}
           </button>
+
+          {/* Pedidos */}
+          <button title="Pedidos de amizade" style={{ ...s.tab(tab === 'requests'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+            onClick={() => setTab('requests')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+              <polyline points="16 11 18 13 22 9"/>
+            </svg>
+            {pendingRequests.length > 0 && (
+              <span style={{ position: 'absolute', top: 6, right: '18%', background: '#C89B3C', color: '#0B0D12', borderRadius: '50%', width: 15, height: 15, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
+
         </div>
 
         {/* TAB: Os meus amigos */}
@@ -600,7 +616,9 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
         {/* TAB: Notificações */}
         {tab === 'notifications' && (
           <div>
-            {notifications.length === 0 ? (
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: 40, color: '#8a94a8', fontSize: 13 }}>A carregar…</div>
+            ) : notifications.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(138,148,168,0.5)', fontSize: 13, fontFamily: "'Outfit',sans-serif" }}>
                 Sem notificações
               </div>

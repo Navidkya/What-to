@@ -156,11 +156,16 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
 
   useEffect(() => {
     if (!isActive || !initialJoinCode || !userId) return;
-    setJoinCode(initialJoinCode);
+    if (initialJoinCode.trim().length < 8) { onJoinCodeConsumed?.(); return; }
     const t = window.setTimeout(async () => {
       setLoading(true);
-      const sess = await joinMatchSession(initialJoinCode, userId);
-      if (!sess) { onToast('Sessão não encontrada ou já iniciada'); setLoading(false); onJoinCodeConsumed?.(); return; }
+      const sess = await joinMatchSession(initialJoinCode.trim(), userId);
+      if (!sess) {
+        onToast('Sessão não encontrada ou já iniciada');
+        setLoading(false);
+        onJoinCodeConsumed?.();
+        return;
+      }
       const catIds = sess.catId.split(',');
       const allCachedChunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 100, {})));
       const cached = allCachedChunks.flat();
@@ -168,7 +173,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       const orderedItems = sess.itemTitles.map(title => {
         const found = cacheMap.get(title);
         return found
-          ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating, year: found.year }
+          ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null }
           : { title, img: null, genre: '', type: '', rating: null, year: null };
       });
       setSession(sess);
@@ -181,7 +186,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       setLoading(false);
       onToast('✦ Entraste na sessão!');
       onJoinCodeConsumed?.();
-    }, 100);
+    }, 150);
     return () => window.clearTimeout(t);
   }, [isActive, initialJoinCode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -60,16 +60,16 @@ export async function joinMatchSession(
   userId: string
 ): Promise<MatchSession | null> {
   try {
-    // Tenta match exacto primeiro (quando vem do convite com ID completo)
+    // Tenta match exacto por ID completo (sem filtro de status — aceita waiting OU active)
     const { data: exact } = await supabase
       .from('match_sessions')
       .select('*')
       .eq('id', sessionId)
-      .eq('status', 'waiting')
+      .in('status', ['waiting', 'active'])
       .maybeSingle();
 
     const found = exact ?? await (async () => {
-      // Fallback: prefixo para código curto manual
+      // Fallback: prefixo para código curto manual (só waiting)
       const { data } = await supabase
         .from('match_sessions')
         .select('*')
@@ -80,6 +80,16 @@ export async function joinMatchSession(
     })();
 
     if (!found) return null;
+
+    // Se já está active e joined_by é este user, apenas retorna a sessão
+    if (found.status === 'active' && found.joined_by === userId) {
+      return mapSession(found);
+    }
+
+    // Se já está active e joined_by é outro user, erro
+    if (found.status === 'active' && found.joined_by && found.joined_by !== userId) {
+      return null;
+    }
 
     const { data, error } = await supabase
       .from('match_sessions')
