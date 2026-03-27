@@ -8,7 +8,7 @@ import { loadFriends } from '../../services/friends';
 import type { FriendProfile } from '../../services/friends';
 import {
   createMatchSession, joinMatchSession, getActiveSessionForUser,
-  submitMatchVote, getMatchVotes, advanceMatchIndex,
+  submitMatchVote, advanceMatchIndex,
   endMatchSession, listenMatchSession, listenMatchVotes,
   checkMatchForItem, addItemsToSession,
 } from '../../services/match';
@@ -95,12 +95,12 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const [phase, setPhase] = useState<Phase>('home');
   const [selectedCats, setSelectedCats] = useState<string[]>(['watch']);
   const [session, setSession] = useState<MatchSession | null>(null);
-  const [votes, setVotes] = useState<MatchVote[]>([]);
+  const [, setVotes] = useState<MatchVote[]>([]);
   const [joinCode, setJoinCode] = useState('');
   const [items, setItems] = useState<LocalItem[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [matchedItem, setMatchedItem] = useState<{ title: string; img: string | null } | null>(null);
-  const [myVote, setMyVote] = useState<boolean | null>(null);
+  const [, setMyVote] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [showFriendInvite, setShowFriendInvite] = useState(false);
