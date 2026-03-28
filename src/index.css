@@ -1965,3 +1965,119 @@ body::after {
   border-color: rgba(200,155,60,0.5);
   color: var(--ac);
 }
+
+/* ─── V83 Match mode cards ─── */
+.match-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.match-mode-card {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  padding: 0;
+  height: 130px;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.match-mode-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(200,155,60,0.3);
+}
+.match-mode-card:active { transform: scale(0.98); }
+.match-mode-card-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.match-mode-local-bg {
+  background: radial-gradient(ellipse at 30% 70%, rgba(200,155,60,0.08) 0%, transparent 70%);
+}
+.match-mode-online-bg {
+  background: radial-gradient(ellipse at 70% 30%, rgba(56,139,220,0.1) 0%, transparent 70%);
+}
+.match-mode-online {
+  border-color: rgba(200,155,60,0.35);
+  background: rgba(200,155,60,0.04);
+}
+.match-mode-card-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 6px;
+}
+.match-mode-icon { color: var(--mu); margin-bottom: 2px; }
+.match-mode-online .match-mode-icon { color: var(--ac); }
+.match-mode-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--tx);
+  margin: 0;
+}
+.match-mode-sub {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  color: var(--mu);
+  margin: 0;
+}
+.match-mode-online .match-mode-title { color: var(--ac); }
+@keyframes wifi-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.match-mode-icon-pulse { animation: wifi-pulse 2.5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .match-mode-icon-pulse { animation: none; } }
+
+/* Match join section — V83 */
+.match-join-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.match-section-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ac);
+  margin-bottom: 10px;
+  display: block;
+}
+.match-join-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.03);
+  color: var(--tx);
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
+  text-align: left;
+}
+.match-join-btn:hover {
+  border-color: rgba(200,155,60,0.3);
+  background: rgba(200,155,60,0.04);
+}
+.match-join-btn.active {
+  background: rgba(200,155,60,0.08);
+  border-color: rgba(200,155,60,0.25);
+  color: var(--ac);
+}
+.match-join-btn svg { color: var(--ac); flex-shrink: 0; }

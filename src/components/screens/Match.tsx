@@ -877,45 +877,44 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
           <div style={{ marginBottom: 32 }}>
             <div style={s.lbl}>Criar sessão</div>
 
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div className="match-mode-grid">
               {/* Local */}
-              <button
-                onClick={() => setMode('local')}
-                style={{ flex: 1, padding: '18px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, color: '#f5f1eb', cursor: 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 10 }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="5" y="2" width="14" height="20" rx="2" />
-                  <circle cx="12" cy="17" r="1" fill="currentColor" />
-                </svg>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "'Outfit',sans-serif" }}>Local</div>
-                  <div style={{ fontSize: 11, color: '#8a94a8', marginTop: 2 }}>Passa o telefone</div>
+              <button className="match-mode-card" onClick={() => setMode('local')}>
+                <div className="match-mode-card-bg match-mode-local-bg" />
+                <div className="match-mode-card-content">
+                  <span className="match-mode-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="5" y="2" width="14" height="20" rx="2" />
+                      <circle cx="12" cy="17" r="1" fill="currentColor" />
+                    </svg>
+                  </span>
+                  <p className="match-mode-title">Local</p>
+                  <p className="match-mode-sub">Passa o telefone</p>
                 </div>
               </button>
 
               {/* Online */}
-              <button
-                onClick={() => { setMode('online'); setShowFilterSetup(true); }}
-                disabled={loading}
-                style={{ flex: 1, padding: '18px 12px', background: loading ? 'rgba(200,155,60,0.2)' : 'rgba(200,155,60,0.1)', border: '1px solid rgba(200,155,60,0.35)', borderRadius: 16, color: '#C89B3C', cursor: loading ? 'default' : 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 10 }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-                  <path d="M1.42 9a16 16 0 0 1 21.16 0" />
-                  <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-                  <circle cx="12" cy="20" r="1" fill="currentColor" />
-                </svg>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "'Outfit',sans-serif" }}>{loading ? 'A criar...' : 'Online'}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', marginTop: 2 }}>À distância</div>
+              <button className="match-mode-card match-mode-online" onClick={() => { setMode('online'); setShowFilterSetup(true); }} disabled={loading}>
+                <div className="match-mode-card-bg match-mode-online-bg" />
+                <div className="match-mode-card-content">
+                  <span className="match-mode-icon match-mode-icon-pulse">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                      <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                      <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                      <circle cx="12" cy="20" r="1" fill="currentColor" />
+                    </svg>
+                  </span>
+                  <p className="match-mode-title">{loading ? 'A criar...' : 'Online'}</p>
+                  <p className="match-mode-sub">À distância</p>
                 </div>
               </button>
             </div>
           </div>
 
           {/* SECÇÃO 2 — Entrar em sessão */}
-          <div>
-            <div style={s.lbl}>Entrar em sessão</div>
+          <div className="match-join-section">
+            <span className="match-section-label">Entrar em sessão</span>
 
             {/* Convites activos */}
             <div style={{ marginBottom: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
@@ -946,8 +945,8 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
 
             {/* Ler QR Code */}
             <button
+              className="match-join-btn"
               onClick={() => onToast('Em breve — leitura de QR Code')}
-              style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, color: '#8a94a8', fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit',sans-serif", display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
@@ -957,8 +956,8 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
             </button>
 
             <button
+              className={`match-join-btn${showJoinCode ? ' active' : ''}`}
               onClick={() => setShowJoinCode(v => !v)}
-              style={{ width: '100%', padding: '12px 16px', background: showJoinCode ? 'rgba(200,155,60,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${showJoinCode ? 'rgba(200,155,60,0.25)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 12, color: showJoinCode ? '#C89B3C' : '#8a94a8', fontSize: 13, cursor: 'pointer', fontFamily: "'Outfit',sans-serif", display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
