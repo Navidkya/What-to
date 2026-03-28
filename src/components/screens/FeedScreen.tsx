@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PageHeader from '../ui/PageHeader';
 import { createPortal } from 'react-dom';
 import type { Profile, HistoryEntry } from '../../types';
 import { loadActiveSuggestions } from '../../services/influencers';
@@ -481,8 +482,8 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
       </div>
 
       {/* Header */}
-      <div style={{ position:'sticky', top:0, zIndex:20, background:'rgba(6,8,16,0.9)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', padding:'52px 20px 12px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:700, fontStyle:'italic', color:'#f5f1eb', letterSpacing:-0.3 }}>Feed</div>
+      <div style={{ position:'sticky', top:0, zIndex:20, background:'rgba(6,8,16,0.9)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', padding:'40px 20px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+        <PageHeader label="Descoberta" title="Feed" />
       </div>
 
 

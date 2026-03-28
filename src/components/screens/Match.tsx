@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import PageHeader from '../ui/PageHeader';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import type { Profile } from '../../types';
@@ -815,10 +816,8 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   if (phase === 'home' && mode === null) {
     return (
       <div style={s.screen}>
-        <div style={s.tb}>
-          <button style={s.backBtn} onClick={onBack}>←</button>
-          <div style={s.title}>Match</div>
-          <div style={{ width: 40 }} />
+        <div style={{ padding: '40px 20px 0' }}>
+          <PageHeader label="Jogo" title="Match" onBack={onBack} />
         </div>
         <div style={s.inner}>
 

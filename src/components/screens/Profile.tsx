@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PageHeader from '../ui/PageHeader';
 import type { Profile as ProfileType, HistoryEntry, TrackingMap, PrefsMap, WishlistEntry, PermanentPrefs } from '../../types';
 import { ALL_PLATFORMS, PLATFORM_SECTIONS, CATS } from '../../data';
 import { setFeedPrivacy } from '../../services/feedEvents';
@@ -148,14 +149,13 @@ export default function Profile({
 
   return (
     <div className="h-screen-content" id="profile" style={{ paddingBottom: 80 }}>
-      <div className="screen-header" style={{ paddingBottom: 12, maxWidth: 480, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div className="screen-title">{name}</div>
-            <div className="screen-sub">{done.length} actividades · {wishlist.length} guardadas</div>
-          </div>
-          <button className="tbi" onClick={onBack} style={{ marginTop: 4 }}>←</button>
-        </div>
+      <div style={{ padding: '36px 20px 0', maxWidth: 480, margin: '0 auto' }}>
+        <PageHeader
+          label="Perfil"
+          title={name}
+          subtitle={`${done.length} actividades · ${wishlist.length} guardadas`}
+          onBack={onBack}
+        />
       </div>
 
       <div className="prof-inner" style={{ maxWidth: 480, margin: '0 auto' }}>

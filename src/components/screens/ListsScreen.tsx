@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PageHeader from '../ui/PageHeader';
 import type { UserList, UserListItem } from '../../types';
 
 interface Props {
@@ -70,7 +71,7 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast, o
       <div style={{ width: '100%', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header */}
-        <div style={{ padding: '56px 20px 0', flexShrink: 0 }}>
+        <div style={{ padding: '44px 20px 0', flexShrink: 0 }}>
           {activeList ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <button onClick={() => setActiveListId(null)} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 20, cursor: 'pointer', padding: 4 }}>←</button>
@@ -94,17 +95,18 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast, o
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}>←</button>
-                <div>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontWeight: 700, fontStyle: 'italic', letterSpacing: -0.5 }}>As minhas listas</div>
-                  <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 2 }}>{lists.length} {lists.length === 1 ? 'lista' : 'listas'}</div>
-                </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+              <div style={{ flex: 1 }}>
+                <PageHeader
+                  label="Coleccao"
+                  title="As minhas listas"
+                  subtitle={`${lists.length} ${lists.length === 1 ? 'lista' : 'listas'}`}
+                  onBack={onBack}
+                />
               </div>
               <button
                 onClick={() => setCreating(true)}
-                style={{ background: 'rgba(200,155,60,0.1)', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 10, padding: '8px 14px', color: 'var(--ac)', fontSize: 12, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', fontWeight: 600 }}
+                style={{ background: 'rgba(200,155,60,0.1)', border: '1px solid rgba(200,155,60,0.3)', borderRadius: 10, padding: '8px 14px', color: 'var(--ac)', fontSize: 12, fontFamily: "'Outfit', sans-serif", cursor: 'pointer', fontWeight: 600, flexShrink: 0, marginBottom: 20 }}
               >
                 + Nova lista
               </button>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import PageHeader from '../ui/PageHeader';
 import { createPortal } from 'react-dom';
 import type { Screen, Conversation } from '../../types';
 import {
@@ -324,22 +325,13 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
       <div style={s.inner}>
 
         {/* Header */}
-        <div style={{ paddingTop: 56, paddingBottom: 16,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif",
-              fontSize: 32, fontStyle: 'italic', fontWeight: 600,
-              color: '#f5f1eb', lineHeight: 1.1 }}>
-              Amigos
-            </div>
-            <div style={{ fontSize: 12, color: '#8a94a8', marginTop: 3 }}>
-              {friends.length} {friends.length === 1 ? 'amigo' : 'amigos'}
-            </div>
-          </div>
-          <button onClick={() => onNav('home')} style={{
-            background: 'none', border: 'none', color: '#8a94a8',
-            fontSize: 20, cursor: 'pointer', padding: 8,
-          }}>←</button>
+        <div style={{ paddingTop: 44 }}>
+          <PageHeader
+            label="Social"
+            title="Amigos"
+            subtitle={`${friends.length} ${friends.length === 1 ? 'amigo' : 'amigos'}`}
+            onBack={() => onNav('home')}
+          />
         </div>
 
         {/* Tabs com ícones */}
