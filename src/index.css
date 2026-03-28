@@ -1756,3 +1756,84 @@ body::after {
   margin: 0;
   letter-spacing: 0.01em;
 }
+
+/* ─── V81 History Screen ─── */
+.history-filters {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.history-filters::-webkit-scrollbar { display: none; }
+
+.history-filter-pill {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Outfit', sans-serif;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--mu);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.history-filter-pill.active {
+  background: rgba(200,155,60,0.15);
+  border-color: rgba(200,155,60,0.4);
+  color: var(--ac);
+  font-weight: 600;
+}
+
+.history-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 20px;
+}
+.history-search-icon {
+  position: absolute;
+  left: 32px;
+  color: var(--mu);
+  pointer-events: none;
+}
+.history-search {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 9px 14px 9px 36px;
+  color: var(--tx);
+  font-size: 13px;
+  font-family: 'Outfit', sans-serif;
+}
+.history-search::placeholder { color: var(--mu); }
+.history-search:focus { outline: none; border-color: rgba(200,155,60,0.3); }
+
+.history-date-separator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 6px;
+}
+.history-date-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--mu);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.history-date-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+}

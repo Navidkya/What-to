@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactElement } from 'react';
 import type { HistoryEntry, TrackingMap } from '../../types';
 import { CATS, TSTATE, TCOLOR } from '../../data';
+import { Film, Utensils, BookOpen, Headphones, Gamepad2, Zap, Clock, Search } from 'lucide-react';
 
 interface ChecklistProps {
   history: HistoryEntry[];
@@ -65,14 +66,14 @@ function getTMDBThumb(title: string): string | null {
 }
 
 // Unified filter tabs: hist + trackable cats
-const CL_FILTER_TABS = [
-  { id: 'hist', label: 'Histórico' },
-  { id: 'watch', label: 'Ver' },
-  { id: 'eat', label: 'Comer' },
-  { id: 'play', label: 'Jogar' },
-  { id: 'read', label: 'Ler' },
-  { id: 'do', label: 'Fazer' },
-  { id: 'listen', label: 'Ouvir' },
+const CAT_FILTERS: { id: string; label: string; icon: ReactElement }[] = [
+  { id: 'hist',   label: 'Histórico', icon: <Clock size={13} /> },
+  { id: 'watch',  label: 'Ver',       icon: <Film size={13} /> },
+  { id: 'eat',    label: 'Comer',     icon: <Utensils size={13} /> },
+  { id: 'play',   label: 'Jogar',     icon: <Gamepad2 size={13} /> },
+  { id: 'read',   label: 'Ler',       icon: <BookOpen size={13} /> },
+  { id: 'do',     label: 'Fazer',     icon: <Zap size={13} /> },
+  { id: 'listen', label: 'Ouvir',     icon: <Headphones size={13} /> },
 ];
 
 export default function Checklist({ history, tracking, isActive, onBack, onRemoveHistory }: ChecklistProps) {
@@ -107,8 +108,9 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
         const group = buckets[bucket];
         if (!group.length) return;
         rendered.push(
-          <div key={bucket} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--mu)', padding: '8px 0 4px' }}>
-            {BUCKET_LABELS[bucket]}
+          <div key={bucket} className="history-date-separator">
+            <span className="history-date-label">{BUCKET_LABELS[bucket]}</span>
+            <div className="history-date-line" />
           </div>
         );
         group.forEach((h, i) => {
@@ -190,33 +192,23 @@ export default function Checklist({ history, tracking, isActive, onBack, onRemov
       </div>
 
       {/* Filter pills */}
-      <div style={{ display:'flex', gap:8, padding:'0 20px 12px', overflowX:'auto', scrollbarWidth:'none' }}>
-        {CL_FILTER_TABS.map(t => (
+      <div className="history-filters">
+        {CAT_FILTERS.map(t => (
           <button
             key={t.id}
+            className={`history-filter-pill${tab === t.id ? ' active' : ''}`}
             onClick={() => setTab(t.id)}
-            style={{
-              flexShrink: 0,
-              padding: '6px 14px',
-              borderRadius: 50,
-              fontSize: 12,
-              fontWeight: tab === t.id ? 600 : 400,
-              fontFamily: "'Outfit', sans-serif",
-              background: tab === t.id ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.05)',
-              border: tab === t.id ? '1px solid rgba(200,155,60,0.4)' : '1px solid rgba(255,255,255,0.08)',
-              color: tab === t.id ? '#C89B3C' : '#8a94a8',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
           >
-            {t.label}
+            {t.icon}{t.label}
           </button>
         ))}
       </div>
 
-      <div className="cl-search mw">
+      <div className="history-search-wrap mw">
+        <Search size={15} className="history-search-icon" />
         <input
-          placeholder="🔍  pesquisar..."
+          className="history-search"
+          placeholder="pesquisar..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           autoComplete="off"
