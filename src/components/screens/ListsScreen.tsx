@@ -1,6 +1,22 @@
 import { useState } from 'react';
 import PageHeader from '../ui/PageHeader';
+import EmptyState from '../ui/EmptyState';
+import { Film, Utensils, BookOpen, Headphones, Gamepad2, GraduationCap, MapPin, Zap, Bookmark, List } from 'lucide-react';
 import type { UserList, UserListItem } from '../../types';
+
+function getCategoryIcon(emoji: string, size = 18) {
+  const map: Record<string, JSX.Element> = {
+    '🎬': <Film size={size} />, '🎥': <Film size={size} />, '📺': <Film size={size} />,
+    '🍽️': <Utensils size={size} />, '🍴': <Utensils size={size} />, '🍕': <Utensils size={size} />,
+    '📚': <BookOpen size={size} />, '📖': <BookOpen size={size} />, '📗': <BookOpen size={size} />,
+    '🎵': <Headphones size={size} />, '🎶': <Headphones size={size} />, '🎧': <Headphones size={size} />,
+    '🎮': <Gamepad2 size={size} />, '🕹️': <Gamepad2 size={size} />,
+    '🎓': <GraduationCap size={size} />, '📝': <GraduationCap size={size} />,
+    '📍': <MapPin size={size} />, '🗺️': <MapPin size={size} />,
+    '⚡': <Zap size={size} />, '✨': <Zap size={size} />,
+  };
+  return map[emoji] ?? <List size={size} />;
+}
 
 interface Props {
   lists: UserList[];
@@ -76,8 +92,8 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast, o
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <button onClick={() => setActiveListId(null)} style={{ background: 'none', border: 'none', color: 'var(--mu)', fontSize: 20, cursor: 'pointer', padding: 4 }}>←</button>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, fontStyle: 'italic' }}>
-                  {activeList.emoji} {activeList.name}
+                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: 'var(--ac)', display: 'flex' }}>{getCategoryIcon(activeList.emoji, 20)}</span>{activeList.name}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{activeList.items.length} itens</div>
               </div>
@@ -163,19 +179,21 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast, o
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px', paddingBottom: 100 }}>
           {!activeList ? (
             lists.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 250, gap: 12 }}>
-                <div style={{ fontSize: 40, opacity: 0.2 }}>📋</div>
-                <div style={{ fontSize: 14, color: 'var(--mu)', textAlign: 'center' }}>Ainda sem listas</div>
-                <div style={{ fontSize: 12, color: 'rgba(156,165,185,0.5)', textAlign: 'center' }}>Cria uma lista para guardar sugestões</div>
-              </div>
+              <EmptyState
+                icon={<Bookmark size={32} />}
+                title="Nenhuma lista ainda"
+                description="Guarda sugestões em listas para encontrares mais tarde."
+                ctaLabel="Criar lista"
+                ctaAction={() => setCreating(true)}
+              />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 4 }}>
                 {lists.map(list => (
                   <div key={list.id} onClick={() => setActiveListId(list.id)}
                     style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 18px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, cursor:'pointer', transition:'all 0.2s', position:'relative', overflow:'hidden' }}>
                     <div style={{ position:'absolute', left:0, top:12, bottom:12, width:3, borderRadius:'0 2px 2px 0', background:'linear-gradient(to bottom, #C89B3C, #a87535)' }} />
-                    <div style={{ width:44, height:44, borderRadius:12, background:'rgba(200,155,60,0.08)', border:'1px solid rgba(200,155,60,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>
-                      {list.emoji}
+                    <div style={{ width:44, height:44, borderRadius:12, background:'rgba(200,155,60,0.08)', border:'1px solid rgba(200,155,60,0.15)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--ac)', flexShrink:0 }}>
+                      {getCategoryIcon(list.emoji, 20)}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:16, fontWeight:600, color:'var(--tx)', fontFamily:"'Outfit',sans-serif" }}>{list.name}</div>
@@ -188,16 +206,16 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast, o
             )
           ) : (
             activeList.items.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, gap: 12 }}>
-                <div style={{ fontSize: 32, opacity: 0.2 }}>{activeList.emoji}</div>
-                <div style={{ fontSize: 14, color: 'var(--mu)', textAlign: 'center' }}>Lista vazia</div>
-                <div style={{ fontSize: 12, color: 'rgba(156,165,185,0.5)', textAlign: 'center' }}>Adiciona sugestões usando o botão ♡ nas sugestões</div>
-              </div>
+              <EmptyState
+                icon={getCategoryIcon(activeList.emoji, 32)}
+                title="Lista vazia"
+                description="Adiciona sugestões usando o botão de guardar nas sugestões."
+              />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 4 }}>
                 {activeList.items.map(item => (
                   <div key={item.id} onClick={() => setSelectedItem(item)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, cursor: 'pointer' }}>
-                    <span style={{ fontSize: 22, flexShrink: 0 }}>{item.emoji}</span>
+                    <span style={{ flexShrink: 0, color: 'var(--ac)', display: 'flex', alignItems: 'center' }}>{getCategoryIcon(item.emoji)}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
                       <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{item.cat} · {item.type}</div>

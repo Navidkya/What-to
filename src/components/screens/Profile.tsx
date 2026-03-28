@@ -188,7 +188,7 @@ export default function Profile({
             placeholder="O teu nome"
             maxLength={20}
           />
-          <button className="prof-save" onClick={saveName}>Guardar nome</button>
+          <button className="prof-save btn-ghost-gold" onClick={saveName}>Guardar nome</button>
         </div>
 
         {/* Perfil público */}

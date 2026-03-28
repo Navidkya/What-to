@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../ui/PageHeader';
+import EmptyState from '../ui/EmptyState';
+import { Users } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { Screen, Conversation } from '../../types';
 import {
@@ -407,51 +409,13 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
               </div>
             )}
             {!loading && friends.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
-                    stroke="rgba(200,155,60,0.5)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                  </svg>
-                </div>
-                <div style={{ color: 'rgba(245,241,235,0.6)', fontSize: 15,
-                  fontWeight: 500, marginBottom: 8 }}>
-                  Ainda não tens amigos
-                </div>
-                <div style={{ color: '#8a94a8', fontSize: 13, marginBottom: 20 }}>
-                  Pesquisa pelo nome de alguém que usa a app
-                </div>
-                <button style={s.btnGold} onClick={() => setTab('search')}>
-                  Adicionar amigos
-                </button>
-                <button
-                  onClick={() => {
-                    const link = `https://what-to-zdka.vercel.app`;
-                    if (navigator.share) {
-                      navigator.share({
-                        title: 'Experimenta o What to!',
-                        text: 'Descobre o que ver, jogar, ouvir ou fazer hoje. Entra aqui:',
-                        url: link,
-                      });
-                    } else {
-                      navigator.clipboard.writeText(link);
-                      onToast('✦ Link copiado!');
-                    }
-                    trackAsync({ userId, eventType: 'friend_invite_shared' });
-                  }}
-                  style={{
-                    marginTop: 10, background: 'none',
-                    border: '1px solid rgba(200,155,60,0.3)',
-                    borderRadius: 12, padding: '10px 20px',
-                    color: 'var(--ac)', fontSize: 13, cursor: 'pointer',
-                  }}
-                >
-                  ↑ Convidar amigo para a app
-                </button>
-              </div>
+              <EmptyState
+                icon={<Users size={32} />}
+                title="Nenhum amigo ainda"
+                description="Convida amigos para veres o que estão a descobrir e jogar Match juntos."
+                ctaLabel="Convidar amigos"
+                ctaAction={() => setTab('search')}
+              />
             )}
             {friends.length > 0 && (
               <button

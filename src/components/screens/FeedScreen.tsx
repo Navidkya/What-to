@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '../ui/PageHeader';
+import EmptyState from '../ui/EmptyState';
+import { Rss } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { Profile, HistoryEntry } from '../../types';
 import { loadActiveSuggestions } from '../../services/influencers';
@@ -489,6 +491,13 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
 
       {/* Cards */}
       <div style={{ padding:'12px 16px 100px' }}>
+        {cards.length === 0 && (
+          <EmptyState
+            icon={<Rss size={32} />}
+            title="Nada por aqui ainda"
+            description="Quando os teus amigos explorarem sugestões, aparece tudo aqui."
+          />
+        )}
         {cards.map(card => (
           <div key={card.id} className={(card.type === 'trending' || card.type === 'community') ? 'feed-card-trending' : ''} style={{ marginBottom:16, borderRadius:20, overflow:'hidden', background: (card.type === 'trending' || card.type === 'community') ? 'rgba(200,155,60,0.04)' : card.type === 'individual' ? 'rgba(200,155,60,0.02)' : 'rgba(255,255,255,0.03)', border: (card.type === 'trending' || card.type === 'community') ? '1px solid rgba(200,155,60,0.15)' : card.type === 'individual' ? '1px solid rgba(200,155,60,0.08)' : '1px solid rgba(255,255,255,0.07)' }}>
             {/* Card header */}

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import PageHeader from '../ui/PageHeader';
+import EmptyState from '../ui/EmptyState';
+import { Zap } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import type { Profile } from '../../types';
@@ -921,9 +923,11 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
                 Convites activos
               </div>
               {matchInvites.length === 0 ? (
-                <div style={{ padding: '10px 14px', fontSize: 12, color: 'rgba(138,148,168,0.35)', fontFamily: "'Outfit',sans-serif" }}>
-                  Sem convites activos
-                </div>
+                <EmptyState
+                  icon={<Zap size={24} />}
+                  title="Sem sessões activas"
+                  description="Cria uma sessão ou aguarda que um amigo te convide."
+                />
               ) : matchInvites.map(inv => (
                 <div key={inv.convId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(200,155,60,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#C89B3C', flexShrink: 0 }}>
