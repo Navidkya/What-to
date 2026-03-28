@@ -330,17 +330,17 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
         <div style={{ paddingTop: 44 }}>
           <PageHeader
             label="Social"
-            title="Amigos"
-            subtitle={`${friends.length} ${friends.length === 1 ? 'amigo' : 'amigos'}`}
+            title={friends.length > 0 ? `${friends.length} amigo${friends.length !== 1 ? 's' : ''}` : 'Amigos'}
+            subtitle={friends.length > 0 ? 'O que estão a descobrir' : undefined}
             onBack={() => onNav('home')}
           />
         </div>
 
         {/* Tabs com ícones */}
-        <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 20 }}>
+        <div className="friends-tabs">
 
           {/* Amigos */}
-          <button title="Os meus amigos" style={{ ...s.tab(tab === 'friends'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          <button title="Os meus amigos" className={`friends-tab${tab === 'friends' ? ' active' : ''}`}
             onClick={() => setTab('friends')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -349,7 +349,7 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
           </button>
 
           {/* Adicionar */}
-          <button title="Adicionar amigo" style={{ ...s.tab(tab === 'search'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          <button title="Adicionar amigo" className={`friends-tab${tab === 'search' ? ' active' : ''}`}
             onClick={() => setTab('search')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -358,44 +358,32 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
           </button>
 
           {/* Notificações */}
-          <button title="Notificações" style={{ ...s.tab(tab === 'notifications'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+          <button title="Notificações" className={`friends-tab${tab === 'notifications' ? ' active' : ''}`}
             onClick={() => setTab('notifications')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
-            {notifications.length > 0 && (
-              <span style={{ position: 'absolute', top: 6, right: '18%', background: '#C89B3C', color: '#0B0D12', borderRadius: '50%', width: 15, height: 15, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {notifications.length > 9 ? '9+' : notifications.length}
-              </span>
-            )}
+            {notifications.length > 0 && <span className="friends-tab-badge" />}
           </button>
 
           {/* Mensagens */}
-          <button title="Mensagens" style={{ ...s.tab(tab === 'messages'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+          <button title="Mensagens" className={`friends-tab${tab === 'messages' ? ' active' : ''}`}
             onClick={() => setTab('messages')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
-            {unreadMessages > 0 && (
-              <span style={{ position: 'absolute', top: 6, right: '18%', background: '#C89B3C', color: '#0B0D12', borderRadius: '50%', width: 15, height: 15, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {unreadMessages > 9 ? '9+' : unreadMessages}
-              </span>
-            )}
+            {unreadMessages > 0 && <span className="friends-tab-badge" />}
           </button>
 
           {/* Pedidos */}
-          <button title="Pedidos de amizade" style={{ ...s.tab(tab === 'requests'), flex: 1, padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+          <button title="Pedidos de amizade" className={`friends-tab${tab === 'requests' ? ' active' : ''}`}
             onClick={() => setTab('requests')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
               <polyline points="16 11 18 13 22 9"/>
             </svg>
-            {pendingRequests.length > 0 && (
-              <span style={{ position: 'absolute', top: 6, right: '18%', background: '#C89B3C', color: '#0B0D12', borderRadius: '50%', width: 15, height: 15, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {pendingRequests.length}
-              </span>
-            )}
+            {pendingRequests.length > 0 && <span className="friends-tab-badge" />}
           </button>
 
         </div>
@@ -419,6 +407,7 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
             )}
             {friends.length > 0 && (
               <button
+                className="friends-invite-btn"
                 onClick={() => {
                   const link = `https://what-to-zdka.vercel.app`;
                   if (navigator.share) {
@@ -433,31 +422,21 @@ export default function Friends({ isActive, onNav, onToast, userId, onPendingCou
                   }
                   trackAsync({ userId, eventType: 'friend_invite_shared' });
                 }}
-                style={{
-                  width: '100%', marginBottom: 16,
-                  background: 'rgba(200,155,60,0.08)',
-                  border: '1px solid rgba(200,155,60,0.2)',
-                  borderRadius: 12, padding: '12px',
-                  color: 'var(--ac)', fontSize: 13,
-                  fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', gap: 6,
-                }}
               >
-                ↑ Convidar mais amigos
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                Convidar amigos
               </button>
             )}
             {!loading && friends.map(f => (
-              <div key={f.friendshipId} style={{ ...s.card, cursor: 'pointer' }}
-                onClick={() => setFriendPopup(f)}>
-                <Avatar name={f.name} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, color: '#f5f1eb', fontWeight: 500 }}>{f.name}</div>
-                  {f.username && (
-                    <div style={{ fontSize: 12, color: '#8a94a8' }}>@{f.username}</div>
-                  )}
+              <div key={f.friendshipId} className="friend-card" onClick={() => setFriendPopup(f)}>
+                <div className="friend-card-avatar">
+                  {f.name?.charAt(0).toUpperCase() || '?'}
                 </div>
-                <span style={{ color: 'rgba(156,165,185,0.4)', fontSize: 18 }}>›</span>
+                <div className="friend-card-info">
+                  <p className="friend-card-name">{f.name}</p>
+                  {f.username && <p className="friend-card-username">@{f.username}</p>}
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mu)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
               </div>
             ))}
           </div>
