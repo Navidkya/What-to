@@ -11,6 +11,7 @@ import {
   submitMatchVote, advanceMatchIndex,
   endMatchSession, listenMatchSession, listenMatchVotes,
   checkMatchForItem, addItemsToSession, getMatchVotes,
+  setSessionStandby,
 } from '../../services/match';
 import type { MatchSession, MatchVote } from '../../services/match';
 import { getOrCreateConversation, sendMessage, loadConversations } from '../../services/messages';
@@ -87,6 +88,74 @@ function CatPicker({ selected, onChange }: { selected: string[]; onChange: (cats
   );
 }
 
+const GENRE_OPTIONS: Record<string, string[]> = {
+  watch: ['Acção', 'Comédia', 'Drama', 'Terror', 'Ficção Científica', 'Romance', 'Documentário', 'Animação', 'Thriller'],
+  play: ['Acção', 'RPG', 'Estratégia', 'Desporto', 'Aventura', 'Puzzle', 'Simulação'],
+  read: ['Romance', 'Ficção Científica', 'Fantasia', 'Thriller', 'Biografia', 'História', 'Manga'],
+  listen: ['Pop', 'Rock', 'Hip-Hop', 'Jazz', 'Electrónica', 'Clássica', 'Indie'],
+  eat: ['Italiana', 'Asiática', 'Portuguesa', 'Vegetariana', 'Fast Food', 'Sobremesas'],
+};
+
+function FilterPicker({ cats, filters, onChange }: {
+  cats: string[];
+  filters: Record<string, any>;
+  onChange: (f: Record<string, any>) => void;
+}) {
+  const toggleGenre = (catId: string, genre: string) => {
+    const current: string[] = filters[catId]?.genres || [];
+    const updated = current.includes(genre)
+      ? current.filter(g => g !== genre)
+      : [...current, genre];
+    onChange({ ...filters, [catId]: { ...(filters[catId] || {}), genres: updated } });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 20 }}>
+      {cats.map(catId => {
+        const catName = CAT_OPTIONS.find(c => c.id === catId)?.name || catId;
+        const genres = GENRE_OPTIONS[catId] || [];
+        const selected: string[] = filters[catId]?.genres || [];
+        return (
+          <div key={catId}>
+            <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}>
+              {catName}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+              {genres.map(g => {
+                const active = selected.includes(g);
+                return (
+                  <button key={g} onClick={() => toggleGenre(catId, g)} style={{
+                    padding: '7px 14px', borderRadius: 20,
+                    background: active ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${active ? 'rgba(200,155,60,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                    color: active ? '#C89B3C' : '#8a94a8',
+                    fontSize: 12, cursor: 'pointer', fontFamily: "'Outfit',sans-serif",
+                    fontWeight: active ? 600 : 400,
+                  }}>
+                    {g}
+                  </button>
+                );
+              })}
+              <button onClick={() => onChange({ ...filters, [catId]: { genres: [] } })} style={{
+                padding: '7px 14px', borderRadius: 20,
+                background: selected.length === 0 ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${selected.length === 0 ? 'rgba(200,155,60,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                color: selected.length === 0 ? '#C89B3C' : '#8a94a8',
+                fontSize: 12, cursor: 'pointer', fontFamily: "'Outfit',sans-serif",
+              }}>
+                Qualquer
+              </button>
+            </div>
+          </div>
+        );
+      })}
+      <div style={{ fontSize: 12, color: 'rgba(138,148,168,0.5)', fontStyle: 'italic' as const, fontFamily: "'Outfit',sans-serif", lineHeight: 1.5 }}>
+        Quanto mais géneros em comum, maior a probabilidade de match.
+      </div>
+    </div>
+  );
+}
+
 type Phase = 'home' | 'creating' | 'waiting' | 'joining' | 'playing' | 'matched' | 'done' | 'local-playing' | 'local-done';
 
 type LocalItem = { title: string; img: string | null; genre: string; type: string; rating?: number | null; year?: string | null; description?: string | null };
@@ -107,6 +176,11 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const [showQR, setShowQR] = useState(false);
 
   // Novos estados
+  const [sessionFilters, setSessionFilters] = useState<Record<string, any>>({});
+  const [showFilterSetup, setShowFilterSetup] = useState(false);
+  const [showJoinReview, setShowJoinReview] = useState(false);
+  const [pendingSession, setPendingSession] = useState<MatchSession | null>(null);
+  const [pendingItems, setPendingItems] = useState<LocalItem[]>([]);
   const [mode, setMode] = useState<'local' | 'online' | null>(null);
   const [, setSubPhase] = useState<'create' | 'join'>('create');
   const [localPlayers, setLocalPlayers] = useState<string[]>(['', '']);
@@ -200,13 +274,12 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       setMyVotedTitles(myPreviousVoted);
       myVotedTitlesRef.current = myPreviousVoted;
       const firstUnvoted = orderedItems.findIndex(i => !myPreviousVoted.has(i.title));
+      setCurrentIdx(firstUnvoted !== -1 ? firstUnvoted : 0);
+      setPendingSession(sess);
+      setPendingItems(orderedItems);
       setSession(sess);
       setItems(orderedItems);
-      setCurrentIdx(firstUnvoted !== -1 ? firstUnvoted : 0);
-      setMyVote(null);
-      setVotes([]);
-      subscribeToSession(sess);
-      setPhase('playing');
+      setShowJoinReview(true);
       setLoading(false);
       onToast('✦ Entraste na sessão!');
       onJoinCodeConsumed?.();
@@ -288,6 +361,39 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     setLoading(false);
   };
 
+  const handleCreateWithFilters = async () => {
+    if (!userId) { onToast('Precisas de estar autenticado'); return; }
+    setLoading(true);
+    const catChunks = await Promise.all(selectedCats.map(async cid => {
+      const genres: string[] = sessionFilters[cid]?.genres || [];
+      const all = await loadCachedSuggestions(cid, 60, {});
+      if (genres.length === 0) return all;
+      return all.filter(i => genres.some((g: string) =>
+        i.genre?.toLowerCase().includes(g.toLowerCase()) ||
+        (i as any).genres?.some((ig: string) => ig.toLowerCase().includes(g.toLowerCase()))
+      ));
+    }));
+    const allCached = catChunks.flat();
+    const shuffled = [...allCached].sort(() => Math.random() - 0.5);
+    const titles = shuffled.map(i => i.title).slice(0, 20);
+    const itemList = shuffled.slice(0, 20).map(i => ({
+      title: i.title, img: i.img, genre: i.genre,
+      type: i.type, rating: i.rating, year: i.year,
+      description: (i as any).description ?? null,
+    }));
+    if (titles.length === 0) { onToast('Sem sugestões para estes filtros — tenta outros géneros'); setLoading(false); return; }
+    const sess = await createMatchSession(userId, selectedCats.join(','), titles, sessionFilters);
+    if (!sess) { onToast('Erro ao criar sessão'); setLoading(false); return; }
+    setSession(sess);
+    setItems(itemList);
+    setCurrentIdx(0);
+    setMyVote(null);
+    setVotes([]);
+    subscribeToSession(sess);
+    setPhase('waiting');
+    setLoading(false);
+  };
+
   const handleJoin = async () => {
     if (!userId || !joinCode.trim()) return;
     setLoading(true);
@@ -314,13 +420,12 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     setMyVotedTitles(myPreviousVoted);
     myVotedTitlesRef.current = myPreviousVoted;
     const firstUnvoted = orderedItems.findIndex(i => !myPreviousVoted.has(i.title));
+    setCurrentIdx(firstUnvoted !== -1 ? firstUnvoted : 0);
+    setPendingSession(sess);
+    setPendingItems(orderedItems);
     setSession(sess);
     setItems(orderedItems);
-    setCurrentIdx(firstUnvoted !== -1 ? firstUnvoted : 0);
-    setMyVote(null);
-    setVotes([]);
-    subscribeToSession(sess);
-    setPhase('playing');
+    setShowJoinReview(true);
     setLoading(false);
     onToast('✦ Entraste na sessão!');
   };
@@ -401,6 +506,11 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     setPhase('home');
     setMode(null);
     setSubPhase('create');
+    setSessionFilters({});
+    setShowFilterSetup(false);
+    setShowJoinReview(false);
+    setPendingSession(null);
+    setPendingItems([]);
     setSession(null);
     setItems([]);
     setCurrentIdx(0);
@@ -436,6 +546,148 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     lbl: { fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 12 },
   };
 
+  // ── ECRÃ: configuração Online (antes de criar sessão) ──
+  if (phase === 'home' && mode === 'online' && showFilterSetup) {
+    return (
+      <div style={s.screen}>
+        <div style={s.tb}>
+          <button style={s.backBtn} onClick={() => { setMode(null); setShowFilterSetup(false); }}>←</button>
+          <div style={s.title}>Configurar sessão</div>
+          <div style={{ width: 40 }} />
+        </div>
+        <div style={s.inner}>
+          <div style={{ marginBottom: 24 }}>
+            <div style={s.lbl}>Categorias</div>
+            <CatPicker selected={selectedCats} onChange={setSelectedCats} />
+          </div>
+          <div style={{ marginBottom: 32 }}>
+            <div style={s.lbl}>Géneros preferidos</div>
+            <FilterPicker cats={selectedCats} filters={sessionFilters} onChange={setSessionFilters} />
+          </div>
+          <button
+            onClick={async () => {
+              setShowFilterSetup(false);
+              await handleCreateWithFilters();
+            }}
+            disabled={loading}
+            style={{ width: '100%', padding: '16px', background: loading ? 'rgba(200,155,60,0.3)' : '#C89B3C', color: '#0B0D12', border: 'none', borderRadius: 16, fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif" }}
+          >
+            {loading ? 'A criar...' : 'Criar sessão'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── ECRÃ: revisão de filtros para o convidado ──
+  if (showJoinReview && pendingSession) {
+    const hasFilters = Object.keys(pendingSession.filters || {}).some(k =>
+      (pendingSession.filters[k]?.genres || []).length > 0
+    );
+    return (
+      <div style={s.screen}>
+        <div style={s.tb}>
+          <button style={s.backBtn} onClick={() => { setShowJoinReview(false); handleReset(); }}>←</button>
+          <div style={s.title}>Sessão de Match</div>
+          <div style={{ width: 40 }} />
+        </div>
+        <div style={s.inner}>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontStyle: 'italic' as const, color: '#f5f1eb', marginBottom: 8 }}>
+              O teu parceiro criou uma sessão
+            </div>
+            <div style={{ fontSize: 13, color: '#8a94a8', lineHeight: 1.6 }}>
+              Categorias: {pendingSession.catId.split(',').map(id => CAT_OPTIONS.find(c => c.id === id)?.name || id).join(', ')}
+            </div>
+          </div>
+
+          {hasFilters && (
+            <div style={{ marginBottom: 24, background: 'rgba(200,155,60,0.06)', border: '1px solid rgba(200,155,60,0.15)', borderRadius: 14, padding: '14px 16px' }}>
+              <div style={s.lbl}>Filtros activos</div>
+              {Object.entries(pendingSession.filters || {}).map(([catId, f]: [string, any]) =>
+                (f?.genres || []).length > 0 ? (
+                  <div key={catId} style={{ fontSize: 12, color: '#8a94a8', marginBottom: 6 }}>
+                    <span style={{ color: '#C89B3C' }}>{CAT_OPTIONS.find(c => c.id === catId)?.name}:</span>{' '}
+                    {f.genres.join(', ')}
+                  </div>
+                ) : null
+              )}
+            </div>
+          )}
+
+          <div style={{ marginBottom: 20 }}>
+            <div style={s.lbl}>Os teus géneros (opcional)</div>
+            <FilterPicker
+              cats={pendingSession.catId.split(',')}
+              filters={sessionFilters}
+              onChange={setSessionFilters}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+            <button
+              onClick={async () => {
+                setShowJoinReview(false);
+                const hasMyFilters = Object.keys(sessionFilters).some(k =>
+                  (sessionFilters[k]?.genres || []).length > 0
+                );
+                if (hasMyFilters && pendingSession) {
+                  setLoading(true);
+                  const catIds = pendingSession.catId.split(',');
+                  const chunks = await Promise.all(catIds.map(async cid => {
+                    const myGenres: string[] = sessionFilters[cid]?.genres || [];
+                    const hostGenres: string[] = pendingSession.filters[cid]?.genres || [];
+                    const all = await loadCachedSuggestions(cid, 100, {});
+                    return all.filter(i => {
+                      const itemGenre = i.genre?.toLowerCase() || '';
+                      const hostOk = hostGenres.length === 0 || hostGenres.some((g: string) => itemGenre.includes(g.toLowerCase()));
+                      const myOk = myGenres.length === 0 || myGenres.some((g: string) => itemGenre.includes(g.toLowerCase()));
+                      return hostOk && myOk;
+                    });
+                  }));
+                  const filtered = chunks.flat();
+                  if (filtered.length > 0) {
+                    const newItems = filtered.slice(0, 20).map(i => ({
+                      title: i.title, img: i.img, genre: i.genre,
+                      type: i.type, rating: i.rating ?? null, year: i.year ?? null,
+                      description: (i as any).description ?? null,
+                    }));
+                    setItems(newItems);
+                  } else {
+                    onToast('Sem sugestões comuns com esses filtros — a usar os do parceiro');
+                  }
+                  setLoading(false);
+                }
+                if (pendingSession) subscribeToSession(pendingSession);
+                setPhase('playing');
+              }}
+              style={{ width: '100%', padding: '15px', background: '#C89B3C', border: 'none', borderRadius: 14, color: '#0B0D12', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+            >
+              Vamos jogar!
+            </button>
+            <button
+              onClick={async () => {
+                if (pendingSession) await setSessionStandby(pendingSession.id);
+                setShowJoinReview(false);
+                handleReset();
+                onToast('Sessão em pausa — podes retomar mais tarde');
+              }}
+              style={{ width: '100%', padding: '15px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, color: '#8a94a8', fontSize: 14, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+            >
+              Não estou nesse mood — guardar para depois
+            </button>
+            <button
+              onClick={() => { setShowJoinReview(false); handleReset(); }}
+              style={{ background: 'none', border: 'none', color: 'rgba(138,148,168,0.4)', fontSize: 12, cursor: 'pointer', fontFamily: "'Outfit',sans-serif", padding: '8px' }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── PHASE: HOME — ecrã principal ──
   if (phase === 'home' && mode === null) {
     return (
@@ -452,7 +704,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
             <div style={{ marginBottom: 24, background: 'rgba(200,155,60,0.06)', border: '1px solid rgba(200,155,60,0.2)', borderRadius: 14, padding: '14px 16px' }}>
               <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 8 }}>Sessão em curso</div>
               <div style={{ fontSize: 13, color: '#f5f1eb', marginBottom: 12, fontFamily: "'Outfit',sans-serif" }}>
-                {CATS.find(c => c.id === activeSession.catId.split(',')[0])?.name || 'Match'} · {activeSession.status === 'waiting' ? 'À espera de parceiro' : 'Em jogo'}
+                {CATS.find(c => c.id === activeSession.catId.split(',')[0])?.name || 'Match'} · {activeSession.status === 'waiting' ? 'À espera de parceiro' : activeSession.status === 'standby' ? 'Em pausa' : 'Em jogo'}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
@@ -519,7 +771,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
 
               {/* Online */}
               <button
-                onClick={() => { setMode('online'); handleCreate(); }}
+                onClick={() => { setMode('online'); setShowFilterSetup(true); }}
                 disabled={loading}
                 style={{ flex: 1, padding: '18px 12px', background: loading ? 'rgba(200,155,60,0.2)' : 'rgba(200,155,60,0.1)', border: '1px solid rgba(200,155,60,0.35)', borderRadius: 16, color: '#C89B3C', cursor: loading ? 'default' : 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 10 }}
               >

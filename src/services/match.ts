@@ -4,10 +4,11 @@ export interface MatchSession {
   id: string;
   createdBy: string;
   joinedBy: string | null;
-  status: 'waiting' | 'active' | 'done';
+  status: 'waiting' | 'active' | 'done' | 'standby';
   catId: string;
   itemTitles: string[];
   currentIndex: number;
+  filters: Record<string, any>;
   createdAt: string;
 }
 
@@ -29,6 +30,7 @@ function mapSession(r: any): MatchSession {
     catId: r.cat_id,
     itemTitles: r.item_titles || [],
     currentIndex: r.current_index || 0,
+    filters: r.filters || {},
     createdAt: r.created_at,
   };
 }
@@ -37,7 +39,8 @@ function mapSession(r: any): MatchSession {
 export async function createMatchSession(
   userId: string,
   catId: string,
-  itemTitles: string[]
+  itemTitles: string[],
+  filters: Record<string, any> = {}
 ): Promise<MatchSession | null> {
   try {
     const { data, error } = await supabase
@@ -47,6 +50,7 @@ export async function createMatchSession(
         cat_id: catId,
         item_titles: itemTitles,
         status: 'waiting',
+        filters,
       })
       .select()
       .single();
@@ -168,6 +172,17 @@ export async function advanceMatchIndex(
   } catch { return false; }
 }
 
+// Coloca sessão em stand-by
+export async function setSessionStandby(sessionId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('match_sessions')
+      .update({ status: 'standby', updated_at: new Date().toISOString() })
+      .eq('id', sessionId);
+    return !error;
+  } catch { return false; }
+}
+
 // Termina sessão
 export async function endMatchSession(sessionId: string): Promise<boolean> {
   try {
@@ -232,7 +247,7 @@ export async function getActiveSessionForUser(userId: string): Promise<MatchSess
       .from('match_sessions')
       .select('*')
       .or(`created_by.eq.${userId},joined_by.eq.${userId}`)
-      .in('status', ['waiting', 'active'])
+      .in('status', ['waiting', 'active', 'standby'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
