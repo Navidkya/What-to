@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import type { ReactElement } from 'react';
 import type { Profile, HistoryEntry, TrackingMap, DataItem, Screen, ScheduleEntry } from '../../types';
+import { Film, Utensils, BookOpen, Headphones, Gamepad2, GraduationCap, MapPin, Zap } from 'lucide-react';
 import { APP_VERSION } from '../../version';
 import { DATA, CATS, GRAD } from '../../data';
 import ConfirmModal from '../layout/ConfirmModal';
@@ -217,6 +219,20 @@ const CAT_IMAGES: Record<string, string> = {
 };
 
 
+function getCatIcon(cat: string, size = 14) {
+  const map: Record<string, ReactElement> = {
+    watch: <Film size={size} />, ver: <Film size={size} />,
+    eat: <Utensils size={size} />, comer: <Utensils size={size} />,
+    read: <BookOpen size={size} />, ler: <BookOpen size={size} />,
+    listen: <Headphones size={size} />, ouvir: <Headphones size={size} />,
+    play: <Gamepad2 size={size} />, jogar: <Gamepad2 size={size} />,
+    learn: <GraduationCap size={size} />, aprender: <GraduationCap size={size} />,
+    visit: <MapPin size={size} />, visitar: <MapPin size={size} />,
+    do: <Zap size={size} />, fazer: <Zap size={size} />,
+  };
+  return map[cat?.toLowerCase()] ?? <Film size={size} />;
+}
+
 export default function Home({ profile, history, tracking, schedules, onOpenCat, onOpenPlan, onOpenLive, onNav, isActive: _isActive, onHideTracking, onRemoveTracking, onClearTracking, onOpenForYou }: HomeProps) {
   const [confirmClear, setConfirmClear] = useState(false);
   const greeting = getGreeting(profile.name);
@@ -316,17 +332,17 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         {/* Header */}
         <div className="home-header">
           <div className="home-header-top">
-            <div className="home-header-left">
-              <div className="home-sub">{dayTime}</div>
-              <div className="home-name">{greeting}</div>
-              <div className="home-mood">{contextPhrase}</div>
-              <div style={{ fontSize: 10, color: 'rgba(138,148,168,0.4)', fontFamily: "'Outfit',sans-serif", marginTop: 2, letterSpacing: 1 }}>
-                {APP_VERSION}
-              </div>
+            <div className="home-header-meta">
+              <span className="home-header-day">{dayTime}</span>
+              <span className="home-header-version">{APP_VERSION}</span>
             </div>
             <button className="home-avatar" onClick={() => onNav('profile')}>
               {avatarLetter}
             </button>
+          </div>
+          <div className="home-header-greeting">
+            <p className="home-header-context">{contextPhrase}</p>
+            <h2 className="home-header-name">{greeting}</h2>
           </div>
         </div>
 
@@ -457,8 +473,8 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
             )}
             <div className="home-hero-overlay" />
 
-            <div className="home-hero-cat-badge">
-              {currentHeroCat?.icon} {currentHeroCat?.name.toUpperCase()}
+            <div className="home-hero-cat-badge" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              {getCatIcon(currentSlide.catId)} {currentHeroCat?.name.toUpperCase()}
             </div>
 
             <div className="home-hero-body">
