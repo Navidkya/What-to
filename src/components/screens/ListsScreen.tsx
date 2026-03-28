@@ -188,21 +188,53 @@ export default function ListsScreen({ lists, isActive, onUpdateLists, onToast, o
                 ctaAction={() => setCreating(true)}
               />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 4 }}>
+              <div style={{ paddingTop: 4 }}>
                 {lists.map(list => (
-                  <div key={list.id} onClick={() => setActiveListId(list.id)}
-                    style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 18px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, cursor:'pointer', transition:'all 0.2s', position:'relative', overflow:'hidden' }}>
-                    <div style={{ position:'absolute', left:0, top:12, bottom:12, width:3, borderRadius:'0 2px 2px 0', background:'linear-gradient(to bottom, #C89B3C, #a87535)' }} />
-                    <div style={{ width:44, height:44, borderRadius:12, background:'rgba(200,155,60,0.08)', border:'1px solid rgba(200,155,60,0.15)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--ac)', flexShrink:0 }}>
-                      {getCategoryIcon(list.emoji, 20)}
+                  <div key={list.id} className="list-card" onClick={() => setActiveListId(list.id)}>
+                    <div className="list-card-cover">
+                      {list.items.length > 0 ? (
+                        <div className="list-cover-mosaic">
+                          {list.items.slice(0, 4).map((item, i) => (
+                            (item as UserListItem & { img?: string }).img
+                              ? <img key={i} className="list-cover-img" src={(item as UserListItem & { img?: string }).img} alt="" />
+                              : <div key={i} className="list-cover-placeholder">{getCategoryIcon(list.emoji, 16)}</div>
+                          ))}
+                          {Array.from({ length: Math.max(0, 4 - list.items.length) }).map((_, i) => (
+                            <div key={`fill-${i}`} className="list-cover-placeholder" />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="list-cover-empty">
+                          {getCategoryIcon(list.emoji, 28)}
+                        </div>
+                      )}
+                      <div className="list-cover-fade" />
                     </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:16, fontWeight:600, color:'var(--tx)', fontFamily:"'Outfit',sans-serif" }}>{list.name}</div>
-                      <div style={{ fontSize:11, color:'var(--mu)', marginTop:3 }}>{list.items.length} {list.items.length === 1 ? 'item' : 'itens'}</div>
+                    <div className="list-card-info">
+                      <span className="list-card-icon">{getCategoryIcon(list.emoji, 16)}</span>
+                      <div className="list-card-text">
+                        <p className="list-card-name">{list.name}</p>
+                        <p className="list-card-count">{list.items.length} {list.items.length === 1 ? 'item' : 'items'}</p>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mu)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                     </div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mu)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                   </div>
                 ))}
+                <div className="lists-inspiration">
+                  <p className="lists-inspiration-label">Criar nova lista por categoria</p>
+                  <div className="lists-inspiration-row">
+                    {[
+                      { emoji: '🎬', label: 'Ver', key: 'watch' },
+                      { emoji: '📚', label: 'Ler', key: 'read' },
+                      { emoji: '🎮', label: 'Jogar', key: 'play' },
+                      { emoji: '🍽️', label: 'Comer', key: 'eat' },
+                    ].map(cat => (
+                      <button key={cat.key} className="lists-inspiration-chip" onClick={() => { setNewEmoji(cat.emoji); setCreating(true); }}>
+                        {getCategoryIcon(cat.emoji, 14)}{cat.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )
           ) : (
