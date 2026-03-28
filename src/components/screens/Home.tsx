@@ -442,7 +442,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         {/* Hero único (sem carrossel) */}
         {currentSlide && (
           <div
-            className="home-hero"
+            className="home-hero hero-img-wrap"
             style={currentHeroImg ? undefined : { background: `linear-gradient(${GRAD[currentSlide.catId] || '135deg,#111,#222'})` }}
             onClick={() => {
               if (currentSlide && onOpenForYou) {
@@ -520,7 +520,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
           {exploreCats.map(c => (
             <button
               key={c.id}
-              className="cat-grid-card fade-in"
+              className="cat-grid-card category-tile fade-in"
               data-cat={c.id}
               onClick={() => onOpenCat(c.id)}
             >
@@ -536,7 +536,7 @@ export default function Home({ profile, history, tracking, schedules, onOpenCat,
         </div>
 
         {/* Match de hoje */}
-        <div className="match-today-card">
+        <div className="match-today-card match-banner">
           <div className="match-today-left">
             <div className="match-today-avatars">
               <div className="match-today-av" style={{ background: 'var(--ac2)', borderColor: 'var(--ac)', color: 'var(--ac)' }}>

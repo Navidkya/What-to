@@ -1512,3 +1512,113 @@ body::after {
   margin: 4px 0 0;
   line-height: 1.4;
 }
+
+/* Hero card gradient — V78 */
+.hero-img-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.hero-img-wrap::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 65%;
+  background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Category tiles — V78 */
+.category-tile {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  position: relative;
+}
+.category-tile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Match banner — V78 */
+.match-banner {
+  border: none !important;
+  border-left: 3px solid var(--ac) !important;
+  border-radius: 0 8px 8px 0 !important;
+  background: rgba(200, 155, 60, 0.06) !important;
+  padding-left: 14px !important;
+}
+
+/* Feed card trending — V78 */
+.feed-card-trending .feed-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+}
+.trending-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(200, 155, 60, 0.08);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ac);
+  font-family: 'Outfit', sans-serif;
+}
+.feed-card-meta-right {
+  font-size: 10px;
+  color: var(--mu);
+}
+.feed-card-img-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.feed-card-img-wrap::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 40%;
+  background: linear-gradient(to top, #151820 0%, transparent 100%);
+  pointer-events: none;
+}
+.feed-card-body {
+  padding: 8px 12px 12px;
+}
+.feed-card-title-trending {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tx);
+  margin: 0 0 8px;
+}
+.feed-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.trending-count-pill {
+  font-size: 10px;
+  color: var(--ac);
+  background: rgba(200, 155, 60, 0.08);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+.trending-cta {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ac);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.04em;
+  padding: 0;
+}

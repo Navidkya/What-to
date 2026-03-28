@@ -490,9 +490,9 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
       {/* Cards */}
       <div style={{ padding:'12px 16px 100px' }}>
         {cards.map(card => (
-          <div key={card.id} style={{ marginBottom:16, borderRadius:20, overflow:'hidden', background: (card.type === 'trending' || card.type === 'community') ? 'rgba(200,155,60,0.04)' : card.type === 'individual' ? 'rgba(200,155,60,0.02)' : 'rgba(255,255,255,0.03)', border: (card.type === 'trending' || card.type === 'community') ? '1px solid rgba(200,155,60,0.15)' : card.type === 'individual' ? '1px solid rgba(200,155,60,0.08)' : '1px solid rgba(255,255,255,0.07)' }}>
+          <div key={card.id} className={(card.type === 'trending' || card.type === 'community') ? 'feed-card-trending' : ''} style={{ marginBottom:16, borderRadius:20, overflow:'hidden', background: (card.type === 'trending' || card.type === 'community') ? 'rgba(200,155,60,0.04)' : card.type === 'individual' ? 'rgba(200,155,60,0.02)' : 'rgba(255,255,255,0.03)', border: (card.type === 'trending' || card.type === 'community') ? '1px solid rgba(200,155,60,0.15)' : card.type === 'individual' ? '1px solid rgba(200,155,60,0.08)' : '1px solid rgba(255,255,255,0.07)' }}>
             {/* Card header */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px 0' }}>
+            <div className={(card.type === 'trending' || card.type === 'community') ? 'feed-card-meta' : ''} style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px 0' }}>
               {(card.type === 'friend_activity' || card.type === 'individual') && (
                 <>
                   <div onClick={() => card.type === 'friend_activity' && setPersonPopup({ name: card.friendName!, isInfluencer: false, userId: card.userId, isMuted: getMuted().includes(card.userId || '') })}
@@ -559,7 +559,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
 
             {/* Imagem */}
             {card.img && (
-              <div style={{ margin:'10px 14px 0', borderRadius:14, overflow:'hidden', height:200, position:'relative', cursor:'pointer' }}
+              <div className={(card.type === 'trending' || card.type === 'community') ? 'feed-card-img-wrap' : ''} style={{ margin:'10px 14px 0', borderRadius:14, overflow:'hidden', height:200, position:'relative', cursor:'pointer' }}
                 onClick={() => setSuggPopup(card)}>
                 <img src={card.img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} onError={e => { (e.currentTarget as HTMLImageElement).style.display='none'; }} />
                 <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, rgba(6,8,16,0.7) 0%, transparent 50%)' }} />
@@ -595,7 +595,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
             )}
 
             {/* Info bar */}
-            <div style={{ padding:'10px 14px 14px', display:'flex', alignItems:'center', gap:8 }}>
+            <div className={(card.type === 'trending' || card.type === 'community') ? 'feed-card-body' : ''} style={{ padding:'10px 14px 14px', display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ color:'rgba(156,165,185,0.4)' }}>{getCatIconSvg(card.catId)}</span>
               <span style={{ fontSize:11, color:'rgba(156,165,185,0.5)' }}>{card.catName}</span>
               {card.rating && <>
@@ -613,7 +613,7 @@ export default function FeedScreen({ profile: _profile, history: _history, isAct
                 <span style={{ fontSize:10, color:'rgba(200,155,60,0.6)', fontFamily:"'Outfit',sans-serif" }}>{card.badge}</span>
               )}
               {(card.type === 'influencer_post' || card.type === 'trending' || card.type === 'community') && (
-                <button onClick={() => setSuggPopup(card)} style={{ fontSize:11, color:'#C89B3C', background:'rgba(200,155,60,0.08)', border:'1px solid rgba(200,155,60,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                <button onClick={() => setSuggPopup(card)} className={(card.type === 'trending' || card.type === 'community') ? 'trending-cta' : ''} style={{ fontSize:11, color:'#C89B3C', background:'rgba(200,155,60,0.08)', border:'1px solid rgba(200,155,60,0.2)', borderRadius:8, padding:'4px 10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                   {card.type === 'trending' ? 'Ver sugestões' : card.type === 'community' ? 'Explorar' : 'Aceitar sugestão'}
                 </button>
               )}
