@@ -60,21 +60,29 @@ export async function loadPrefsFromSupabase(userId: string): Promise<AllPrefs> {
 }
 
 // ─── HISTORY ────────────────────────────────────────────────
+let _syncingHistory = false;
+
 export async function syncHistoryToSupabase(userId: string, history: HistoryEntry[]) {
-  await supabase.from('history').delete().eq('user_id', userId);
-  if (history.length === 0) return;
-  const rows = history.slice(0, 200).map(h => ({
-    user_id: userId,
-    cat_id: h.catId,
-    title: h.title,
-    emoji: h.emoji,
-    cat: h.cat,
-    date: h.date,
-    type: h.type,
-    genre: h.genre,
-    action: h.action,
-  }));
-  await supabase.from('history').insert(rows);
+  if (_syncingHistory) return;
+  _syncingHistory = true;
+  try {
+    await supabase.from('history').delete().eq('user_id', userId);
+    if (history.length === 0) return;
+    const rows = history.slice(0, 200).map(h => ({
+      user_id: userId,
+      cat_id: h.catId,
+      title: h.title,
+      emoji: h.emoji,
+      cat: h.cat,
+      date: h.date,
+      type: h.type,
+      genre: h.genre,
+      action: h.action,
+    }));
+    await supabase.from('history').insert(rows);
+  } finally {
+    _syncingHistory = false;
+  }
 }
 
 export async function loadHistoryFromSupabase(userId: string): Promise<HistoryEntry[]> {
@@ -85,7 +93,14 @@ export async function loadHistoryFromSupabase(userId: string): Promise<HistoryEn
     .order('date', { ascending: false })
     .limit(200);
   if (!data) return [];
-  return data.map((h: Record<string, string>) => ({
+  const seen = new Set<string>();
+  const deduplicated = data.filter((h: Record<string, string>) => {
+    const key = `${h.title}-${h.cat}-${(h.date || '').substring(0, 10)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return deduplicated.map((h: Record<string, string>) => ({
     catId: h.cat_id,
     title: h.title,
     emoji: h.emoji,
