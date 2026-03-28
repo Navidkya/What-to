@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { ReactElement } from 'react';
 import PageHeader from '../ui/PageHeader';
 import EmptyState from '../ui/EmptyState';
 import { Film, Utensils, BookOpen, Headphones, Gamepad2, GraduationCap, MapPin, Zap, Bookmark, List } from 'lucide-react';
 import type { UserList, UserListItem } from '../../types';
 
 function getCategoryIcon(emoji: string, size = 18) {
-  const map: Record<string, JSX.Element> = {
+  const map: Record<string, ReactElement> = {
     '🎬': <Film size={size} />, '🎥': <Film size={size} />, '📺': <Film size={size} />,
     '🍽️': <Utensils size={size} />, '🍴': <Utensils size={size} />, '🍕': <Utensils size={size} />,
     '📚': <BookOpen size={size} />, '📖': <BookOpen size={size} />, '📗': <BookOpen size={size} />,
