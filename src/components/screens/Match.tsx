@@ -11,7 +11,7 @@ import {
   submitMatchVote, advanceMatchIndex,
   endMatchSession, listenMatchSession, listenMatchVotes,
   checkMatchForItem, addItemsToSession, getMatchVotes,
-  setSessionStandby,
+  setSessionStandby, updateSessionFilters, setSessionItems,
 } from '../../services/match';
 import type { MatchSession, MatchVote } from '../../services/match';
 import { getOrCreateConversation, sendMessage, loadConversations } from '../../services/messages';
@@ -96,6 +96,33 @@ const GENRE_OPTIONS: Record<string, string[]> = {
   eat: ['Italiana', 'Asiática', 'Portuguesa', 'Vegetariana', 'Fast Food', 'Sobremesas'],
 };
 
+const TYPE_OPTIONS: Record<string, { label: string; value: string }[]> = {
+  watch: [
+    { label: 'Filme', value: 'Filme' },
+    { label: 'Série', value: 'Serie' },
+    { label: 'Documentário', value: 'Documentario' },
+  ],
+  play: [
+    { label: 'Single player', value: 'single' },
+    { label: 'Multiplayer', value: 'multi' },
+  ],
+  read: [
+    { label: 'Livro', value: 'Livro' },
+    { label: 'Manga', value: 'Manga' },
+    { label: 'BD', value: 'BD' },
+  ],
+  eat: [
+    { label: 'Receita em casa', value: 'Receita' },
+    { label: 'Restaurante', value: 'Restaurante' },
+  ],
+};
+
+const ERA_OPTIONS = [
+  { label: 'Clássico (antes 2000)', value: 'classic' },
+  { label: 'Moderno (2000–2019)', value: 'modern' },
+  { label: 'Recente (2020+)', value: 'recent' },
+];
+
 function FilterPicker({ cats, filters, onChange }: {
   cats: string[];
   filters: Record<string, any>;
@@ -109,20 +136,39 @@ function FilterPicker({ cats, filters, onChange }: {
     onChange({ ...filters, [catId]: { ...(filters[catId] || {}), genres: updated } });
   };
 
+  const toggleType = (catId: string, value: string) => {
+    const current: string[] = filters[catId]?.types || [];
+    const updated = current.includes(value)
+      ? current.filter(t => t !== value)
+      : [...current, value];
+    onChange({ ...filters, [catId]: { ...(filters[catId] || {}), types: updated } });
+  };
+
+  const toggleEra = (catId: string, value: string) => {
+    const current: string[] = filters[catId]?.eras || [];
+    const updated = current.includes(value)
+      ? current.filter(e => e !== value)
+      : [...current, value];
+    onChange({ ...filters, [catId]: { ...(filters[catId] || {}), eras: updated } });
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 20 }}>
       {cats.map(catId => {
         const catName = CAT_OPTIONS.find(c => c.id === catId)?.name || catId;
         const genres = GENRE_OPTIONS[catId] || [];
-        const selected: string[] = filters[catId]?.genres || [];
+        const selectedGenres: string[] = filters[catId]?.genres || [];
+        const selectedTypes: string[] = filters[catId]?.types || [];
+        const selectedEras: string[] = filters[catId]?.eras || [];
         return (
           <div key={catId}>
             <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}>
               {catName}
             </div>
+            {/* Géneros */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
               {genres.map(g => {
-                const active = selected.includes(g);
+                const active = selectedGenres.includes(g);
                 return (
                   <button key={g} onClick={() => toggleGenre(catId, g)} style={{
                     padding: '7px 14px', borderRadius: 20,
@@ -136,16 +182,62 @@ function FilterPicker({ cats, filters, onChange }: {
                   </button>
                 );
               })}
-              <button onClick={() => onChange({ ...filters, [catId]: { genres: [] } })} style={{
+              <button onClick={() => onChange({ ...filters, [catId]: { ...(filters[catId] || {}), genres: [] } })} style={{
                 padding: '7px 14px', borderRadius: 20,
-                background: selected.length === 0 ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${selected.length === 0 ? 'rgba(200,155,60,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                color: selected.length === 0 ? '#C89B3C' : '#8a94a8',
+                background: selectedGenres.length === 0 ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${selectedGenres.length === 0 ? 'rgba(200,155,60,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                color: selectedGenres.length === 0 ? '#C89B3C' : '#8a94a8',
                 fontSize: 12, cursor: 'pointer', fontFamily: "'Outfit',sans-serif",
               }}>
                 Qualquer
               </button>
             </div>
+            {/* Tipo de conteúdo */}
+            {TYPE_OPTIONS[catId] && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, color: 'rgba(138,148,168,0.5)', letterSpacing: 1, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 8 }}>Tipo</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                  {TYPE_OPTIONS[catId].map(opt => {
+                    const active = selectedTypes.includes(opt.value);
+                    return (
+                      <button key={opt.value} onClick={() => toggleType(catId, opt.value)} style={{
+                        padding: '6px 12px', borderRadius: 20,
+                        background: active ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${active ? 'rgba(200,155,60,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                        color: active ? '#C89B3C' : '#8a94a8',
+                        fontSize: 11, cursor: 'pointer', fontFamily: "'Outfit',sans-serif",
+                        fontWeight: active ? 600 : 400,
+                      }}>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {/* Época — só para watch */}
+            {catId === 'watch' && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, color: 'rgba(138,148,168,0.5)', letterSpacing: 1, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 8 }}>Época</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                  {ERA_OPTIONS.map(opt => {
+                    const active = selectedEras.includes(opt.value);
+                    return (
+                      <button key={opt.value} onClick={() => toggleEra(catId, opt.value)} style={{
+                        padding: '6px 12px', borderRadius: 20,
+                        background: active ? 'rgba(200,155,60,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${active ? 'rgba(200,155,60,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                        color: active ? '#C89B3C' : '#8a94a8',
+                        fontSize: 11, cursor: 'pointer', fontFamily: "'Outfit',sans-serif",
+                        fontWeight: active ? 600 : 400,
+                      }}>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         );
       })}
@@ -197,6 +289,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
 
   const cleanupSession = useRef<(() => void) | null>(null);
   const cleanupVotes = useRef<(() => void) | null>(null);
+  const itemsRef = useRef<LocalItem[]>([]);
   const phaseRef = useRef<Phase>('home');
   const myVotedTitlesRef = useRef<Set<string>>(new Set());
   const swipeStartX = useRef<number | null>(null);
@@ -211,6 +304,10 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   useEffect(() => {
     myVotedTitlesRef.current = myVotedTitles;
   }, [myVotedTitles]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const cleanup = useCallback(() => {
     cleanupSession.current?.();
@@ -311,10 +408,28 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   }, [items]);
 
   const subscribeToSession = useCallback((sess: MatchSession) => {
-    cleanupSession.current = listenMatchSession(sess.id, updatedSess => {
+    cleanupSession.current = listenMatchSession(sess.id, async (updatedSess) => {
       setSession(updatedSess);
+      // Criador recebe items via Realtime quando o convidado confirmou filtros
+      if (updatedSess.itemTitles.length > 0 && itemsRef.current.length === 0 && phaseRef.current === 'waiting') {
+        const catIds = updatedSess.catId.split(',');
+        const allCachedChunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 100, {})));
+        const cached = allCachedChunks.flat();
+        const cacheMap = new Map(cached.map(i => [i.title, i]));
+        const orderedItems = updatedSess.itemTitles.map(title => {
+          const found = cacheMap.get(title);
+          return found
+            ? { title: found.title, img: found.img, genre: found.genre, type: found.type, rating: found.rating ?? null, year: found.year ?? null, description: (found as any).description ?? null }
+            : { title, img: null, genre: '', type: '', rating: null, year: null, description: null };
+        });
+        setItems(orderedItems);
+        setCurrentIdx(0);
+        setPhase('playing');
+        onToast('✦ O teu parceiro confirmou — a começar!');
+        return;
+      }
       setCurrentIdx(updatedSess.currentIndex);
-      if (updatedSess.status === 'active' && phaseRef.current === 'waiting') {
+      if (updatedSess.status === 'active' && phaseRef.current === 'waiting' && updatedSess.itemTitles.length > 0) {
         setPhase('playing');
         onToast('✦ O teu parceiro entrou!');
       }
@@ -326,7 +441,7 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       if (newVote.vote && myVotedTitlesRef.current.has(newVote.itemTitle)) {
         const isMatch = await checkMatchForItem(sess.id, newVote.itemTitle);
         if (isMatch) {
-          const item = items.find(i => i.title === newVote.itemTitle);
+          const item = itemsRef.current.find(i => i.title === newVote.itemTitle);
           setMatchedItem({ title: newVote.itemTitle, img: item?.img || null });
           setPhase('matched');
           endMatchSession(sess.id);
@@ -338,28 +453,12 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const handleCreateWithFilters = async () => {
     if (!userId) { onToast('Precisas de estar autenticado'); return; }
     setLoading(true);
-    const catChunks = await Promise.all(selectedCats.map(async cid => {
-      const genres: string[] = sessionFilters[cid]?.genres || [];
-      const all = await loadCachedSuggestions(cid, 60, {});
-      if (genres.length === 0) return all;
-      return all.filter(i => genres.some((g: string) =>
-        i.genre?.toLowerCase().includes(g.toLowerCase()) ||
-        (i as any).genres?.some((ig: string) => ig.toLowerCase().includes(g.toLowerCase()))
-      ));
-    }));
-    const allCached = catChunks.flat();
-    const shuffled = [...allCached].sort(() => Math.random() - 0.5);
-    const titles = shuffled.map(i => i.title).slice(0, 20);
-    const itemList = shuffled.slice(0, 20).map(i => ({
-      title: i.title, img: i.img, genre: i.genre,
-      type: i.type, rating: i.rating, year: i.year,
-      description: (i as any).description ?? null,
-    }));
-    if (titles.length === 0) { onToast('Sem sugestões para estes filtros — tenta outros géneros'); setLoading(false); return; }
-    const sess = await createMatchSession(userId, selectedCats.join(','), titles, sessionFilters);
+    // Sessão criada sem sugestões — o convidado vai gerar os items após confirmar filtros
+    const hostFilters = { host: sessionFilters };
+    const sess = await createMatchSession(userId, selectedCats.join(','), [], hostFilters);
     if (!sess) { onToast('Erro ao criar sessão'); setLoading(false); return; }
     setSession(sess);
-    setItems(itemList);
+    setItems([]);
     setCurrentIdx(0);
     setMyVote(null);
     setVotes([]);
@@ -553,9 +652,13 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
 
   // ── ECRÃ: revisão de filtros para o convidado ──
   if (showJoinReview && pendingSession) {
-    const hasFilters = Object.keys(pendingSession.filters || {}).some(k =>
-      (pendingSession.filters[k]?.genres || []).length > 0
-    );
+    // Suporta estrutura nova { host: {...} } e legada { catId: {...} }
+    const rawFilters = pendingSession.filters || {};
+    const hostFilters: Record<string, any> = rawFilters.host || rawFilters;
+    const hasFilters = Object.keys(hostFilters).some(k => {
+      const f = hostFilters[k];
+      return (f?.genres || []).length > 0 || (f?.types || []).length > 0 || (f?.eras || []).length > 0;
+    });
     return (
       <div style={s.screen}>
         <div style={s.tb}>
@@ -576,19 +679,21 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
           {hasFilters && (
             <div style={{ marginBottom: 24, background: 'rgba(200,155,60,0.06)', border: '1px solid rgba(200,155,60,0.15)', borderRadius: 14, padding: '14px 16px' }}>
               <div style={s.lbl}>Filtros activos</div>
-              {Object.entries(pendingSession.filters || {}).map(([catId, f]: [string, any]) =>
-                (f?.genres || []).length > 0 ? (
+              {Object.entries(hostFilters).map(([catId, f]: [string, any]) => {
+                const labels = [...(f?.genres || []), ...(f?.types || []), ...(f?.eras || [])];
+                if (labels.length === 0) return null;
+                return (
                   <div key={catId} style={{ fontSize: 12, color: '#8a94a8', marginBottom: 6 }}>
                     <span style={{ color: '#C89B3C' }}>{CAT_OPTIONS.find(c => c.id === catId)?.name}:</span>{' '}
-                    {f.genres.join(', ')}
+                    {labels.join(', ')}
                   </div>
-                ) : null
-              )}
+                );
+              })}
             </div>
           )}
 
           <div style={{ marginBottom: 20 }}>
-            <div style={s.lbl}>Os teus géneros (opcional)</div>
+            <div style={s.lbl}>Os teus filtros (opcional)</div>
             <FilterPicker
               cats={pendingSession.catId.split(',')}
               filters={sessionFilters}
@@ -599,43 +704,89 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
             <button
               onClick={async () => {
+                if (!pendingSession) return;
                 setShowJoinReview(false);
-                const hasMyFilters = Object.keys(sessionFilters).some(k =>
-                  (sessionFilters[k]?.genres || []).length > 0
-                );
-                if (hasMyFilters && pendingSession) {
-                  setLoading(true);
-                  const catIds = pendingSession.catId.split(',');
-                  const chunks = await Promise.all(catIds.map(async cid => {
-                    const myGenres: string[] = sessionFilters[cid]?.genres || [];
-                    const hostGenres: string[] = pendingSession.filters[cid]?.genres || [];
-                    const all = await loadCachedSuggestions(cid, 100, {});
-                    return all.filter(i => {
-                      const itemGenre = i.genre?.toLowerCase() || '';
-                      const hostOk = hostGenres.length === 0 || hostGenres.some((g: string) => itemGenre.includes(g.toLowerCase()));
-                      const myOk = myGenres.length === 0 || myGenres.some((g: string) => itemGenre.includes(g.toLowerCase()));
-                      return hostOk && myOk;
+                setLoading(true);
+
+                const guestFilters = sessionFilters;
+                const catIds = pendingSession.catId.split(',');
+
+                const chunks = await Promise.all(catIds.map(async cid => {
+                  const hostGenres: string[] = hostFilters[cid]?.genres || [];
+                  const hostTypes: string[] = hostFilters[cid]?.types || [];
+                  const hostEras: string[] = hostFilters[cid]?.eras || [];
+                  const guestGenres: string[] = guestFilters[cid]?.genres || [];
+                  const guestTypes: string[] = guestFilters[cid]?.types || [];
+                  const guestEras: string[] = guestFilters[cid]?.eras || [];
+                  const all = await loadCachedSuggestions(cid, 100, {});
+
+                  // Filtro idioma
+                  const langFiltered = all.filter(i => {
+                    const lang = (i as any).original_language || '';
+                    return !lang || lang === 'pt' || lang === 'en';
+                  });
+
+                  return langFiltered.filter(i => {
+                    const itemGenre = i.genre?.toLowerCase() || '';
+                    const itemGenres: string[] = ((i as any).genres || []).map((g: string) => g.toLowerCase());
+                    const allItemGenres = [itemGenre, ...itemGenres];
+                    // Géneros
+                    const hostGenreOk = hostGenres.length === 0 || hostGenres.some(g => allItemGenres.some(ig => ig.includes(g.toLowerCase())));
+                    const guestGenreOk = guestGenres.length === 0 || guestGenres.some(g => allItemGenres.some(ig => ig.includes(g.toLowerCase())));
+                    // Tipo
+                    const combinedTypes = [...new Set([...hostTypes, ...guestTypes])];
+                    const typeOk = combinedTypes.length === 0 || combinedTypes.some(t => i.type?.toLowerCase().includes(t.toLowerCase()));
+                    // Época
+                    const combinedEras = [...new Set([...hostEras, ...guestEras])];
+                    const yr = parseInt(i.year || '0');
+                    const eraOk = combinedEras.length === 0 || combinedEras.some(e => {
+                      if (e === 'classic') return yr > 0 && yr < 2000;
+                      if (e === 'modern') return yr >= 2000 && yr < 2020;
+                      if (e === 'recent') return yr >= 2020;
+                      return true;
                     });
-                  }));
-                  const filtered = chunks.flat();
-                  if (filtered.length > 0) {
-                    const newItems = filtered.slice(0, 20).map(i => ({
-                      title: i.title, img: i.img, genre: i.genre,
-                      type: i.type, rating: i.rating ?? null, year: i.year ?? null,
-                      description: (i as any).description ?? null,
-                    }));
-                    setItems(newItems);
-                  } else {
-                    onToast('Sem sugestões comuns com esses filtros — a usar os do parceiro');
-                  }
-                  setLoading(false);
+                    return hostGenreOk && guestGenreOk && typeOk && eraOk;
+                  });
+                }));
+
+                let pool = chunks.flat();
+                // Fallback sem filtro guest se resultados insuficientes
+                if (pool.length < 10) {
+                  const fallbackChunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 60, {})));
+                  pool = fallbackChunks.flat().filter(i => {
+                    const lang = (i as any).original_language || '';
+                    return !lang || lang === 'pt' || lang === 'en';
+                  });
+                  if (pool.length > 0) onToast('Sem sugestões comuns com esses filtros — a usar sugestões gerais');
                 }
-                if (pendingSession) subscribeToSession(pendingSession);
+
+                const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 20);
+                if (shuffled.length === 0) {
+                  onToast('Sem sugestões disponíveis'); setLoading(false);
+                  subscribeToSession(pendingSession); setPhase('playing'); return;
+                }
+
+                const titles = shuffled.map(i => i.title);
+                const localItems = shuffled.map(i => ({
+                  title: i.title, img: i.img, genre: i.genre,
+                  type: i.type, rating: i.rating ?? null, year: i.year ?? null,
+                  description: (i as any).description ?? null,
+                }));
+
+                // Guarda filtros do guest e items na sessão (criador recebe via Realtime)
+                await updateSessionFilters(pendingSession.id, guestFilters);
+                await setSessionItems(pendingSession.id, titles);
+
+                setItems(localItems);
+                setCurrentIdx(0);
+                setLoading(false);
+                subscribeToSession(pendingSession);
                 setPhase('playing');
               }}
-              style={{ width: '100%', padding: '15px', background: '#C89B3C', border: 'none', borderRadius: 14, color: '#0B0D12', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: "'Outfit',sans-serif" }}
+              disabled={loading}
+              style={{ width: '100%', padding: '15px', background: loading ? 'rgba(200,155,60,0.3)' : '#C89B3C', border: 'none', borderRadius: 14, color: '#0B0D12', fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer', fontFamily: "'Outfit',sans-serif" }}
             >
-              Vamos jogar!
+              {loading ? 'A calcular...' : 'Vamos jogar!'}
             </button>
             <button
               onClick={async () => {
@@ -1053,10 +1204,20 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
         <div style={{ ...s.inner, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 20 }}>
           <Avatar name={displayName} size={56} color="#C89B3C" />
 
-          {/* Categorias */}
+          {/* Categorias — resumo não editável */}
           <div style={{ width: '100%', maxWidth: 340 }}>
             <div style={{ fontSize: 11, color: 'rgba(200,155,60,0.6)', letterSpacing: 1.5, textTransform: 'uppercase' as const, fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}>Categorias</div>
-            <CatPicker selected={selectedCats} onChange={setSelectedCats} />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+              {(session?.catId || selectedCats.join(',')).split(',').map(catId => (
+                <span key={catId} style={{
+                  padding: '8px 14px', borderRadius: 12,
+                  background: 'rgba(200,155,60,0.1)', border: '1px solid rgba(200,155,60,0.25)',
+                  color: '#C89B3C', fontSize: 13, fontFamily: "'Outfit',sans-serif", fontWeight: 600,
+                }}>
+                  {CAT_OPTIONS.find(c => c.id === catId)?.name || catId}
+                </span>
+              ))}
+            </div>
           </div>
 
           {/* PRIORIDADE 1 — Convidar amigo */}
@@ -1256,12 +1417,19 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
                   setAddingMore(true);
                   const catIds = session.catId.split(',');
                   const chunks = await Promise.all(catIds.map(cid => loadCachedSuggestions(cid, 30, {})));
-                  const existing = new Set(items.map(i => i.title));
-                  const newItems = chunks.flat().filter(i => !existing.has(i.title)).slice(0, 10);
-                  if (newItems.length > 0) {
-                    await addItemsToSession(session.id, newItems.map(i => i.title));
-                    const newLocalItems = newItems.map(i => ({ title: i.title, img: i.img, genre: i.genre, type: i.type, rating: i.rating ?? null, year: i.year ?? null, description: (i as any).description ?? null }));
-                    setItems(prev => [...prev, ...newLocalItems]);
+                  const existing = new Set(itemsRef.current.map(i => i.title));
+                  const newCandidates = chunks.flat().filter(i => {
+                    const lang = (i as any).original_language || '';
+                    return !existing.has(i.title) && (!lang || lang === 'pt' || lang === 'en');
+                  }).slice(0, 10);
+                  if (newCandidates.length > 0) {
+                    await addItemsToSession(session.id, newCandidates.map(i => i.title));
+                    const newLocalItems = newCandidates.map(i => ({ title: i.title, img: i.img, genre: i.genre, type: i.type, rating: i.rating ?? null, year: i.year ?? null, description: (i as any).description ?? null }));
+                    setItems(prev => {
+                      const firstNew = prev.length;
+                      setTimeout(() => setCurrentIdx(firstNew), 0);
+                      return [...prev, ...newLocalItems];
+                    });
                   } else {
                     onToast('Sem mais sugestões disponíveis');
                   }

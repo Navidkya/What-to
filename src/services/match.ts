@@ -183,6 +183,44 @@ export async function setSessionStandby(sessionId: string): Promise<boolean> {
   } catch { return false; }
 }
 
+// Guarda filtros do convidado na sessão (merge com host)
+export async function updateSessionFilters(
+  sessionId: string,
+  guestFilters: Record<string, any>
+): Promise<boolean> {
+  try {
+    const { data: sess } = await supabase
+      .from('match_sessions')
+      .select('filters')
+      .eq('id', sessionId)
+      .single();
+    if (!sess) return false;
+    const merged = {
+      ...(sess.filters || {}),
+      guest: guestFilters,
+    };
+    const { error } = await supabase
+      .from('match_sessions')
+      .update({ filters: merged, updated_at: new Date().toISOString() })
+      .eq('id', sessionId);
+    return !error;
+  } catch { return false; }
+}
+
+// Define as sugestões da sessão e activa-a (chamado pelo convidado após confirmar filtros)
+export async function setSessionItems(
+  sessionId: string,
+  itemTitles: string[]
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('match_sessions')
+      .update({ item_titles: itemTitles, status: 'active', updated_at: new Date().toISOString() })
+      .eq('id', sessionId);
+    return !error;
+  } catch { return false; }
+}
+
 // Termina sessão
 export async function endMatchSession(sessionId: string): Promise<boolean> {
   try {
