@@ -180,7 +180,6 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
   const [showFilterSetup, setShowFilterSetup] = useState(false);
   const [showJoinReview, setShowJoinReview] = useState(false);
   const [pendingSession, setPendingSession] = useState<MatchSession | null>(null);
-  const [pendingItems, setPendingItems] = useState<LocalItem[]>([]);
   const [mode, setMode] = useState<'local' | 'online' | null>(null);
   const [, setSubPhase] = useState<'create' | 'join'>('create');
   const [localPlayers, setLocalPlayers] = useState<string[]>(['', '']);
@@ -276,7 +275,6 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       const firstUnvoted = orderedItems.findIndex(i => !myPreviousVoted.has(i.title));
       setCurrentIdx(firstUnvoted !== -1 ? firstUnvoted : 0);
       setPendingSession(sess);
-      setPendingItems(orderedItems);
       setSession(sess);
       setItems(orderedItems);
       setShowJoinReview(true);
@@ -336,30 +334,6 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
       }
     });
   }, [userId, onToast, checkForMatch]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleCreate = async () => {
-    if (!userId) { onToast('Precisas de estar autenticado'); return; }
-    setLoading(true);
-    const catChunks = await Promise.all(selectedCats.map(cid => loadCachedSuggestions(cid, 30, {})));
-    const allCached = catChunks.flat();
-    const titles = allCached.map(i => i.title).slice(0, 20);
-    const itemList = allCached.slice(0, 20).map(i => ({
-      title: i.title, img: i.img, genre: i.genre,
-      type: i.type, rating: i.rating, year: i.year,
-      description: (i as any).description ?? null,
-    }));
-    if (titles.length === 0) { onToast('Sem sugestões disponíveis'); setLoading(false); return; }
-    const sess = await createMatchSession(userId, selectedCats.join(','), titles);
-    if (!sess) { onToast('Erro ao criar sessão'); setLoading(false); return; }
-    setSession(sess);
-    setItems(itemList);
-    setCurrentIdx(0);
-    setMyVote(null);
-    setVotes([]);
-    subscribeToSession(sess);
-    setPhase('waiting');
-    setLoading(false);
-  };
 
   const handleCreateWithFilters = async () => {
     if (!userId) { onToast('Precisas de estar autenticado'); return; }
@@ -422,7 +396,6 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     const firstUnvoted = orderedItems.findIndex(i => !myPreviousVoted.has(i.title));
     setCurrentIdx(firstUnvoted !== -1 ? firstUnvoted : 0);
     setPendingSession(sess);
-    setPendingItems(orderedItems);
     setSession(sess);
     setItems(orderedItems);
     setShowJoinReview(true);
@@ -510,7 +483,6 @@ export default function Match({ profile, isActive, onBack, onToast, userId, user
     setShowFilterSetup(false);
     setShowJoinReview(false);
     setPendingSession(null);
-    setPendingItems([]);
     setSession(null);
     setItems([]);
     setCurrentIdx(0);
