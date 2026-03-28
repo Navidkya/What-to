@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import PageHeader from '../ui/PageHeader';
 import EmptyState from '../ui/EmptyState';
 import { Film, Utensils, BookOpen, Headphones, Gamepad2, GraduationCap, MapPin, Zap, Bookmark, List } from 'lucide-react';
