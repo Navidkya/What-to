@@ -1,5 +1,3 @@
-import React from 'react'
-
 interface PageHeaderProps {
   label: string
   title: string
